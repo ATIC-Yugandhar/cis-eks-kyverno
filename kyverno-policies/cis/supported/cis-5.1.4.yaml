@@ -1,0 +1,41 @@
+# kyverno-policies/cis/cis-5.1.4.yaml
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: cis-5.1.4-restrict-image-registries
+  annotations:
+    policies.kyverno.io/title: Restrict Container Registries
+    policies.kyverno.io/category: CIS EKS Benchmarks
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/minversion: 1.6.0
+    policies.kyverno.io/description: >-
+      Only approved container registries should be used. This policy validates that container images
+      are pulled from a list of approved registries (e.g., 'approved-registry.io', 'another-approved.com').
+      Update the pattern with your actual approved registries.
+    policies.kyverno.io/benchmark: cis-eks
+    policies.kyverno.io/controls: "5.1.4"
+spec:
+  validationFailureAction: Audit # Start with Audit, change to Enforce if needed
+  background: true
+  rules:
+    - name: validate-approved-registries
+      match:
+        any:
+        - resources:
+            kinds:
+              - Pod
+      validate:
+        message: "Images must be from approved registries (e.g., approved-registry.io/*) (CIS 5.1.4)."
+        # Define your approved registries here using wildcards
+        # Example: "approved-registry.io/*", "ghcr.io/my-org/*", "docker.io/my-user/*"
+        # Ensure you include registries for essential components if necessary.
+        # Using a simple placeholder list here. **UPDATE THIS LIST.**
+        pattern:
+          spec:
+            =(initContainers): # Check initContainers if they exist
+              - image: "approved-registry.io/*|another-approved.com/*|k8s.gcr.io/*|*.ecr.*.amazonaws.com/*" # Add your registries
+            containers: # Check containers
+              - image: "approved-registry.io/*|another-approved.com/*|k8s.gcr.io/*|*.ecr.*.amazonaws.com/*" # Add your registries
+            =(ephemeralContainers): # Check ephemeralContainers if they exist
+              - image: "approved-registry.io/*|another-approved.com/*|k8s.gcr.io/*|*.ecr.*.amazonaws.com/*" # Add your registries

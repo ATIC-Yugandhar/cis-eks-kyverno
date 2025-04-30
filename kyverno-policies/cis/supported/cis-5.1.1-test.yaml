@@ -1,0 +1,132 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestSuite
+testDirs:
+  - ./
+timeout: 30
+parallel: 4
+---
+apiVersion: v1
+kind: TestStep
+name: cis-5.1.1-require-pss-labels-tests
+commands:
+  - script: |
+      kubectl apply -f ../cis-5.1.1.yaml --dry-run=client -o yaml > policy.yaml
+---
+# Test Case: Namespace with 'baseline' enforce label (Compliant)
+name: test-namespace-baseline-label
+policies: [policy.yaml]
+resources:
+- apiVersion: v1
+  kind: Namespace
+  metadata:
+    name: ns-baseline
+    labels:
+      pod-security.kubernetes.io/enforce: baseline
+results:
+- policy: cis-5.1.1-require-pss-labels
+  rule: require-pss-enforce-label
+  resource: ns-baseline
+  kind: Namespace
+  result: pass
+---
+# Test Case: Namespace with 'restricted' enforce label (Compliant)
+name: test-namespace-restricted-label
+policies: [policy.yaml]
+resources:
+- apiVersion: v1
+  kind: Namespace
+  metadata:
+    name: ns-restricted
+    labels:
+      pod-security.kubernetes.io/enforce: restricted
+results:
+- policy: cis-5.1.1-require-pss-labels
+  rule: require-pss-enforce-label
+  resource: ns-restricted
+  kind: Namespace
+  result: pass
+---
+# Test Case: Namespace with 'privileged' enforce label (Non-Compliant)
+name: test-namespace-privileged-label
+policies: [policy.yaml]
+resources:
+- apiVersion: v1
+  kind: Namespace
+  metadata:
+    name: ns-privileged
+    labels:
+      pod-security.kubernetes.io/enforce: privileged # Not allowed by policy
+results:
+- policy: cis-5.1.1-require-pss-labels
+  rule: require-pss-enforce-label
+  resource: ns-privileged
+  kind: Namespace
+  result: fail
+---
+# Test Case: Namespace with missing enforce label (Non-Compliant)
+name: test-namespace-missing-label
+policies: [policy.yaml]
+resources:
+- apiVersion: v1
+  kind: Namespace
+  metadata:
+    name: ns-missing-label
+    # No pod-security label
+results:
+- policy: cis-5.1.1-require-pss-labels
+  rule: require-pss-enforce-label
+  resource: ns-missing-label
+  kind: Namespace
+  result: fail
+---
+# Test Case: Namespace with incorrect label key (Non-Compliant)
+name: test-namespace-wrong-label-key
+policies: [policy.yaml]
+resources:
+- apiVersion: v1
+  kind: Namespace
+  metadata:
+    name: ns-wrong-label-key
+    labels:
+      # Incorrect key
+      pod-security.kubernetes.io/enforce-level: baseline
+results:
+- policy: cis-5.1.1-require-pss-labels
+  rule: require-pss-enforce-label
+  resource: ns-wrong-label-key
+  kind: Namespace
+  result: fail
+---
+# Test Case: Excluded Namespace (kube-system) without label
+name: test-excluded-namespace-kube-system
+policies: [policy.yaml]
+resources:
+# Simulate kube-system namespace
+- apiVersion: v1
+  kind: Namespace
+  metadata:
+    name: kube-system
+    # No labels - would fail if not excluded
+results:
+- policy: cis-5.1.1-require-pss-labels
+  rule: require-pss-enforce-label
+  resource: kube-system
+  kind: Namespace
+  result: skip # Expecting skip because the namespace is excluded
+---
+# Test Case: Excluded Namespace (kyverno) without label
+name: test-excluded-namespace-kyverno
+policies: [policy.yaml]
+resources:
+# Simulate kyverno namespace
+- apiVersion: v1
+  kind: Namespace
+  metadata:
+    name: kyverno
+    # No labels - would fail if not excluded
+results:
+- policy: cis-5.1.1-require-pss-labels
+  rule: require-pss-enforce-label
+  resource: kyverno
+  kind: Namespace
+  result: skip # Expecting skip because the namespace is excluded

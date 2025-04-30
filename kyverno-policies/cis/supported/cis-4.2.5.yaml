@@ -1,0 +1,40 @@
+# kyverno-policies/cis/cis-4.2.5.yaml
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: cis-4.2.5-disallow-privilege-escalation
+  annotations:
+    policies.kyverno.io/title: Disallow Privilege Escalation
+    policies.kyverno.io/category: CIS EKS Benchmarks
+    policies.kyverno.io/severity: high # Privilege escalation is high risk
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/minversion: 1.6.0
+    policies.kyverno.io/description: >-
+      Privilege escalation allows a container process to gain more privileges than its parent process.
+      This should be disallowed by setting securityContext.allowPrivilegeEscalation to false.
+      This policy enforces that setting.
+    policies.kyverno.io/benchmark: cis-eks
+    policies.kyverno.io/controls: "4.2.5"
+spec:
+  validationFailureAction: Enforce # Enforce as privilege escalation is high risk
+  background: true
+  rules:
+    - name: disallow-privilege-escalation
+      match:
+        any:
+        - resources:
+            kinds:
+              - Pod
+      validate:
+        message: "Privilege escalation is disallowed (CIS 4.2.5). Set securityContext.allowPrivilegeEscalation to false."
+        pattern:
+          spec:
+            containers:
+              - =(securityContext):
+                  =(allowPrivilegeEscalation): false # Use =(...) for conditional existence and value check
+            =(initContainers): # Also check initContainers if they exist
+              - =(securityContext):
+                  =(allowPrivilegeEscalation): false
+            =(ephemeralContainers): # Also check ephemeralContainers if they exist
+              - =(securityContext):
+                  =(allowPrivilegeEscalation): false

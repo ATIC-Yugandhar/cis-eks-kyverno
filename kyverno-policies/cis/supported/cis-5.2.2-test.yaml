@@ -1,0 +1,200 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestSuite
+testDirs:
+  - ./
+timeout: 30
+parallel: 4
+---
+apiVersion: v1
+kind: TestStep
+name: cis-5.2.2-restrict-seccomp-tests
+commands:
+  - script: |
+      kubectl apply -f ../cis-5.2.2.yaml --dry-run=client -o yaml > policy.yaml
+---
+# Test Case: Compliant Pod with RuntimeDefault seccomp profile
+name: test-compliant-pod-runtime-default
+policies: [policy.yaml]
+resources:
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    name: compliant-pod-runtime-default
+    namespace: default
+  spec:
+    securityContext:
+      seccompProfile:
+        type: RuntimeDefault
+    containers:
+    - name: nginx
+      image: nginx
+results:
+- policy: cis-5.2.2-restrict-seccomp
+  rule: validate-seccomp-profile-pods
+  resource: compliant-pod-runtime-default
+  namespace: default
+  kind: Pod
+  result: pass
+---
+# Test Case: Compliant Pod with Localhost seccomp profile
+name: test-compliant-pod-localhost
+policies: [policy.yaml]
+resources:
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    name: compliant-pod-localhost
+    namespace: default
+  spec:
+    securityContext:
+      seccompProfile:
+        type: Localhost
+        localhostProfile: "profiles/audit.json" # Example profile path
+    containers:
+    - name: nginx
+      image: nginx
+results:
+- policy: cis-5.2.2-restrict-seccomp
+  rule: validate-seccomp-profile-pods
+  resource: compliant-pod-localhost
+  namespace: default
+  kind: Pod
+  result: pass
+---
+# Test Case: Non-compliant Pod with Unconfined seccomp profile
+name: test-noncompliant-pod-unconfined
+policies: [policy.yaml]
+resources:
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    name: noncompliant-pod-unconfined
+    namespace: default
+  spec:
+    securityContext:
+      seccompProfile:
+        type: Unconfined
+    containers:
+    - name: nginx
+      image: nginx
+results:
+- policy: cis-5.2.2-restrict-seccomp
+  rule: validate-seccomp-profile-pods
+  resource: noncompliant-pod-unconfined
+  namespace: default
+  kind: Pod
+  result: fail
+---
+# Test Case: Non-compliant Pod with no seccomp profile defined
+name: test-noncompliant-pod-no-profile
+policies: [policy.yaml]
+resources:
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    name: noncompliant-pod-no-profile
+    namespace: default
+  spec:
+    containers:
+    - name: nginx
+      image: nginx
+# Note: This might pass if Kubernetes defaults to RuntimeDefault,
+# but the policy aims for explicit definition. The pattern requires the field.
+# Adjust expected result based on cluster defaults if necessary.
+# Assuming explicit definition is required by the policy pattern:
+results:
+- policy: cis-5.2.2-restrict-seccomp
+  rule: validate-seccomp-profile-pods
+  resource: noncompliant-pod-no-profile
+  namespace: default
+  kind: Pod
+  result: fail
+---
+# Test Case: Compliant Deployment with RuntimeDefault
+name: test-compliant-deployment
+policies: [policy.yaml]
+resources:
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: compliant-deployment
+    namespace: default
+  spec:
+    replicas: 1
+    selector:
+      matchLabels:
+        app: nginx
+    template:
+      metadata:
+        labels:
+          app: nginx
+      spec:
+        securityContext:
+          seccompProfile:
+            type: RuntimeDefault
+        containers:
+        - name: nginx
+          image: nginx
+results:
+- policy: cis-5.2.2-restrict-seccomp
+  rule: validate-seccomp-profile-controllers
+  resource: compliant-deployment
+  namespace: default
+  kind: Deployment
+  result: pass
+---
+# Test Case: Non-compliant Deployment with Unconfined
+name: test-noncompliant-deployment
+policies: [policy.yaml]
+resources:
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: noncompliant-deployment
+    namespace: default
+  spec:
+    replicas: 1
+    selector:
+      matchLabels:
+        app: nginx
+    template:
+      metadata:
+        labels:
+          app: nginx
+      spec:
+        securityContext:
+          seccompProfile:
+            type: Unconfined
+        containers:
+        - name: nginx
+          image: nginx
+results:
+- policy: cis-5.2.2-restrict-seccomp
+  rule: validate-seccomp-profile-controllers
+  resource: noncompliant-deployment
+  namespace: default
+  kind: Deployment
+  result: fail
+---
+# Test Case: Pod in excluded namespace (kube-system)
+name: test-excluded-namespace-pod
+policies: [policy.yaml]
+resources:
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    name: excluded-pod
+    namespace: kube-system # Excluded namespace
+  spec:
+    # No seccomp profile - would fail if not excluded
+    containers:
+    - name: nginx
+      image: nginx
+results:
+# Expect no result as the resource should be skipped by the exclude block
+- policy: cis-5.2.2-restrict-seccomp
+  rule: validate-seccomp-profile-pods
+  resource: excluded-pod
+  namespace: kube-system
+  kind: Pod
+  result: skip # Or check for absence of result depending on test framework behavior

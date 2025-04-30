@@ -1,0 +1,51 @@
+# kyverno-policies/cis/cis-4.3.2-test.yaml
+name: cis-4.3.2-require-namespace-networkpolicy-test
+policies:
+  - cis-4.3.2.yaml
+resources:
+  # Resource for Pass Case 1: Namespace with a NetworkPolicy
+  - apiVersion: v1
+    kind: Namespace
+    metadata:
+      name: app-ns-with-np
+  # Resource for Fail Case: Namespace without a NetworkPolicy
+  - apiVersion: v1
+    kind: Namespace
+    metadata:
+      name: app-ns-without-np
+  # Resource for Pass Case 2 (Excluded Namespace)
+  - apiVersion: v1
+    kind: Namespace
+    metadata:
+      name: kube-system # Excluded namespace
+results:
+  # Result for Pass Case 1
+  - policy: cis-4.3.2-require-namespace-networkpolicy
+    rule: require-namespace-networkpolicy
+    resource: app-ns-with-np
+    kind: Namespace
+    # Simulate apiCall result: Found at least one NetworkPolicy
+    context:
+      networkpolicies_in_namespace:
+        - apiVersion: networking.k8s.io/v1
+          kind: NetworkPolicy
+          metadata:
+            name: default-deny
+            namespace: app-ns-with-np
+    result: pass
+  # Result for Fail Case
+  - policy: cis-4.3.2-require-namespace-networkpolicy
+    rule: require-namespace-networkpolicy
+    resource: app-ns-without-np
+    kind: Namespace
+    # Simulate apiCall result: Found no NetworkPolicies
+    context:
+      networkpolicies_in_namespace: []
+    result: fail
+  # Result for Pass Case 2 (Excluded Namespace)
+  # The policy rule should be skipped due to the exclude block
+  - policy: cis-4.3.2-require-namespace-networkpolicy
+    rule: require-namespace-networkpolicy
+    resource: kube-system
+    kind: Namespace
+    result: skip # Skipped because kube-system is excluded

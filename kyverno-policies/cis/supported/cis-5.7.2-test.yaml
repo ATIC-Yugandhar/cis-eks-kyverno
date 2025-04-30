@@ -1,0 +1,137 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestSuite
+testDirs:
+  - ./
+timeout: 30
+parallel: 4
+---
+apiVersion: v1
+kind: TestStep
+name: cis-5.7.2-restrict-default-namespace-tests
+commands:
+  - script: |
+      kubectl apply -f ../cis-5.7.2.yaml --dry-run=client -o yaml > policy.yaml
+---
+# Test Case: Non-compliant Pod in 'default' namespace
+name: test-noncompliant-pod-default-ns
+policies: [policy.yaml]
+resources:
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    name: pod-in-default
+    namespace: default # Target namespace for restriction
+  spec:
+    containers:
+    - name: nginx
+      image: nginx
+results:
+- policy: cis-5.7.2-restrict-default-namespace
+  rule: restrict-default-namespace
+  resource: pod-in-default
+  namespace: default
+  kind: Pod
+  result: fail # Expect fail/audit because it's in 'default'
+---
+# Test Case: Compliant Pod in a custom namespace
+name: test-compliant-pod-custom-ns
+policies: [policy.yaml]
+resources:
+# Create the custom namespace first (or assume it exists)
+- apiVersion: v1
+  kind: Namespace
+  metadata:
+    name: my-app-ns
+# Create the Pod in the custom namespace
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    name: pod-in-custom-ns
+    namespace: my-app-ns # Allowed namespace
+  spec:
+    containers:
+    - name: nginx
+      image: nginx
+results:
+# Expect no failure result for this pod from this policy
+- policy: cis-5.7.2-restrict-default-namespace
+  rule: restrict-default-namespace
+  resource: pod-in-custom-ns
+  namespace: my-app-ns
+  kind: Pod
+  result: skip # Policy doesn't match this namespace
+---
+# Test Case: Non-compliant Deployment in 'default' namespace
+name: test-noncompliant-deployment-default-ns
+policies: [policy.yaml]
+resources:
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: deployment-in-default
+    namespace: default # Target namespace for restriction
+  spec:
+    replicas: 1
+    selector:
+      matchLabels:
+        app: nginx
+    template:
+      metadata:
+        labels:
+          app: nginx
+      spec:
+        containers:
+        - name: nginx
+          image: nginx
+results:
+- policy: cis-5.7.2-restrict-default-namespace
+  rule: restrict-default-namespace
+  resource: deployment-in-default
+  namespace: default
+  kind: Deployment
+  result: fail # Expect fail/audit
+---
+# Test Case: Non-compliant Service in 'default' namespace
+name: test-noncompliant-service-default-ns
+policies: [policy.yaml]
+resources:
+- apiVersion: v1
+  kind: Service
+  metadata:
+    name: service-in-default
+    namespace: default # Target namespace for restriction
+  spec:
+    selector:
+      app: myapp
+    ports:
+      - protocol: TCP
+        port: 80
+        targetPort: 8080
+results:
+- policy: cis-5.7.2-restrict-default-namespace
+  rule: restrict-default-namespace
+  resource: service-in-default
+  namespace: default
+  kind: Service
+  result: fail # Expect fail/audit
+---
+# Test Case: Resource in system namespace (should be ignored by this policy)
+name: test-system-namespace-pod
+policies: [policy.yaml]
+resources:
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    name: pod-in-kube-system
+    namespace: kube-system # Not 'default'
+  spec:
+    containers:
+    - name: tool
+      image: some-tool
+results:
+- policy: cis-5.7.2-restrict-default-namespace
+  rule: restrict-default-namespace
+  resource: pod-in-kube-system
+  namespace: kube-system
+  kind: Pod
+  result: skip # Policy doesn't match this namespace

@@ -1,0 +1,37 @@
+# kyverno-policies/cis/cis-4.1.2.yaml
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: cis-4.1.2-minimize-secret-access
+  annotations:
+    policies.kyverno.io/title: Minimize Access to Secrets
+    policies.kyverno.io/category: CIS EKS Benchmarks
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: Role, ClusterRole
+    policies.kyverno.io/minversion: 1.6.0
+    policies.kyverno.io/description: >-
+      Access to secrets should be minimized. This policy audits Roles and ClusterRoles
+      that grant 'get', 'list', or 'watch' permissions on secrets.
+    policies.kyverno.io/benchmark: cis-eks
+    policies.kyverno.io/controls: "4.1.2"
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: minimize-secret-access-roles
+      match:
+        any:
+        - resources:
+            kinds:
+              - Role
+              - ClusterRole
+      validate:
+        message: "Minimize access to secrets (CIS 4.1.2). Avoid 'get', 'list', or 'watch' verbs for secrets."
+        pattern:
+          rules:
+          - apiGroups: [""]
+            resources: ["secrets"]
+            verbs:
+            - "!get"
+            - "!list"
+            - "!watch"

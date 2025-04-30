@@ -1,0 +1,51 @@
+# kyverno-policies/cis/cis-5.4.4-test.yaml
+name: cis-5.4.4-require-namespace-networkpolicy-test
+policies:
+  - cis-5.4.4.yaml
+resources:
+  # Resource for Pass Case 1: Namespace with a NetworkPolicy
+  - apiVersion: v1
+    kind: Namespace
+    metadata:
+      name: app-ns-with-np-544
+  # Resource for Fail Case: Namespace without a NetworkPolicy
+  - apiVersion: v1
+    kind: Namespace
+    metadata:
+      name: app-ns-without-np-544
+  # Resource for Pass Case 2 (Excluded Namespace)
+  - apiVersion: v1
+    kind: Namespace
+    metadata:
+      name: kube-public # Excluded namespace
+results:
+  # Result for Pass Case 1
+  - policy: cis-5.4.4-require-namespace-networkpolicy
+    rule: require-namespace-networkpolicy-5.4.4
+    resource: app-ns-with-np-544
+    kind: Namespace
+    # Simulate apiCall result: Found at least one NetworkPolicy
+    context:
+      networkpolicies_in_namespace_5_4_4:
+        - apiVersion: networking.k8s.io/v1
+          kind: NetworkPolicy
+          metadata:
+            name: default-deny-alt
+            namespace: app-ns-with-np-544
+    result: pass
+  # Result for Fail Case
+  - policy: cis-5.4.4-require-namespace-networkpolicy
+    rule: require-namespace-networkpolicy-5.4.4
+    resource: app-ns-without-np-544
+    kind: Namespace
+    # Simulate apiCall result: Found no NetworkPolicies
+    context:
+      networkpolicies_in_namespace_5_4_4: []
+    result: fail
+  # Result for Pass Case 2 (Excluded Namespace)
+  # The policy rule should be skipped due to the exclude block
+  - policy: cis-5.4.4-require-namespace-networkpolicy
+    rule: require-namespace-networkpolicy-5.4.4
+    resource: kube-public
+    kind: Namespace
+    result: skip # Skipped because kube-public is excluded

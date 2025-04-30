@@ -1,0 +1,42 @@
+# kyverno-policies/cis/cis-4.1.1-test.yaml
+name: cis-4.1.1-restrict-clusteradmin-rolebindings-test
+policies:
+  - cis-4.1.1.yaml
+resources:
+  # Pass case: Binding to a different role
+  - apiVersion: rbac.authorization.k8s.io/v1
+    kind: ClusterRoleBinding
+    metadata:
+      name: non-admin-binding
+    subjects:
+    - kind: User
+      name: jane.doe@example.com
+      apiGroup: rbac.authorization.k8s.io
+    roleRef:
+      kind: ClusterRole
+      name: view # Compliant role
+      apiGroup: rbac.authorization.k8s.io
+  # Fail case: Binding to cluster-admin
+  - apiVersion: rbac.authorization.k8s.io/v1
+    kind: ClusterRoleBinding
+    metadata:
+      name: admin-binding
+    subjects:
+    - kind: ServiceAccount
+      name: risky-sa
+      namespace: default
+    roleRef:
+      kind: ClusterRole
+      name: cluster-admin # Non-compliant role
+      apiGroup: rbac.authorization.k8s.io
+results:
+  - policy: cis-4.1.1-restrict-clusteradmin-rolebindings
+    rule: restrict-clusteradmin-rolebindings
+    resource: non-admin-binding
+    kind: ClusterRoleBinding
+    result: pass
+  - policy: cis-4.1.1-restrict-clusteradmin-rolebindings
+    rule: restrict-clusteradmin-rolebindings
+    resource: admin-binding
+    kind: ClusterRoleBinding
+    result: fail

@@ -1,0 +1,51 @@
+# kyverno-policies/cis/cis-4.1.6-test.yaml
+name: cis-4.1.6-automount-serviceaccounttoken-test
+policies:
+  - cis-4.1.6.yaml
+resources:
+  # Pass case: automountServiceAccountToken explicitly false
+  - apiVersion: v1
+    kind: Pod
+    metadata:
+      name: pod-pass-automount-false
+    spec:
+      automountServiceAccountToken: false # Compliant
+      containers:
+      - name: nginx
+        image: nginx
+  # Fail case 1: automountServiceAccountToken not specified (defaults to true)
+  - apiVersion: v1
+    kind: Pod
+    metadata:
+      name: pod-fail-automount-implicit
+    spec:
+      # automountServiceAccountToken implicitly true
+      containers:
+      - name: nginx
+        image: nginx
+  # Fail case 2: automountServiceAccountToken explicitly true
+  - apiVersion: v1
+    kind: Pod
+    metadata:
+      name: pod-fail-automount-true
+    spec:
+      automountServiceAccountToken: true # Non-compliant
+      containers:
+      - name: nginx
+        image: nginx
+results:
+  - policy: cis-4.1.6-automount-serviceaccounttoken
+    rule: require-automountserviceaccounttoken-false
+    resource: pod-pass-automount-false
+    kind: Pod
+    result: pass
+  - policy: cis-4.1.6-automount-serviceaccounttoken
+    rule: require-automountserviceaccounttoken-false
+    resource: pod-fail-automount-implicit
+    kind: Pod
+    result: fail
+  - policy: cis-4.1.6-automount-serviceaccounttoken
+    rule: require-automountserviceaccounttoken-false
+    resource: pod-fail-automount-true
+    kind: Pod
+    result: fail

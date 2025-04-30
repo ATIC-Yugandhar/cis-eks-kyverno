@@ -1,0 +1,51 @@
+# kyverno-policies/cis/cis-4.2.4-test.yaml
+name: cis-4.2.4-disallow-host-network-test
+policies:
+  - cis-4.2.4.yaml
+resources:
+  # Pass case 1: hostNetwork not specified (defaults to false)
+  - apiVersion: v1
+    kind: Pod
+    metadata:
+      name: pod-pass-hostnetwork-implicit
+    spec:
+      # hostNetwork implicitly false
+      containers:
+      - name: nginx
+        image: nginx
+  # Pass case 2: hostNetwork explicitly false
+  - apiVersion: v1
+    kind: Pod
+    metadata:
+      name: pod-pass-hostnetwork-false
+    spec:
+      hostNetwork: false # Compliant
+      containers:
+      - name: nginx
+        image: nginx
+  # Fail case: hostNetwork explicitly true
+  - apiVersion: v1
+    kind: Pod
+    metadata:
+      name: pod-fail-hostnetwork-true
+    spec:
+      hostNetwork: true # Non-compliant
+      containers:
+      - name: nginx
+        image: nginx
+results:
+  - policy: cis-4.2.4-disallow-host-network
+    rule: disallow-host-network
+    resource: pod-pass-hostnetwork-implicit
+    kind: Pod
+    result: pass
+  - policy: cis-4.2.4-disallow-host-network
+    rule: disallow-host-network
+    resource: pod-pass-hostnetwork-false
+    kind: Pod
+    result: pass
+  - policy: cis-4.2.4-disallow-host-network
+    rule: disallow-host-network
+    resource: pod-fail-hostnetwork-true
+    kind: Pod
+    result: fail

@@ -1,0 +1,32 @@
+# kyverno-policies/cis/cis-4.2.4.yaml
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: cis-4.2.4-disallow-host-network
+  annotations:
+    policies.kyverno.io/title: Disallow Host Network Namespace Sharing
+    policies.kyverno.io/category: CIS EKS Benchmarks
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/minversion: 1.6.0
+    policies.kyverno.io/description: >-
+      Sharing the host's network namespace allows the container to access the host's network interfaces,
+      potentially bypassing network policies. This should not be allowed. This policy validates
+      that Pods do not set spec.hostNetwork to true.
+    policies.kyverno.io/benchmark: cis-eks
+    policies.kyverno.io/controls: "4.2.4"
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: disallow-host-network
+      match:
+        any:
+        - resources:
+            kinds:
+              - Pod
+      validate:
+        message: "Sharing the host network namespace is disallowed (CIS 4.2.4)."
+        pattern:
+          spec:
+            =(hostNetwork): false # Checks if hostNetwork is explicitly false or absent (defaults to false)

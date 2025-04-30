@@ -1,0 +1,32 @@
+# kyverno-policies/cis/cis-4.1.6.yaml
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: cis-4.1.6-automount-serviceaccounttoken
+  annotations:
+    policies.kyverno.io/title: Mount Service Account Tokens Only When Necessary
+    policies.kyverno.io/category: CIS EKS Benchmarks
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/minversion: 1.6.0
+    policies.kyverno.io/description: >-
+      Service account tokens should only be mounted in Pods that require them for interacting
+      with the Kubernetes API server. This policy validates that Pods explicitly disable
+      automatic mounting of service account tokens. ServiceAccounts can override this behavior.
+    policies.kyverno.io/benchmark: cis-eks
+    policies.kyverno.io/controls: "4.1.6"
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: require-automountserviceaccounttoken-false
+      match:
+        any:
+        - resources:
+            kinds:
+              - Pod
+      validate:
+        message: "Service account tokens should only be mounted when necessary. Set spec.automountServiceAccountToken to false (CIS 4.1.6)."
+        pattern:
+          spec:
+            automountServiceAccountToken: false

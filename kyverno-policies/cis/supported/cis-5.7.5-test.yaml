@@ -1,0 +1,169 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestSuite
+testDirs:
+  - ./
+timeout: 30
+parallel: 4
+---
+apiVersion: v1
+kind: TestStep
+name: cis-5.7.5-restrict-default-serviceaccount-tests
+commands:
+  - script: |
+      kubectl apply -f ../cis-5.7.5.yaml --dry-run=client -o yaml > policy.yaml
+---
+# Test Case: Compliant Pod with specific ServiceAccount
+name: test-compliant-pod-specific-sa
+policies: [policy.yaml]
+resources:
+# Assume a non-default SA exists or create one
+- apiVersion: v1
+  kind: ServiceAccount
+  metadata:
+    name: my-app-sa
+    namespace: default
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    name: compliant-pod-specific-sa
+    namespace: default
+  spec:
+    serviceAccountName: my-app-sa # Specific, non-default SA
+    containers:
+    - name: nginx
+      image: nginx
+results:
+- policy: cis-5.7.5-restrict-default-serviceaccount
+  rule: check-default-serviceaccount-pods
+  resource: compliant-pod-specific-sa
+  namespace: default
+  kind: Pod
+  result: pass
+---
+# Test Case: Non-compliant Pod explicitly using 'default' ServiceAccount
+name: test-noncompliant-pod-explicit-default-sa
+policies: [policy.yaml]
+resources:
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    name: noncompliant-pod-explicit-default-sa
+    namespace: default
+  spec:
+    serviceAccountName: default # Explicitly using default SA
+    containers:
+    - name: nginx
+      image: nginx
+results:
+- policy: cis-5.7.5-restrict-default-serviceaccount
+  rule: check-default-serviceaccount-pods
+  resource: noncompliant-pod-explicit-default-sa
+  namespace: default
+  kind: Pod
+  result: fail # Expect fail/audit
+---
+# Test Case: Non-compliant Pod implicitly using 'default' ServiceAccount (no serviceAccountName)
+name: test-noncompliant-pod-implicit-default-sa
+policies: [policy.yaml]
+resources:
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    name: noncompliant-pod-implicit-default-sa
+    namespace: default
+  spec:
+    # serviceAccountName not specified, implicitly uses 'default'
+    containers:
+    - name: nginx
+      image: nginx
+results:
+- policy: cis-5.7.5-restrict-default-serviceaccount
+  rule: check-default-serviceaccount-pods
+  resource: noncompliant-pod-implicit-default-sa
+  namespace: default
+  kind: Pod
+  result: fail # Expect fail/audit
+---
+# Test Case: Compliant Deployment with specific ServiceAccount
+name: test-compliant-deployment-specific-sa
+policies: [policy.yaml]
+resources:
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: compliant-deployment-specific-sa
+    namespace: default
+  spec:
+    replicas: 1
+    selector:
+      matchLabels:
+        app: nginx
+    template:
+      metadata:
+        labels:
+          app: nginx
+      spec:
+        serviceAccountName: my-app-sa # Specific, non-default SA
+        containers:
+        - name: nginx
+          image: nginx
+results:
+- policy: cis-5.7.5-restrict-default-serviceaccount
+  rule: check-default-serviceaccount-controllers
+  resource: compliant-deployment-specific-sa
+  namespace: default
+  kind: Deployment
+  result: pass
+---
+# Test Case: Non-compliant Deployment implicitly using 'default' ServiceAccount
+name: test-noncompliant-deployment-implicit-default-sa
+policies: [policy.yaml]
+resources:
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: noncompliant-deployment-implicit-default-sa
+    namespace: default
+  spec:
+    replicas: 1
+    selector:
+      matchLabels:
+        app: nginx
+    template:
+      metadata:
+        labels:
+          app: nginx
+      spec:
+        # serviceAccountName not specified, implicitly uses 'default'
+        containers:
+        - name: nginx
+          image: nginx
+results:
+- policy: cis-5.7.5-restrict-default-serviceaccount
+  rule: check-default-serviceaccount-controllers
+  resource: noncompliant-deployment-implicit-default-sa
+  namespace: default
+  kind: Deployment
+  result: fail # Expect fail/audit
+---
+# Test Case: Pod in excluded namespace (kube-system) implicitly using 'default' SA
+name: test-excluded-namespace-pod-implicit-default-sa
+policies: [policy.yaml]
+resources:
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    name: excluded-pod-implicit-default-sa
+    namespace: kube-system # Excluded namespace
+  spec:
+    # serviceAccountName not specified - would fail if not excluded
+    containers:
+    - name: tool
+      image: some-tool
+results:
+- policy: cis-5.7.5-restrict-default-serviceaccount
+  rule: check-default-serviceaccount-pods
+  resource: excluded-pod-implicit-default-sa
+  namespace: kube-system
+  kind: Pod
+  result: skip # Expecting skip because the namespace is excluded

@@ -1,0 +1,80 @@
+name: cis-4.5.1-custom-require-namespace-test
+policies:
+  - cis-4.5.1-custom.yaml
+resources:
+  # Test case 1: Pod with namespace (should pass)
+  - kind: Pod
+    apiVersion: v1
+    metadata:
+      name: pod-with-namespace
+      namespace: test-ns # Explicit namespace
+  # Test case 2: Deployment with namespace (should pass)
+  - kind: Deployment
+    apiVersion: apps/v1
+    metadata:
+      name: deployment-with-namespace
+      namespace: test-ns # Explicit namespace
+    spec:
+      replicas: 1
+      selector:
+        matchLabels:
+          app: nginx
+      template:
+        metadata:
+          labels:
+            app: nginx
+        spec:
+          containers:
+          - name: nginx
+            image: nginx:latest
+  # Test case 3: Service without namespace (should fail)
+  - kind: Service
+    apiVersion: v1
+    metadata:
+      name: service-without-namespace
+      # No namespace defined
+    spec:
+      selector:
+        app: myapp
+      ports:
+        - protocol: TCP
+          port: 80
+          targetPort: 9376
+  # Test case 4: ConfigMap without namespace (should fail)
+  - kind: ConfigMap
+    apiVersion: v1
+    metadata:
+      name: configmap-without-namespace
+      # No namespace defined
+    data:
+      key: value
+
+results:
+  # Result for Test case 1
+  - policy: cis-4.5.1-custom-require-namespace
+    rule: require-explicit-namespace
+    resource: pod-with-namespace
+    kind: Pod
+    namespace: test-ns
+    result: pass
+  # Result for Test case 2
+  - policy: cis-4.5.1-custom-require-namespace
+    rule: require-explicit-namespace
+    resource: deployment-with-namespace
+    kind: Deployment
+    namespace: test-ns
+    result: pass
+  # Result for Test case 3
+  - policy: cis-4.5.1-custom-require-namespace
+    rule: require-explicit-namespace
+    resource: service-without-namespace
+    kind: Service
+    # No namespace in resource, should fail validation
+    result: fail
+  # Result for Test case 4
+  - policy: cis-4.5.1-custom-require-namespace
+    rule: require-explicit-namespace
+    resource: configmap-without-namespace
+    kind: ConfigMap
+    # No namespace in resource, should fail validation
+    result: fail

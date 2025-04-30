@@ -1,0 +1,79 @@
+# kyverno-policies/cis/cis-4.1.8-test.yaml
+name: cis-4.1.8-limit-bind-impersonate-escalate-test
+policies:
+  - cis-4.1.8.yaml
+resources:
+  # Pass case: Role with standard permissions
+  - apiVersion: rbac.authorization.k8s.io/v1
+    kind: Role
+    metadata:
+      name: pod-viewer
+      namespace: default
+    rules:
+    - apiGroups: [""]
+      resources: ["pods"]
+      verbs: ["get", "list"]
+  # Fail case 1: ClusterRole granting 'bind' on 'clusterroles'
+  - apiVersion: rbac.authorization.k8s.io/v1
+    kind: ClusterRole
+    metadata:
+      name: role-binder
+    rules:
+    - apiGroups: ["rbac.authorization.k8s.io"]
+      resources: ["clusterroles"]
+      verbs: ["bind"] # Non-compliant
+  # Fail case 2: Role granting 'escalate' on 'roles'
+  - apiVersion: rbac.authorization.k8s.io/v1
+    kind: Role
+    metadata:
+      name: role-escalator
+      namespace: kube-system
+    rules:
+    - apiGroups: ["rbac.authorization.k8s.io"]
+      resources: ["roles"]
+      verbs: ["escalate"] # Non-compliant
+  # Fail case 3: ClusterRole granting 'impersonate' on 'users'
+  - apiVersion: rbac.authorization.k8s.io/v1
+    kind: ClusterRole
+    metadata:
+      name: user-impersonator
+    rules:
+    - apiGroups: [""]
+      resources: ["users"]
+      verbs: ["impersonate"] # Non-compliant
+  # Fail case 4: Role granting 'impersonate' on 'serviceaccounts'
+  - apiVersion: rbac.authorization.k8s.io/v1
+    kind: Role
+    metadata:
+      name: sa-impersonator
+      namespace: test
+    rules:
+    - apiGroups: [""]
+      resources: ["serviceaccounts"]
+      verbs: ["impersonate"] # Non-compliant
+results:
+  - policy: cis-4.1.8-limit-bind-impersonate-escalate
+    rule: audit-bind-impersonate-escalate
+    resource: pod-viewer
+    kind: Role
+    result: pass
+  - policy: cis-4.1.8-limit-bind-impersonate-escalate
+    rule: audit-bind-impersonate-escalate
+    resource: role-binder
+    kind: ClusterRole
+    result: fail
+  - policy: cis-4.1.8-limit-bind-impersonate-escalate
+    rule: audit-bind-impersonate-escalate
+    resource: role-escalator
+    kind: Role
+    result: fail
+  - policy: cis-4.1.8-limit-bind-impersonate-escalate
+    rule: audit-bind-impersonate-escalate
+    resource: user-impersonator
+    kind: ClusterRole
+    result: fail
+  - policy: cis-4.1.8-limit-bind-impersonate-escalate
+    rule: audit-bind-impersonate-escalate
+    resource: sa-impersonator
+    kind: Role
+    result: fail

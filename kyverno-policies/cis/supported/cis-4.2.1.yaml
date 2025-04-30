@@ -1,0 +1,39 @@
+# kyverno-policies/cis/cis-4.2.1.yaml
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: cis-4.2.1-disallow-privileged-containers
+  annotations:
+    policies.kyverno.io/title: Disallow Privileged Containers
+    policies.kyverno.io/category: CIS EKS Benchmarks
+    policies.kyverno.io/severity: high # Privileged containers are high risk
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/minversion: 1.6.0
+    policies.kyverno.io/description: >-
+      Privileged containers have root access to the host system and should be disallowed.
+      This policy enforces that Pods do not run privileged containers.
+    policies.kyverno.io/benchmark: cis-eks
+    policies.kyverno.io/controls: "4.2.1"
+spec:
+  validationFailureAction: Enforce # Enforce as privileged is high risk
+  background: true
+  rules:
+    - name: disallow-privileged-containers
+      match:
+        any:
+        - resources:
+            kinds:
+              - Pod
+      validate:
+        message: "Privileged containers are disallowed (CIS 4.2.1)."
+        pattern:
+          spec:
+            containers:
+              - =(securityContext):
+                  =(privileged): "false" # Use =(...) for conditional existence and value check
+            =(initContainers): # Also check initContainers if they exist
+              - =(securityContext):
+                  =(privileged): "false"
+            =(ephemeralContainers): # Also check ephemeralContainers if they exist
+              - =(securityContext):
+                  =(privileged): "false"

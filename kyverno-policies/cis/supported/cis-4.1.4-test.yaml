@@ -1,0 +1,50 @@
+# kyverno-policies/cis/cis-4.1.4-test.yaml
+name: cis-4.1.4-minimize-pod-creation-access-test
+policies:
+  - cis-4.1.4.yaml
+resources:
+  # Pass case: Role granting list access to pods
+  - apiVersion: rbac.authorization.k8s.io/v1
+    kind: Role
+    metadata:
+      name: pod-lister
+      namespace: default
+    rules:
+    - apiGroups: [""]
+      resources: ["pods"]
+      verbs: ["list"] # Compliant verb
+  # Pass case: ClusterRole granting create access to deployments
+  - apiVersion: rbac.authorization.k8s.io/v1
+    kind: ClusterRole
+    metadata:
+      name: deployment-creator
+    rules:
+    - apiGroups: ["apps"]
+      resources: ["deployments"]
+      verbs: ["create"] # Compliant (not pods)
+  # Fail case: Role granting create access to pods
+  - apiVersion: rbac.authorization.k8s.io/v1
+    kind: Role
+    metadata:
+      name: pod-creator
+      namespace: test-ns
+    rules:
+    - apiGroups: [""]
+      resources: ["pods"]
+      verbs: ["create"] # Non-compliant verb
+results:
+  - policy: cis-4.1.4-minimize-pod-creation-access
+    rule: minimize-pod-creation-access
+    resource: pod-lister
+    kind: Role
+    result: pass
+  - policy: cis-4.1.4-minimize-pod-creation-access
+    rule: minimize-pod-creation-access
+    resource: deployment-creator
+    kind: ClusterRole
+    result: pass
+  - policy: cis-4.1.4-minimize-pod-creation-access
+    rule: minimize-pod-creation-access
+    resource: pod-creator
+    kind: Role
+    result: fail

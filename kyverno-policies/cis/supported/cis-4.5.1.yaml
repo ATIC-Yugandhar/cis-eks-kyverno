@@ -1,0 +1,51 @@
+# kyverno-policies/cis/cis-4.5.1.yaml
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: cis-4.5.1-validate-resource-namespace
+  annotations:
+    policies.kyverno.io/title: Validate Resource Namespace Assignment
+    policies.kyverno.io/category: CIS EKS Benchmarks
+    policies.kyverno.io/severity: low # Low severity as K8s often enforces this
+    policies.kyverno.io/subject: All Kinds
+    policies.kyverno.io/minversion: 1.6.0
+    policies.kyverno.io/description: >-
+      Resources should be created within specific namespaces for logical boundary separation.
+      This policy audits common namespaced resources to ensure they are assigned to a namespace
+      (and not the 'default' namespace, which is covered by CIS 4.5.2). Cluster-scoped resources
+      are implicitly excluded as they don't have a namespace field.
+    policies.kyverno.io/benchmark: cis-eks
+    policies.kyverno.io/controls: "4.5.1"
+spec:
+  validationFailureAction: Audit
+  background: false # Check only on create/update
+  rules:
+    - name: validate-resource-has-namespace
+      match:
+        any:
+        - resources:
+            # Target common namespaced resources. Add more as needed.
+            kinds:
+              - Pod
+              - Deployment
+              - StatefulSet
+              - DaemonSet
+              - Job
+              - CronJob
+              - Service
+              - Ingress
+              - ConfigMap
+              - Secret
+              - PersistentVolumeClaim
+              - ServiceAccount
+              - Role
+              - RoleBinding
+              - NetworkPolicy
+      validate:
+        message: "Resources should be assigned to a specific namespace (CIS 4.5.1)."
+        # This pattern checks if metadata.namespace exists and is not empty or 'default'.
+        # The admission controller usually populates the namespace, so this mainly audits against 'default'.
+        pattern:
+          metadata:
+            namespace: "?*" # Namespace must exist and not be empty
+            (namespace): "!default" # Namespace must not be 'default' (also covered by 4.5.2)

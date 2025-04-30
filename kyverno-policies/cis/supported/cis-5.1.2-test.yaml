@@ -1,0 +1,197 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestSuite
+testDirs:
+  - ./
+timeout: 30
+parallel: 4
+---
+apiVersion: v1
+kind: TestStep
+name: cis-5.1.2-restrict-net-raw-capability-tests
+commands:
+  - script: |
+      kubectl apply -f ../cis-5.1.2.yaml --dry-run=client -o yaml > policy.yaml
+---
+# Test Case: Compliant Pod with no capabilities added
+name: test-compliant-pod-no-caps
+policies: [policy.yaml]
+resources:
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    name: compliant-pod-no-caps
+    namespace: default
+  spec:
+    containers:
+    - name: nginx
+      image: nginx
+      # No securityContext.capabilities.add defined
+results:
+- policy: cis-5.1.2-restrict-net-raw-capability
+  rule: restrict-net-raw-capability-containers
+  resource: compliant-pod-no-caps
+  namespace: default
+  kind: Pod
+  result: pass
+---
+# Test Case: Compliant Pod adding other capabilities (not NET_RAW)
+name: test-compliant-pod-other-caps
+policies: [policy.yaml]
+resources:
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    name: compliant-pod-other-caps
+    namespace: default
+  spec:
+    containers:
+    - name: nginx
+      image: nginx
+      securityContext:
+        capabilities:
+          add: ["NET_BIND_SERVICE", "SYS_TIME"] # NET_RAW not included
+results:
+- policy: cis-5.1.2-restrict-net-raw-capability
+  rule: restrict-net-raw-capability-containers
+  resource: compliant-pod-other-caps
+  namespace: default
+  kind: Pod
+  result: pass
+---
+# Test Case: Non-compliant Pod adding NET_RAW capability
+name: test-noncompliant-pod-net-raw
+policies: [policy.yaml]
+resources:
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    name: noncompliant-pod-net-raw
+    namespace: default
+  spec:
+    containers:
+    - name: nginx
+      image: nginx
+      securityContext:
+        capabilities:
+          add: ["NET_RAW"] # Explicitly adding NET_RAW
+results:
+- policy: cis-5.1.2-restrict-net-raw-capability
+  rule: restrict-net-raw-capability-containers
+  resource: noncompliant-pod-net-raw
+  namespace: default
+  kind: Pod
+  result: fail
+---
+# Test Case: Non-compliant Pod adding NET_RAW among other capabilities
+name: test-noncompliant-pod-net-raw-mixed
+policies: [policy.yaml]
+resources:
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    name: noncompliant-pod-net-raw-mixed
+    namespace: default
+  spec:
+    containers:
+    - name: nginx
+      image: nginx
+      securityContext:
+        capabilities:
+          add: ["NET_BIND_SERVICE", "NET_RAW", "SYS_TIME"] # Includes NET_RAW
+results:
+- policy: cis-5.1.2-restrict-net-raw-capability
+  rule: restrict-net-raw-capability-containers
+  resource: noncompliant-pod-net-raw-mixed
+  namespace: default
+  kind: Pod
+  result: fail
+---
+# Test Case: Compliant Deployment with no NET_RAW
+name: test-compliant-deployment-no-net-raw
+policies: [policy.yaml]
+resources:
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: compliant-deployment-no-net-raw
+    namespace: default
+  spec:
+    replicas: 1
+    selector:
+      matchLabels:
+        app: nginx
+    template:
+      metadata:
+        labels:
+          app: nginx
+      spec:
+        containers:
+        - name: nginx
+          image: nginx
+          securityContext:
+            capabilities:
+              add: ["NET_BIND_SERVICE"]
+results:
+- policy: cis-5.1.2-restrict-net-raw-capability
+  rule: restrict-net-raw-capability-controllers
+  resource: compliant-deployment-no-net-raw
+  namespace: default
+  kind: Deployment
+  result: pass
+---
+# Test Case: Non-compliant Deployment adding NET_RAW
+name: test-noncompliant-deployment-net-raw
+policies: [policy.yaml]
+resources:
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: noncompliant-deployment-net-raw
+    namespace: default
+  spec:
+    replicas: 1
+    selector:
+      matchLabels:
+        app: nginx
+    template:
+      metadata:
+        labels:
+          app: nginx
+      spec:
+        containers:
+        - name: nginx
+          image: nginx
+          securityContext:
+            capabilities:
+              add: ["NET_RAW"]
+results:
+- policy: cis-5.1.2-restrict-net-raw-capability
+  rule: restrict-net-raw-capability-controllers
+  resource: noncompliant-deployment-net-raw
+  namespace: default
+  kind: Deployment
+  result: fail
+---
+# Test Case: Pod in excluded namespace (kube-system) adding NET_RAW
+name: test-excluded-namespace-pod-net-raw
+policies: [policy.yaml]
+resources:
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    name: excluded-pod-net-raw
+    namespace: kube-system # Excluded namespace
+  spec:
+    containers:
+    - name: tool
+      image: some-tool
+      securityContext:
+        capabilities:
+          add: ["NET_RAW"] # Would fail if not excluded
+results:
+- policy: cis-5.1.2-restrict-net-raw-capability
+  rule: restrict-net-raw-capability-containers
+  resource: excluded-pod-net-raw
+  namespace: kube-system
+  kind: Pod
+  result: skip # Expecting skip because the namespace is excluded

@@ -1,0 +1,44 @@
+# kyverno-policies/cis/cis-4.1.8.yaml
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: cis-4.1.8-limit-bind-impersonate-escalate
+  annotations:
+    policies.kyverno.io/title: Limit Bind, Impersonate, Escalate Permissions
+    policies.kyverno.io/category: CIS EKS Benchmarks
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: Role, ClusterRole
+    policies.kyverno.io/minversion: 1.6.0 # Relies on JMESPath functions
+    policies.kyverno.io/description: >-
+      Permissions to bind, impersonate, or escalate privileges allow users to potentially gain
+      higher levels of access. These permissions should be restricted to only those users
+      or service accounts that require them. This policy audits Roles and ClusterRoles
+      granting these permissions on relevant resources.
+    policies.kyverno.io/benchmark: cis-eks
+    policies.kyverno.io/controls: "4.1.8"
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: audit-bind-impersonate-escalate
+      match:
+        any:
+        - resources:
+            kinds:
+              - Role
+              - ClusterRole
+      validate:
+        message: "Roles should not grant bind, impersonate, or escalate permissions on RBAC or identity resources (CIS 4.1.8)."
+        # This uses a deny structure within validate to check for forbidden patterns.
+        # If any condition matches (i.e., a forbidden permission is found), validation fails.
+        deny:
+          conditions:
+            any:
+            # Condition 1: Check for 'escalate' or 'bind' verbs on 'roles' or 'clusterroles' resources within the 'rbac.authorization.k8s.io' API group.
+            - key: "{{ request.object.rules[?contains(apiGroups,'rbac.authorization.k8s.io') && (contains(resources,'roles') || contains(resources,'clusterroles')) && (contains(verbs,'escalate') || contains(verbs,'bind'))] }}"
+              operator: NotEquals
+              value: "[]" # Fails validation if the JMESPath query finds any matching rule (result is not an empty list).
+            # Condition 2: Check for 'impersonate' verb on 'users', 'groups', or 'serviceaccounts' resources within the core API group ('').
+            - key: "{{ request.object.rules[?contains(apiGroups,'') && (contains(resources,'users') || contains(resources,'groups') || contains(resources,'serviceaccounts')) && contains(verbs,'impersonate')] }}"
+              operator: NotEquals
+              value: "[]" # Fails validation if the JMESPath query finds any matching rule.

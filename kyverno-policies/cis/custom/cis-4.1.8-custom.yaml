@@ -1,0 +1,37 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: cis-4.1.8-custom-limit-bind-impersonate
+  annotations:
+    policies.kyverno.io/title: Limit bind and impersonate verbs in Roles and ClusterRoles (Custom CIS 4.1.8)
+    policies.kyverno.io/category: CIS EKS Benchmarks section 4.1.8
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: Role, ClusterRole, RBAC
+    policies.kyverno.io/minversion: 1.6.0
+    policies.kyverno.io/description: >-
+      The `bind` and `impersonate` verbs in Kubernetes RBAC grant significant privileges.
+      The `bind` verb allows a user to create RoleBindings and ClusterRoleBindings,
+      effectively allowing them to grant any permission they possess to other users or groups.
+      The `impersonate` verb allows a user to act as any other user in the cluster,
+      potentially bypassing authorization checks. Granting these permissions should be
+      strictly controlled. This policy audits Roles and ClusterRoles that contain
+      these verbs.
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: audit-bind-impersonate-verbs
+      match:
+        any:
+        - resources:
+            kinds:
+              - Role
+              - ClusterRole
+      validate:
+        message: "Roles and ClusterRoles should not contain 'bind' or 'impersonate' verbs."
+        # This pattern fails if 'bind' or 'impersonate' is found in any verb list.
+        # We use 'anyPattern' to check across all rules within the Role/ClusterRole.
+        anyPattern:
+        - rules:
+            - verbs:
+              - "bind | impersonate"

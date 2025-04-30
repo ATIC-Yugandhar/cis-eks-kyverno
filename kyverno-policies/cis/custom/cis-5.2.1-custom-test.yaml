@@ -1,0 +1,55 @@
+name: cis-5.2.1-custom-require-irsa-annotation-test
+policies:
+  - cis-5.2.1-custom.yaml
+resources:
+  - kind: Namespace
+    apiVersion: v1
+    metadata:
+      name: test-ns
+  - kind: ServiceAccount
+    apiVersion: v1
+    metadata:
+      name: sa-with-annotation
+      namespace: test-ns
+      annotations:
+        eks.amazonaws.com/role-arn: arn:aws:iam::123456789012:role/my-test-role
+  - kind: ServiceAccount
+    apiVersion: v1
+    metadata:
+      name: sa-without-annotation
+      namespace: test-ns
+  - kind: ServiceAccount
+    apiVersion: v1
+    metadata:
+      name: default # Example SA in kube-system
+      namespace: kube-system
+  - kind: ServiceAccount
+    apiVersion: v1
+    metadata:
+      name: kyverno-background-controller # Example SA in kyverno
+      namespace: kyverno
+results:
+  - policy: cis-5.2.1-custom-require-irsa-annotation
+    rule: require-irsa-annotation
+    resource: sa-with-annotation
+    namespace: test-ns
+    kind: ServiceAccount
+    result: pass
+  - policy: cis-5.2.1-custom-require-irsa-annotation
+    rule: require-irsa-annotation
+    resource: sa-without-annotation
+    namespace: test-ns
+    kind: ServiceAccount
+    result: fail
+  - policy: cis-5.2.1-custom-require-irsa-annotation
+    rule: require-irsa-annotation
+    resource: default
+    namespace: kube-system
+    kind: ServiceAccount
+    result: pass # Should pass due to namespace exclusion
+  - policy: cis-5.2.1-custom-require-irsa-annotation
+    rule: require-irsa-annotation
+    resource: kyverno-background-controller
+    namespace: kyverno
+    kind: ServiceAccount
+    result: pass # Should pass due to namespace exclusion

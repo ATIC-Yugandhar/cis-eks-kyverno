@@ -1,0 +1,79 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: cis-5.7.5-restrict-default-serviceaccount
+  annotations:
+    policies.kyverno.io/title: Restrict Default ServiceAccount Usage
+    policies.kyverno.io/category: CIS EKS Benchmark Section 5.7
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: Pod, ServiceAccount
+    policies.kyverno.io/minversion: 1.6.0
+    kyverno.io/kyverno-version: 1.7.1
+    kyverno.io/kubernetes-version: "1.23"
+    policies.kyverno.io/description: >-
+      Pods should not use the default ServiceAccount. Using dedicated ServiceAccounts follows the
+      principle of least privilege and is essential for security mechanisms like IRSA or Workload Identity.
+      This policy audits Pods and controllers that either explicitly specify `serviceAccountName: default`
+      or do not specify a `serviceAccountName` at all (implicitly using the default SA of the namespace).
+      CIS Benchmark Control: 5.7.5 The default service account should not be used
+    policies.kyverno.io/cis_controls: "5.7.5"
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: check-default-serviceaccount-pods
+      match:
+        any:
+        - resources:
+            kinds:
+              - Pod
+      exclude:
+        any:
+        - resources:
+            namespaces:
+              - kube-system
+              - gatekeeper-system
+              - kyverno
+      validate:
+        message: "Using the default ServiceAccount is not allowed. Specify a non-default 'serviceAccountName'. CIS 5.7.5"
+        deny:
+          conditions:
+            any:
+            # Case 1: serviceAccountName is explicitly 'default'
+            - key: "{{ request.object.spec.serviceAccountName }}"
+              operator: Equals
+              value: "default"
+            # Case 2: serviceAccountName is not specified (implicitly default)
+            - key: "{{ request.object.spec.serviceAccountName }}"
+              operator: Equals
+              value: ""
+    - name: check-default-serviceaccount-controllers
+      match:
+        any:
+        - resources:
+            kinds:
+              - Deployment
+              - StatefulSet
+              - DaemonSet
+              - Job
+              - CronJob
+      exclude:
+        any:
+        - resources:
+            namespaces:
+              - kube-system
+              - gatekeeper-system
+              - kyverno
+      validate:
+        message: "Using the default ServiceAccount in pod templates is not allowed. Specify a non-default 'serviceAccountName'. CIS 5.7.5"
+        deny:
+          conditions:
+            any:
+            # Case 1: serviceAccountName is explicitly 'default'
+            - key: "{{ request.object.spec.template.spec.serviceAccountName }}"
+              operator: Equals
+              value: "default"
+            # Case 2: serviceAccountName is not specified (implicitly default)
+            - key: "{{ request.object.spec.template.spec.serviceAccountName }}"
+              operator: Equals
+              value: ""

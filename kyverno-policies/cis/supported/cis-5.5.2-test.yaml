@@ -1,0 +1,199 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestSuite
+testDirs:
+  - ./
+timeout: 30
+parallel: 4
+---
+apiVersion: v1
+kind: TestStep
+name: cis-5.5.2-require-resource-requests-tests
+commands:
+  - script: |
+      kubectl apply -f ../cis-5.5.2.yaml --dry-run=client -o yaml > policy.yaml
+---
+# Test Case: Compliant Pod with CPU and Memory requests
+name: test-compliant-pod-requests
+policies: [policy.yaml]
+resources:
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    name: compliant-pod-requests
+    namespace: default
+  spec:
+    containers:
+    - name: nginx
+      image: nginx
+      resources:
+        requests:
+          cpu: "50m"
+          memory: "64Mi"
+        # Limits are good practice but not required by *this* policy
+        limits:
+          cpu: "100m"
+          memory: "128Mi"
+results:
+- policy: cis-5.5.2-require-resource-requests
+  rule: require-cpu-memory-requests-containers
+  resource: compliant-pod-requests
+  namespace: default
+  kind: Pod
+  result: pass
+---
+# Test Case: Non-compliant Pod missing memory request
+name: test-noncompliant-pod-missing-memory-request
+policies: [policy.yaml]
+resources:
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    name: noncompliant-pod-missing-memory-request
+    namespace: default
+  spec:
+    containers:
+    - name: nginx
+      image: nginx
+      resources:
+        requests:
+          cpu: "50m" # Memory request missing
+results:
+- policy: cis-5.5.2-require-resource-requests
+  rule: require-cpu-memory-requests-containers
+  resource: noncompliant-pod-missing-memory-request
+  namespace: default
+  kind: Pod
+  result: fail
+---
+# Test Case: Non-compliant Pod missing cpu request
+name: test-noncompliant-pod-missing-cpu-request
+policies: [policy.yaml]
+resources:
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    name: noncompliant-pod-missing-cpu-request
+    namespace: default
+  spec:
+    containers:
+    - name: nginx
+      image: nginx
+      resources:
+        requests:
+          memory: "64Mi" # CPU request missing
+results:
+- policy: cis-5.5.2-require-resource-requests
+  rule: require-cpu-memory-requests-containers
+  resource: noncompliant-pod-missing-cpu-request
+  namespace: default
+  kind: Pod
+  result: fail
+---
+# Test Case: Non-compliant Pod missing all requests
+name: test-noncompliant-pod-missing-all-requests
+policies: [policy.yaml]
+resources:
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    name: noncompliant-pod-missing-all-requests
+    namespace: default
+  spec:
+    containers:
+    - name: nginx
+      image: nginx
+      # No resources.requests defined
+results:
+- policy: cis-5.5.2-require-resource-requests
+  rule: require-cpu-memory-requests-containers
+  resource: noncompliant-pod-missing-all-requests
+  namespace: default
+  kind: Pod
+  result: fail
+---
+# Test Case: Compliant Deployment with requests
+name: test-compliant-deployment-requests
+policies: [policy.yaml]
+resources:
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: compliant-deployment-requests
+    namespace: default
+  spec:
+    replicas: 1
+    selector:
+      matchLabels:
+        app: nginx
+    template:
+      metadata:
+        labels:
+          app: nginx
+      spec:
+        containers:
+        - name: nginx
+          image: nginx
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+results:
+- policy: cis-5.5.2-require-resource-requests
+  rule: require-cpu-memory-requests-controllers
+  resource: compliant-deployment-requests
+  namespace: default
+  kind: Deployment
+  result: pass
+---
+# Test Case: Non-compliant Deployment missing requests
+name: test-noncompliant-deployment-missing-requests
+policies: [policy.yaml]
+resources:
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: noncompliant-deployment-missing-requests
+    namespace: default
+  spec:
+    replicas: 1
+    selector:
+      matchLabels:
+        app: nginx
+    template:
+      metadata:
+        labels:
+          app: nginx
+      spec:
+        containers:
+        - name: nginx
+          image: nginx
+          # No requests defined
+results:
+- policy: cis-5.5.2-require-resource-requests
+  rule: require-cpu-memory-requests-controllers
+  resource: noncompliant-deployment-missing-requests
+  namespace: default
+  kind: Deployment
+  result: fail
+---
+# Test Case: Pod in excluded namespace (kube-system)
+name: test-excluded-namespace-pod-requests
+policies: [policy.yaml]
+resources:
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    name: excluded-pod-requests
+    namespace: kube-system # Excluded namespace
+  spec:
+    containers:
+    - name: nginx
+      image: nginx
+      # No requests - would fail if not excluded
+results:
+- policy: cis-5.5.2-require-resource-requests
+  rule: require-cpu-memory-requests-containers
+  resource: excluded-pod-requests
+  namespace: kube-system
+  kind: Pod
+  result: skip # Expecting skip because the namespace is excluded

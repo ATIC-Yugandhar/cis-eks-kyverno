@@ -1,0 +1,74 @@
+# kyverno-policies/cis/cis-4.5.2-test.yaml
+name: cis-4.5.2-disallow-default-namespace-test
+policies:
+  - cis-4.5.2.yaml
+resources:
+  # Pass case: Pod in a specific namespace
+  - apiVersion: v1
+    kind: Pod
+    metadata:
+      name: pod-in-app-ns
+      namespace: app-ns # Compliant
+    spec:
+      containers:
+      - name: nginx
+        image: nginx
+  # Fail case 1: Deployment explicitly in 'default' namespace
+  - apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: deployment-in-default
+      namespace: default # Non-compliant
+    spec:
+      replicas: 1
+      selector:
+        matchLabels:
+          app: nginx
+      template:
+        metadata:
+          labels:
+            app: nginx
+        spec:
+          containers:
+          - name: nginx
+            image: nginx
+  # Fail case 2: Service without namespace (will likely default to 'default' by API server)
+  - apiVersion: v1
+    kind: Service
+    metadata:
+      name: service-no-ns
+      # namespace: default # Implicitly default, Non-compliant
+    spec:
+      selector:
+        app: MyApp
+      ports:
+        - protocol: TCP
+          port: 80
+          targetPort: 9376
+  # Resource not matched by policy (ClusterRole) - should be skipped
+  - apiVersion: rbac.authorization.k8s.io/v1
+    kind: ClusterRole
+    metadata:
+      name: cluster-reader
+    rules:
+    - apiGroups: [""]
+      resources: ["pods"]
+      verbs: ["get", "watch", "list"]
+results:
+  - policy: cis-4.5.2-disallow-default-namespace
+    rule: disallow-default-namespace
+    resource: pod-in-app-ns
+    kind: Pod
+    result: pass
+  - policy: cis-4.5.2-disallow-default-namespace
+    rule: disallow-default-namespace
+    resource: deployment-in-default
+    kind: Deployment
+    result: fail
+  - policy: cis-4.5.2-disallow-default-namespace
+    rule: disallow-default-namespace
+    resource: service-no-ns
+    kind: Service
+    # Assuming API server adds 'default' namespace before Kyverno validation
+    result: fail
+  # ClusterRole is not matched by the policy rule, so no result entry is needed.

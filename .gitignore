@@ -1,0 +1,7 @@
+# macOS
+.DS_Store
+
+# Terraform local state and configuration
+.terraform/
+*.tfstate
+*.tfstate.*

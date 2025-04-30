@@ -1,0 +1,64 @@
+# kyverno-policies/cis/cis-4.1.3-test.yaml
+name: cis-4.1.3-minimize-wildcard-use-test
+policies:
+  - cis-4.1.3.yaml
+resources:
+  # Pass case: Role with specific permissions
+  - apiVersion: rbac.authorization.k8s.io/v1
+    kind: Role
+    metadata:
+      name: specific-role
+      namespace: default
+    rules:
+    - apiGroups: ["apps"]
+      resources: ["deployments"]
+      verbs: ["get", "list", "update"]
+  # Fail case: ClusterRole using wildcard in apiGroups
+  - apiVersion: rbac.authorization.k8s.io/v1
+    kind: ClusterRole
+    metadata:
+      name: wildcard-apigroup-role
+    rules:
+    - apiGroups: ["*"] # Non-compliant
+      resources: ["pods"]
+      verbs: ["get"]
+  # Fail case: Role using wildcard in resources
+  - apiVersion: rbac.authorization.k8s.io/v1
+    kind: Role
+    metadata:
+      name: wildcard-resource-role
+      namespace: test-ns
+    rules:
+    - apiGroups: [""]
+      resources: ["*"] # Non-compliant
+      verbs: ["list"]
+  # Fail case: ClusterRole using wildcard in verbs
+  - apiVersion: rbac.authorization.k8s.io/v1
+    kind: ClusterRole
+    metadata:
+      name: wildcard-verb-role
+    rules:
+    - apiGroups: ["batch"]
+      resources: ["jobs"]
+      verbs: ["*"] # Non-compliant
+results:
+  - policy: cis-4.1.3-minimize-wildcard-use
+    rule: minimize-wildcard-use
+    resource: specific-role
+    kind: Role
+    result: pass
+  - policy: cis-4.1.3-minimize-wildcard-use
+    rule: minimize-wildcard-use
+    resource: wildcard-apigroup-role
+    kind: ClusterRole
+    result: fail
+  - policy: cis-4.1.3-minimize-wildcard-use
+    rule: minimize-wildcard-use
+    resource: wildcard-resource-role
+    kind: Role
+    result: fail
+  - policy: cis-4.1.3-minimize-wildcard-use
+    rule: minimize-wildcard-use
+    resource: wildcard-verb-role
+    kind: ClusterRole
+    result: fail

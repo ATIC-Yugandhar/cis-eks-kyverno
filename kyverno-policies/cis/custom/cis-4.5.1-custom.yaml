@@ -1,0 +1,38 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: cis-4.5.1-custom-require-namespace
+  annotations:
+    policies.kyverno.io/title: Require Namespace for Resources (Custom CIS 4.5.1)
+    policies.kyverno.io/category: CIS EKS Benchmarks section 4.5
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: Namespace
+    policies.kyverno.io/minversion: 1.6.0
+    policies.kyverno.io/description: >-
+      This policy audits common namespaced resources (Pods, Deployments, StatefulSets,
+      DaemonSets, Services, ConfigMaps, Secrets, RoleBindings) that are created
+      without an explicit namespace defined in their metadata. Setting an explicit
+      namespace is a best practice for resource organization and access control.
+      This is a custom policy partially addressing CIS Benchmark 4.5.1.
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: require-explicit-namespace
+      match:
+        any:
+        - resources:
+            kinds:
+              - Pod
+              - Deployment
+              - StatefulSet
+              - DaemonSet
+              - Service
+              - ConfigMap
+              - Secret
+              - RoleBinding
+      validate:
+        message: "Resources must be created with an explicit namespace."
+        pattern:
+          metadata:
+            namespace: "?*" # Checks if namespace exists and is not empty
