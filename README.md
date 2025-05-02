@@ -57,6 +57,23 @@ While the `scripts/automated_deploy_test_destroy.sh` script (detailed in the "Au
     terraform apply   # Apply the changes to create the EKS cluster
     ```
 
+## Terraform Code Validation
+
+To enforce CIS-related infrastructure best practices directly in your Terraform plans, this project uses Kyverno IaC scanning:
+```bash
+# Make the validation script executable
+chmod +x scripts/validate-cis.sh
+# Generate a Terraform plan and scan it with Kyverno policies
+./scripts/validate-cis.sh
+```
+This workflow:
+1. Runs `terraform plan -out tfplan.out` and exports JSON (`tfplan.json`).
+2. Uses `kyverno apply <policy-dir> --resource tfplan.json --policy-report` to evaluate IaC-level policies (e.g., audit logging, KMS encryption) defined in `kyverno-policies/terraform/`.
+3. Outputs a PolicyReport for any audit or enforcement findings against your Terraform plan.
+4. Saves results in the `results/` directory for future reference.
+
+> Note: The previous `validate-terraform.sh` script has been consolidated into the more comprehensive `validate-cis.sh` script, which can validate both Kubernetes resources and Terraform infrastructure in a single workflow.
+
 ### Backend Setup
 
 The `scripts/automated_deploy_test_destroy.sh` script handles the creation and configuration of the required Terraform backend resources (S3 bucket and DynamoDB table) automatically, using variables defined within the script. There is no need for manual backend setup when using the automated script.
@@ -65,29 +82,57 @@ If you choose to run Terraform manually outside of the automated script, you wil
 
 ## Kyverno Usage
 
-The `scripts/automated_deploy_test_destroy.sh` script automates the installation of Kyverno and the application of policies as part of its workflow. However, you can also interact with Kyverno and the policies manually or use the `validate-cis.sh` script for local checks.
+The `scripts/automated_deploy_test_destroy.sh` script automates the installation of Kyverno and the application of policies as part of its workflow. However, you can also interact with Kyverno and the policies manually or use the enhanced `validate-cis.sh` script for local compliance checks.
 
-1.  **Policies Location:** Kyverno policies mapped to CIS benchmarks are located under `kyverno-policies/cis/`, categorized into `supported/` and `custom/` subdirectories as described in the "Repository Structure" section. Each policy file (`.yaml`) often has a corresponding test file (`*-test.yaml`).
-2.  **Validate Manifests (Offline):** Use the `validate-cis.sh` script (which wraps the Kyverno CLI) to recursively apply policies from `kyverno-policies/cis/` against local Kubernetes manifest files and check for violations *before* applying them to a cluster. Pass the directory containing the manifests as an argument:
+1. **Policies Location:** Kyverno policies mapped to CIS benchmarks are organized in two directories:
+   * `kyverno-policies/cis/` - Contains policies for validation of Kubernetes resources, organized into:
+     * `supported/`: Standard policies based on community policies or direct CIS mapping
+     * `custom/`: Custom policies for controls requiring specific interpretations
+   * `kyverno-policies/terraform/` - Contains policies for validation of Terraform infrastructure plans against CIS controls
+
+2. **Validate Kubernetes Resources (Offline):**
    ```bash
-   # Example: Check non-compliant resources against all CIS policies
-   ./scripts/validate-cis.sh noncompliant-resources/ kyverno-policies/cis/
+   # Make the validation script executable
+   chmod +x scripts/validate-cis.sh
+   
+   # Example: Validate non-compliant manifests against CIS policies
+   ./scripts/validate-cis.sh noncompliant-resources/ kyverno-policies/cis/ --skip-terraform
+   
+   # Example: Validate all test resources under the CIS policy directory
+   ./scripts/validate-cis.sh
    ```
-3.  **Run Kyverno Tests (Offline):** Use the Kyverno CLI to recursively run the predefined unit tests located under `kyverno-policies/cis/`. This validates policy logic without needing a cluster. Navigate to the repository root and run:
+   
+3. **Validate both Kubernetes AND Terraform (Default):**
+   ```bash
+   # This will validate both Kubernetes resources and Terraform infrastructure
+   ./scripts/validate-cis.sh noncompliant-resources/
+   ```
+
+4. **Run Kyverno Tests (Offline):** Use the Kyverno CLI to recursively run the unit tests:
    ```bash
    # Ensure Kyverno CLI is installed
    kyverno test kyverno-policies/cis/ --recursive
    ```
-   This command recursively executes the tests defined in the `*-test.yaml` files against the corresponding policies within the `cis` directory.
-4.  **Apply Policies to Cluster (Manual):** If managing Kyverno manually (not using the `automated_deploy_test_destroy.sh` script), you can recursively apply all policies from the `cis` directory to your cluster using `kubectl`:
+
+5. **Apply Policies to Cluster (Manual):**
    ```bash
    # Ensure kubectl is configured for your target cluster
    kubectl apply -f kyverno-policies/cis/ -R
+   kubectl apply -f kyverno-policies/terraform/ -R
    ```
+   
+6. **View Validation Results:**
+   Results are saved in the `results/` directory with the following files:
+   * `supported-policies-test.log` - Results of testing standard CIS policies
+   * `custom-policies-test.log` - Results of testing custom CIS policies
+   * `resource-validation-report.yaml` - Validation report for Kubernetes resources
+   * `terraform-validation-report.yaml` - Validation report for Terraform infrastructure
 
 ## CIS Compliance
 
-For a detailed breakdown of which EKS CIS benchmark controls are covered by the Kyverno policies in this repository, please refer to the [CIS EKS Kyverno Mapping document](docs/cis-eks-kyverno.md).
+For a detailed breakdown of which EKS CIS benchmark controls are covered by the Kyverno policies in this repository, please refer to the [CIS EKS Kyverno Mapping document](docs/cis-eks-kyverno.md) and our comprehensive [Compliance Matrix](docs/compliance-matrix.md) which shows the implementation status of all 45 CIS controls.
+
+We also provide a detailed guide on implementing these controls in our [Enforcing CIS Kubernetes Benchmarks with Kyverno blog post](docs/blog.md), which explains our drift-detection approach to continuous compliance.
 
 ## Coverage and Limitations
 

@@ -183,6 +183,27 @@ main() {
   echo "Waiting for Kyverno ClusterPolicies to be ready on Compliant Cluster..."
   kubectl wait --for=condition=Ready clusterpolicy --all --timeout=120s || echo "Warning: Timed out waiting for all ClusterPolicies to become Ready. Continuing..."
 
+  # --- Test Compliant Manifests on Compliant Cluster ---
+  echo "Attempting to apply COMPLIANT manifests to COMPLIANT cluster (should SUCCEED)..."
+  COMPLIANT_TEST_PASSED=true
+  for manifest in "$ROOT_DIR"/k8s-manifests/compliant/*.yaml; do
+    echo "Applying $manifest..."
+    if ! kubectl apply -f "$manifest"; then
+      echo "❌ ERROR: Failed to apply compliant manifest $manifest to compliant cluster!"
+      COMPLIANT_TEST_PASSED=false
+      # Optionally continue testing other manifests or exit
+      # exit 1 # Uncomment to exit immediately on failure
+    fi
+  done
+  if [ "$COMPLIANT_TEST_PASSED" = true ]; then
+    echo "✅ Successfully applied all compliant manifests to compliant cluster."
+  else
+    echo "⚠️ Some compliant manifests failed to apply to the compliant cluster."
+    # Decide if this should be a fatal error for the script
+    # exit 1 # Uncomment to make this a fatal error
+  fi
+  # --- End Test ---
+
   echo "Generating Policy Reports for Compliant Cluster..."
   kubectl get clusterpolicyreport -A -o wide > "$ROOT_DIR/$RESULTS_DIR/compliant_clusterpolicyreport.txt"
   kubectl get policyreport -A -o wide > "$ROOT_DIR/$RESULTS_DIR/compliant_policyreport.txt"
@@ -225,6 +246,45 @@ main() {
 
   echo "Waiting for Kyverno ClusterPolicies to be ready on Non-Compliant Cluster..."
   kubectl wait --for=condition=Ready clusterpolicy --all --timeout=120s || echo "Warning: Timed out waiting for all ClusterPolicies to become Ready. Continuing..."
+
+  # --- Test Non-Compliant Manifests on Non-Compliant Cluster ---
+  echo "Attempting to apply NON-COMPLIANT manifests to NON-COMPLIANT cluster (should FAIL for enforced policies)..."
+  NONCOMPLIANT_TEST_PASSED=true # Assume pass until a manifest unexpectedly succeeds
+  EXPECTED_FAILURES=0
+  ACTUAL_FAILURES=0
+  UNEXPECTED_SUCCESSES=0
+
+  # Iterate through non-compliant manifests
+  for manifest in "$ROOT_DIR"/k8s-manifests/noncompliant/*.yaml; do
+    echo "Applying $manifest (expecting failure)..."
+    EXPECTED_FAILURES=$((EXPECTED_FAILURES + 1))
+    # Use ! to invert exit code. If kubectl apply FAILS (non-zero exit), the condition is true.
+    if ! kubectl apply -f "$manifest" > "$ROOT_DIR/$RESULTS_DIR/noncompliant_apply_$(basename "$manifest").log" 2>&1; then
+      echo "✅ Successfully BLOCKED non-compliant manifest $manifest as expected."
+      ACTUAL_FAILURES=$((ACTUAL_FAILURES + 1))
+    else
+      # If kubectl apply SUCCEEDS (zero exit), the condition is false.
+      echo "❌ ERROR: Non-compliant manifest $manifest was UNEXPECTEDLY ALLOWED on non-compliant cluster!"
+      UNEXPECTED_SUCCESSES=$((UNEXPECTED_SUCCESSES + 1))
+      NONCOMPLIANT_TEST_PASSED=false
+      # Optionally exit immediately
+      # exit 1
+    fi
+  done
+
+  echo "--- Non-Compliant Manifest Test Summary ---"
+  echo "Expected Failures: $EXPECTED_FAILURES"
+  echo "Actual Blocks (Success): $ACTUAL_FAILURES"
+  echo "Unexpected Successes (Failures): $UNEXPECTED_SUCCESSES"
+
+  if [ "$NONCOMPLIANT_TEST_PASSED" = true ]; then
+    echo "✅ All non-compliant manifests were blocked as expected."
+  else
+    echo "❌ ERROR: One or more non-compliant manifests were unexpectedly allowed. Check logs in $ROOT_DIR/$RESULTS_DIR."
+    # Make this a fatal error for the script
+    exit 1
+  fi
+  # --- End Test ---
 
   echo "Generating Policy Reports for Non-Compliant Cluster..."
   kubectl get clusterpolicyreport -A -o wide > "$ROOT_DIR/$RESULTS_DIR/noncompliant_clusterpolicyreport.txt"

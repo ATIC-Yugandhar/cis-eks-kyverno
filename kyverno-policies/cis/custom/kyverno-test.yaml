@@ -1,0 +1,105 @@
+apiVersion: cli.kyverno.io/v1
+kind: Test
+metadata:
+  name: cis-custom-policies-test
+policies:
+  - cis-4.1.8-custom.yaml
+  - cis-4.5.1-custom.yaml
+  - cis-5.2.1-custom.yaml
+resources:
+  - resources-4.1.8.yaml
+  - resources-4.5.1.yaml
+  - resources-5.2.1.yaml
+results:
+  # CIS-4.1.8 Custom Test Results
+  - policy: cis-4.1.8-custom-limit-bind-impersonate
+    rule: audit-bind-impersonate-verbs
+    resource: role-no-bind-impersonate
+    namespace: default
+    kind: Role
+    result: pass # Correct: No forbidden verbs
+  - policy: cis-4.1.8-custom-limit-bind-impersonate
+    rule: audit-bind-impersonate-verbs
+    resource: role-with-bind
+    namespace: default
+    kind: Role
+    result: fail # Correct: Has 'bind', should fail audit
+  - policy: cis-4.1.8-custom-limit-bind-impersonate
+    rule: audit-bind-impersonate-verbs
+    resource: clusterrole-with-impersonate
+    kind: ClusterRole
+    result: fail # Correct: Has 'impersonate', should fail audit
+
+  # CIS-4.5.1 Custom Test Results
+  # Policy: cis-4.5.1-custom-require-namespace (Audit)
+  - policy: cis-4.5.1-custom-require-namespace
+    rule: require-explicit-namespace
+    resource: pod-compliant-namespace
+    namespace: compliant-ns
+    kind: Pod
+    result: pass # Correct: Has explicit namespace
+  - policy: cis-4.5.1-custom-require-namespace
+    rule: require-explicit-namespace
+    resource: pod-non-compliant-namespace
+    namespace: non-compliant-ns
+    kind: Pod
+    result: pass # Correct: Has explicit namespace
+  - policy: cis-4.5.1-custom-require-namespace
+    rule: require-explicit-namespace
+    resource: pod-default-namespace
+    # namespace: default # Implicit default
+    kind: Pod
+    result: fail # Correct: Missing explicit namespace, should fail audit
+  - policy: cis-4.5.1-custom-require-namespace
+    rule: require-explicit-namespace
+    resource: pod-kube-system-namespace
+    namespace: kube-system
+    kind: Pod
+    result: pass # Correct: Has explicit namespace
+
+  # Policy: cis-4-5-1-custom (Enforce)
+  - policy: cis-4-5-1-custom
+    rule: forbid-default-namespace
+    resource: pod-compliant-namespace
+    namespace: compliant-ns
+    kind: Pod
+    result: skip # Correct: Precondition (namespace == default) is false
+  - policy: cis-4-5-1-custom
+    rule: forbid-default-namespace
+    resource: pod-non-compliant-namespace
+    namespace: non-compliant-ns
+    kind: Pod
+    result: skip # Correct: Precondition (namespace == default) is false
+  - policy: cis-4-5-1-custom
+    rule: forbid-default-namespace
+    resource: pod-default-namespace
+    # namespace: default # Implicit default
+    kind: Pod
+    result: fail # Correct: Precondition is true, validation fails
+  - policy: cis-4-5-1-custom
+    rule: forbid-default-namespace
+    resource: pod-kube-system-namespace
+    namespace: kube-system
+    kind: Pod
+    result: skip # Correct: Precondition (namespace == default) is false
+
+  # CIS-5.2.1 Custom Test Results
+  # Policy: cis-5.2.1-custom-require-irsa-annotation (Audit)
+  - policy: cis-5.2.1-custom-require-irsa-annotation
+    rule: require-irsa-annotation
+    resource: sa-with-irsa
+    namespace: default
+    kind: ServiceAccount
+    result: pass # Correct: Has annotation
+  - policy: cis-5.2.1-custom-require-irsa-annotation
+    rule: require-irsa-annotation
+    resource: sa-without-irsa
+    namespace: default
+    kind: ServiceAccount
+    result: fail # Correct: Missing annotation, should fail audit
+  - policy: cis-5.2.1-custom-require-irsa-annotation
+    rule: require-irsa-annotation
+    resource: sa-in-kube-system
+    namespace: kube-system
+    kind: ServiceAccount
+    result: skip # Correct: Namespace is excluded by the policy

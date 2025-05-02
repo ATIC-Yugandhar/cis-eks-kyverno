@@ -1,0 +1,49 @@
+# Pass case: Pod without privileged containers
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-no-privileged
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+    # No privileged setting (defaults to false)
+---
+# Pass case: Pod explicitly not privileged
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-explicit-not-privileged
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+    securityContext:
+      privileged: false
+---
+# Fail case: Pod with privileged container
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-privileged
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+    securityContext:
+      privileged: true
+---
+# Pass case: Pod with some not privileged and some privileged containers
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-mixed-privileged
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+    # Not privileged (default)
+  - name: sidecar
+    image: busybox
+    securityContext:
+      privileged: true

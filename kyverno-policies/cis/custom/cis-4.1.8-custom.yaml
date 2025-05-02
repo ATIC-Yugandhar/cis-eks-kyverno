@@ -29,9 +29,9 @@ spec:
               - ClusterRole
       validate:
         message: "Roles and ClusterRoles should not contain 'bind' or 'impersonate' verbs."
-        # This pattern fails if 'bind' or 'impersonate' is found in any verb list.
-        # We use 'anyPattern' to check across all rules within the Role/ClusterRole.
-        anyPattern:
-        - rules:
-            - verbs:
-              - "bind | impersonate"
+        deny:
+          conditions:
+            any:
+            - key: "{{ request.object.rules[].verbs[] || '' }}"
+              operator: AnyIn
+              value: ["bind", "impersonate"]

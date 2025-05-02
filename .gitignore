@@ -3,5 +3,7 @@
 
 # Terraform local state and configuration
 .terraform/
-*.tfstate
+m*.tfstate
 *.tfstate.*
+/results
+terraform/examples/cluster/tfplan-compliant.binary

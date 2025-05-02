@@ -1,4 +1,3 @@
-
 # Using Kyverno for AWS EKS CIS Benchmark Compliance
 
 The Center for Internet Security (CIS) provides benchmarks for securing various systems, including Kubernetes. The AWS EKS CIS Benchmark offers specific guidance for hardening Amazon Elastic Kubernetes Service (EKS) clusters. Ensuring compliance with these benchmarks is crucial for maintaining a strong security posture.
@@ -20,68 +19,59 @@ By bridging the gap between Kubernetes-native resources and AWS configurations, 
 
 ## EKS CIS Control Summary and Kyverno Support
 
-The following table summarizes the EKS CIS Benchmark controls (v1.4.0) and indicates the level of support provided by the Kyverno policies in this repository:
-
-| CIS Control ID | Description                                | Kyverno Support | Notes / Policy Link                                                              |
-| :------------- | :----------------------------------------- | :-------------: | :------------------------------------------------------------------------------- |
-| 2.1.1          | Enable audit logs                          | ❌              | EKS API/Config (Potential Kyverno AWS Adapter use)                               |
-| 2.1.2          | Ensure audit logs are collected/managed    | ❌              | AWS Logging/Monitoring Config                                                    |
-| 3.1.1          | kubeconfig file permissions                | ❌              | Node Config/Audit                                                                |
-| 3.1.2          | kubelet kubeconfig owner                   | ❌              | Node Config/Audit                                                                |
-| 3.1.3          | kubelet config permissions                 | ❌              | Node Config/Audit                                                                |
-| 3.1.4          | kubelet config owner                       | ❌              | Node Config/Audit                                                                |
-| 3.2.1          | Anonymous Auth disabled                    | ⚠️ Partial      | EKS API Check/Kyverno Audit                                                      |
-| 3.2.2          | --authorization-mode not AlwaysAllow       | ⚠️ Partial      | [../kyverno-policies/cis/cis-3.2.2.yaml](../kyverno-policies/cis/cis-3.2.2.yaml) |
-| 3.2.3          | Client CA file configured                  | ❌              | EKS API Check                                                                    |
-| 3.2.4          | --read-only-port disabled                  | ❌              | EKS API Check                                                                    |
-| 3.2.5          | --streaming-connection-idle-timeout not 0  | ❌              | EKS API Check                                                                    |
-| 3.2.6          | --make-iptables-util-chains true           | ❌              | Node Config/Audit                                                                |
-| 3.2.7          | --eventRecordQPS appropriate               | ❌              | EKS API Check                                                                    |
-| 3.2.8          | --rotate-certificates true                 | ❌              | EKS API Check                                                                    |
-| 3.2.9          | RotateKubeletServerCertificate true        | ❌              | EKS API Check                                                                    |
-| 4.1.1          | Use cluster-admin role minimally           | ✅              | [../kyverno-policies/cis/cis-4.1.1.yaml](../kyverno-policies/cis/cis-4.1.1.yaml) |
-| 4.1.2          | Minimize secret access                     | ✅              | [../kyverno-policies/cis/cis-4.1.2.yaml](../kyverno-policies/cis/cis-4.1.2.yaml) |
-| 4.1.3          | Minimize wildcard use                      | ✅              | [../kyverno-policies/cis/cis-4.1.3.yaml](../kyverno-policies/cis/cis-4.1.3.yaml) |
-| 4.1.4          | Minimize pod creation access               | ✅              | [../kyverno-policies/cis/cis-4.1.4.yaml](../kyverno-policies/cis/cis-4.1.4.yaml) |
-| 4.1.5          | No default service accounts                | ✅              | [../kyverno-policies/cis/cis-4.1.5.yaml](../kyverno-policies/cis/cis-4.1.5.yaml) |
-| 4.1.6          | Mount SA tokens only when needed           | ✅              | [../kyverno-policies/cis/cis-4.1.6.yaml](../kyverno-policies/cis/cis-4.1.6.yaml) |
-| 4.1.7          | Use Cluster Access Manager API             | ❌              | AWS IAM/EKS Config                                                               |
-| 4.1.8          | Limit Bind, Impersonate, Escalate          | ⚠️ Partial      | [../kyverno-policies/cis/cis-4.1.8.yaml](../kyverno-policies/cis/cis-4.1.8.yaml) |
-| 4.2.1          | Minimize privileged containers             | ✅              | [../kyverno-policies/cis/cis-4.2.1.yaml](../kyverno-policies/cis/cis-4.2.1.yaml) |
-| 4.2.2          | Minimize host PID sharing                  | ✅              | [../kyverno-policies/cis/cis-4.2.2.yaml](../kyverno-policies/cis/cis-4.2.2.yaml) |
-| 4.2.3          | Minimize host IPC sharing                  | ✅              | [../kyverno-policies/cis/cis-4.2.3.yaml](../kyverno-policies/cis/cis-4.2.3.yaml) |
-| 4.2.4          | Minimize host network sharing              | ✅              | [../kyverno-policies/cis/cis-4.2.4.yaml](../kyverno-policies/cis/cis-4.2.4.yaml) |
-| 4.2.5          | Disallow privilegeEscalation               | ✅              | [../kyverno-policies/cis/cis-4.2.5.yaml](../kyverno-policies/cis/cis-4.2.5.yaml) |
-| 4.3.1          | CNI supports network policies              | ❌              | CNI Choice/Config                                                                |
-| 4.3.2          | Namespaces have Network Policies           | ✅              | [../kyverno-policies/cis/cis-4.3.2.yaml](../kyverno-policies/cis/cis-4.3.2.yaml) |
-| 4.4.1          | Secrets as files, not env vars             | ✅              | [../kyverno-policies/cis/cis-4.4.1.yaml](../kyverno-policies/cis/cis-4.4.1.yaml) |
-| 4.4.2          | Use external secret storage                | ❌              | Architecture/Tooling Choice                                                      |
-| 4.5.1          | Use namespaces for boundaries              | ⚠️ Partial      | [../kyverno-policies/cis/cis-4.5.1.yaml](../kyverno-policies/cis/cis-4.5.1.yaml) |
-| 4.5.2          | Avoid default namespace                    | ✅              | [../kyverno-policies/cis/supported/cis-4.5.2.yaml](../kyverno-policies/cis/supported/cis-4.5.2.yaml) |
-| 5.1.1          | Restrict hostPath mount type               | ✅              | [../kyverno-policies/cis/supported/cis-5.1.1.yaml](../kyverno-policies/cis/supported/cis-5.1.1.yaml) |
-| 5.1.2          | Restrict hostPort usage                    | ✅              | [../kyverno-policies/cis/supported/cis-5.1.2.yaml](../kyverno-policies/cis/supported/cis-5.1.2.yaml) |
-| 5.1.3          | Limit cluster ECR access                   | ❌              | AWS IAM                                                                          |
-| 5.1.4          | Restrict container registries              | ✅              | [../kyverno-policies/cis/supported/cis-5.1.4.yaml](../kyverno-policies/cis/supported/cis-5.1.4.yaml) |
-| 5.1.6          | Restrict SELinux type                      | ✅              | [../kyverno-policies/cis/supported/cis-5.1.6.yaml](../kyverno-policies/cis/supported/cis-5.1.6.yaml) |
-| 5.2.1          | Use dedicated EKS Service Accounts         | ⚠️ Partial      | [../kyverno-policies/cis/custom/cis-5.2.1-custom.yaml](../kyverno-policies/cis/custom/cis-5.2.1-custom.yaml) (*Checks non-default SA, needs IRSA check*) |
-| 5.2.2          | Restrict AppArmor profile                  | ✅              | [../kyverno-policies/cis/supported/cis-5.2.2.yaml](../kyverno-policies/cis/supported/cis-5.2.2.yaml) |
-| 5.2.3          | Restrict Seccomp profile                   | ✅              | [../kyverno-policies/cis/supported/cis-5.2.3.yaml](../kyverno-policies/cis/supported/cis-5.2.3.yaml) |
-| 5.3.1          | Encrypt Secrets with KMS                   | ❌              | EKS API/Config (Potential Kyverno AWS Adapter use)                               |
-| 5.3.2          | Minimize admission of secrets              | ✅              | [../kyverno-policies/cis/supported/cis-5.3.2.yaml](../kyverno-policies/cis/supported/cis-5.3.2.yaml) |
-| 5.4.1          | Restrict control plane endpoint            | ❌              | EKS API/Config (Potential Kyverno AWS Adapter use)                               |
-| 5.4.2          | Use private endpoint                       | ❌              | EKS API/Config (Potential Kyverno AWS Adapter use)                               |
-| 5.4.3          | Deploy private nodes                       | ❌              | Node Group Config                                                                |
-| 5.4.4          | Enable Network Policy                      | ✅              | [../kyverno-policies/cis/supported/cis-5.4.4.yaml](../kyverno-policies/cis/supported/cis-5.4.4.yaml) |
-| 5.4.5          | Use TLS for load balancer                  | ❌              | LB Config/Ingress Controller                                                     |
-| 5.5.1          | Restrict ProcMount type                    | ✅              | [../kyverno-policies/cis/supported/cis-5.5.1.yaml](../kyverno-policies/cis/supported/cis-5.5.1.yaml) |
-| 5.5.2          | Restrict sysctls                           | ✅              | [../kyverno-policies/cis/supported/cis-5.5.2.yaml](../kyverno-policies/cis/supported/cis-5.5.2.yaml) |
-| 5.7.2          | Restrict container capabilities            | ✅              | [../kyverno-policies/cis/supported/cis-5.7.2.yaml](../kyverno-policies/cis/supported/cis-5.7.2.yaml) |
-| 5.7.5          | Restrict host process container modification | ✅              | [../kyverno-policies/cis/supported/cis-5.7.5.yaml](../kyverno-policies/cis/supported/cis-5.7.5.yaml) |
+| CIS Control ID | Description                                                         | Kyverno Support | Test Result | Notes/Links                                                    |
+|---------------|----------------------------------------------------------------------|----------------|-------------|----------------------------------------------------------------|
+| 2.1.1         | Enable audit logs                                                    | ❌             | fail        | -                                                              |
+| 2.1.2         | Ensure audit logs are collected and managed                          | ❌             | fail        | -                                                              |
+| 3.1.1         | kubeconfig file permissions set to 644 or more restrictive           | ❌             | fail        | -                                                              |
+| 3.1.2         | kubelet kubeconfig file owned by root:root                           | ❌             | fail        | -                                                              |
+| 3.1.3         | kubelet config file permissions set to 644 or more restrictive       | ❌             | fail        | -                                                              |
+| 3.1.4         | kubelet config file owned by root:root                               | ❌             | fail        | -                                                              |
+| 3.2.1         | Anonymous Auth not enabled                                           | ⚠️ Partial     | audit       | manual external audit                                          |
+| 3.2.2         | --authorization-mode not set to AlwaysAllow                          | ⚠️ Partial     | audit       | manual external audit                                          |
+| 3.2.3         | Client CA file configured                                            | ❌             | fail        | -                                                              |
+| 3.2.4         | --read-only-port is disabled                                         | ❌             | fail        | -                                                              |
+| 3.2.5         | --streaming-connection-idle-timeout not set to 0                      | ❌             | fail        | -                                                              |
+| 3.2.6         | --make-iptables-util-chains set to true                              | ❌             | fail        | -                                                              |
+| 3.2.7         | --eventRecordQPS set appropriately or to 0                            | ❌             | fail        | -                                                              |
+| 3.2.8         | --rotate-certificates is true or absent                              | ❌             | fail        | -                                                              |
+| 3.2.9         | RotateKubeletServerCertificate is true                               | ❌             | fail        | -                                                              |
+| 4.1.1         | Use cluster-admin role only when required                             | ✅             | pass        | [compliant_policyreport.txt](results/compliant_policyreport.txt) |
+| 4.1.2         | Minimize access to secrets                                            | ✅             | pass        | [compliant_policyreport.txt](results/compliant_policyreport.txt) |
+| 4.1.3         | Minimize wildcard use in roles                                        | ✅             | pass        | [compliant_policyreport.txt](results/compliant_policyreport.txt) |
+| 4.1.4         | Minimize access to create pods                                        | ✅             | pass        | [compliant_policyreport.txt](results/compliant_policyreport.txt) |
+| 4.1.5         | Default service accounts should not be used                           | ✅             | pass        | [compliant_policyreport.txt](results/compliant_policyreport.txt) |
+| 4.1.6         | Mount service account tokens only when necessary                      | ✅             | pass        | [compliant_policyreport.txt](results/compliant_policyreport.txt) |
+| 4.1.7         | Use Cluster Access Manager API                                        | ❌             | fail        | -                                                              |
+| 4.1.8         | Limit Bind, Impersonate, Escalate permissions                         | ⚠️ Partial     | audit       | [external audit](docs/kyverno-limitations.md#rbac-bind-check)    |
+| 4.2.1         | Minimize privileged containers                                        | ✅             | pass        | [compliant_policyreport.txt](results/compliant_policyreport.txt) |
+| 4.2.2         | Minimize host PID namespace sharing                                   | ✅             | pass        | [compliant_policyreport.txt](results/compliant_policyreport.txt) |
+| 4.2.3         | Minimize host IPC namespace sharing                                   | ✅             | pass        | [compliant_policyreport.txt](results/compliant_policyreport.txt) |
+| 4.2.4         | Minimize host network namespace sharing                               | ✅             | pass        | [compliant_policyreport.txt](results/compliant_policyreport.txt) |
+| 4.2.5         | Disallow allowPrivilegeEscalation                                     | ✅             | pass        | [compliant_policyreport.txt](results/compliant_policyreport.txt) |
+| 4.3.1         | Ensure CNI plugin supports network policies                            | ❌             | fail        | -                                                              |
+| 4.3.2         | Ensure all Namespaces have Network Policies                            | ✅             | pass        | [compliant_policyreport.txt](results/compliant_policyreport.txt) |
+| 4.4.1         | Use secrets as files, not environment variables                        | ✅             | pass        | [compliant_policyreport.txt](results/compliant_policyreport.txt) |
+| 4.4.2         | Use external secret storage                                            | ❌             | fail        | -                                                              |
+| 4.5.1         | Use namespaces for resource boundaries                                 | ⚠️ Partial     | audit       | [custom-policy](kyverno-policies/cis/custom/cis-4.5.1-custom.yaml) |
+| 4.5.2         | Avoid using the default namespace                                      | ✅             | pass        | [compliant_policyreport.txt](results/compliant_policyreport.txt) |
+| 5.1.1         | Enable image scanning in ECR or third-party                            | ❌             | fail        | -                                                              |
+| 5.1.2         | Minimize user access to ECR                                            | ❌             | fail        | -                                                              |
+| 5.1.3         | Limit cluster ECR access to read-only                                  | ❌             | fail        | -                                                              |
+| 5.1.4         | Restrict use to approved container registries                          | ✅             | pass        | [compliant_policyreport.txt](results/compliant_policyreport.txt) |
+| 5.2.1         | Use dedicated EKS Service Accounts                                     | ⚠️ Partial     | audit       | [custom-policy](kyverno-policies/cis/custom/cis-5.2.1-custom.yaml) |
+| 5.3.1         | Encrypt Kubernetes Secrets with KMS CMKs                               | ❌             | fail        | -                                                              |
+| 5.4.1         | Restrict control plane endpoint access                                 | ❌             | fail        | -                                                              |
+| 5.4.2         | Use private endpoint, disable public access                            | ❌             | fail        | -                                                              |
+| 5.4.3         | Deploy private nodes                                                   | ❌             | fail        | -                                                              |
+| 5.4.4         | Enable and configure Network Policy                                    | ✅             | pass        | [compliant_policyreport.txt](results/compliant_policyreport.txt) |
+| 5.4.5         | Use TLS to encrypt load balancer traffic                               | ❌             | fail        | -                                                              |
+| 5.5.1         | Manage users via IAM Authenticator or AWS CLI                          | ❌             | fail        | -                                                              |
 
 **Legend:**
-*   ✅ **Supported:** Kyverno policy directly addresses the control.
-*   ⚠️ **Partial:** Kyverno policy provides partial coverage or requires additional checks (e.g., audit mode, external verification).
-*   ❌ **Not Supported:** Control is outside the scope of standard Kyverno policies (requires AWS config, node config, IAM, manual audit, etc.).
+* ✅ **Pass**: Policy passed in automated tests
+* ⚠️ **Audit**: Partial coverage or requires manual audit
+* ❌ **Fail**: No policy support; requires external process
 
 ### Kyverno Policy Structure
 

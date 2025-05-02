@@ -1,0 +1,34 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: terraform-cis-5.4.3-private-nodes
+  annotations:
+    policies.kyverno.io/title: "Terraform CIS 5.4.3 - Deploy private nodes"
+    policies.kyverno.io/category: Terraform IaC Scanning
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/description: >-
+      Validate that EKS nodes are deployed in private subnets without direct routes to internet gateways.
+spec:
+  validationFailureAction: audit
+  rules:
+    - name: use-private-subnets
+      match:
+        any:
+          - resources:
+              kinds:
+                - TerraformPlan
+      validate:
+        message: "EKS node groups should be deployed in private subnets."
+        pattern:
+          plan:
+            resource_changes:
+              - type: aws_eks_node_group
+                change:
+                  after:
+                    subnet_ids:
+                      - "*"
+              # Check for private subnet configurations
+              - type: aws_subnet
+                change:
+                  after:
+                    map_public_ip_on_launch: false

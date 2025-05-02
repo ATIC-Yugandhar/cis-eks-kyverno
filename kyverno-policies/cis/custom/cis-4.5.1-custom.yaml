@@ -35,4 +35,32 @@ spec:
         message: "Resources must be created with an explicit namespace."
         pattern:
           metadata:
-            namespace: "?*" # Checks if namespace exists and is not empty
+            namespace: "?*"
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: cis-4-5-1-custom
+  annotations:
+    policies.kyverno.io/title: "Ensure resources are not created in the default namespace (CIS 4.5.1)"
+spec:
+  validationFailureAction: enforce
+  rules:
+  - name: forbid-default-namespace
+    match:
+      resources:
+        kinds:
+        - Pod
+        - Deployment
+        - Service
+        - ConfigMap
+        - Secret
+    preconditions:
+    - key: "{{ request.object.metadata.namespace }}"
+      operator: Equals
+      value: "default"
+    validate:
+      message: "Resource must not be created in the 'default' namespace. Use a dedicated namespace per application."
+      pattern:
+        metadata:
+          namespace: "__invalid__"

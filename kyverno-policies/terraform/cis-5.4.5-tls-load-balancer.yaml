@@ -1,0 +1,30 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: terraform-cis-5.4.5-tls-load-balancer
+  annotations:
+    policies.kyverno.io/title: "Terraform CIS 5.4.5 - Use TLS to encrypt load balancer traffic"
+    policies.kyverno.io/category: Terraform IaC Scanning
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/description: >-
+      Validate that AWS load balancers use HTTPS/TLS listeners for EKS traffic.
+spec:
+  validationFailureAction: audit
+  rules:
+    - name: lb-use-tls
+      match:
+        any:
+          - resources:
+              kinds:
+                - TerraformPlan
+      validate:
+        message: "Load balancers for EKS traffic should use HTTPS/TLS listeners."
+        pattern:
+          plan:
+            resource_changes:
+              - type: aws_lb_listener
+                change:
+                  after:
+                    protocol: "HTTPS"
+                    ssl_policy: "*"
+                    certificate_arn: "*"

@@ -1,0 +1,43 @@
+# Pass case: Pod in named namespace
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-in-named-namespace
+  namespace: app-namespace
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+---
+# Pass case: Pod in kube-system namespace (exempt)
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-in-kube-system
+  namespace: kube-system
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+---
+# Fail case: Pod in default namespace
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-in-default-namespace
+  namespace: default
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+---
+# Fail case: Pod with implicit default namespace
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-implicit-default-namespace
+  # No namespace specified, defaults to 'default'
+spec:
+  containers:
+  - name: nginx
+    image: nginx

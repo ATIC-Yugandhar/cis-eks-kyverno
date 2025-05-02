@@ -21,7 +21,8 @@ module "networking" {
   vpc_cidr             = var.vpc_cidr
   private_subnet_cidrs = var.private_subnet_cidrs
   public_subnet_cidrs  = var.public_subnet_cidrs
-kms_key_arn_for_logs = local.effective_enable_kms_encryption ? module.kms[0].key_arn : null
+  # Use one() for safer access to conditional module output - CORRECTED attribute name
+  kms_key_arn_for_logs = local.effective_enable_kms_encryption ? one(module.kms[*].kms_key_arn) : null
   tags                 = var.tags
 }
 

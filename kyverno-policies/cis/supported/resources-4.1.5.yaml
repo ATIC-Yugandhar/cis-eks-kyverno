@@ -1,0 +1,58 @@
+# Pass case 1: Explicit non-default service account
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-pass-explicit-sa
+spec:
+  serviceAccountName: my-app-sa # Compliant
+  containers:
+  - name: nginx
+    image: nginx
+---
+# Pass case 2: Default service account but token not mounted
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-pass-default-sa-no-mount
+spec:
+  serviceAccountName: default # Allowed because token is not mounted
+  automountServiceAccountToken: false # Compliant
+  containers:
+  - name: nginx
+    image: nginx
+---
+# Pass case 3: Implicit default service account but token not mounted
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-pass-implicit-sa-no-mount
+spec:
+  # serviceAccountName implicitly 'default'
+  automountServiceAccountToken: false # Compliant
+  containers:
+  - name: nginx
+    image: nginx
+---
+# Fail case 1: Explicit default service account, token mounted (implicitly)
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-fail-explicit-default-sa
+spec:
+  serviceAccountName: default # Non-compliant
+  # automountServiceAccountToken implicitly true
+  containers:
+  - name: nginx
+    image: nginx
+---
+# Fail case 2: Implicit default service account, token mounted (implicitly)
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-fail-implicit-default-sa
+spec:
+  # serviceAccountName implicitly 'default'
+  # automountServiceAccountToken implicitly true
+  containers:
+  - name: nginx
+    image: nginx

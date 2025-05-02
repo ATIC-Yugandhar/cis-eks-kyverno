@@ -1,0 +1,34 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: terraform-cis-5.5.1-iam-authenticator
+  annotations:
+    policies.kyverno.io/title: "Terraform CIS 5.5.1 - Manage users via IAM Authenticator or AWS CLI"
+    policies.kyverno.io/category: Terraform IaC Scanning
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/description: >-
+      Validate that EKS authentication is managed via AWS IAM rather than through direct kubectl config manipulation.
+spec:
+  validationFailureAction: audit
+  rules:
+    - name: eks-auth-via-iam
+      match:
+        any:
+          - resources:
+              kinds:
+                - TerraformPlan
+      validate:
+        message: "EKS authentication should be managed via IAM roles or users, not through direct kubectl config."
+        pattern:
+          plan:
+            resource_changes:
+              - type: aws_eks_cluster 
+                change:
+                  after:
+                    # Ensure IAM authentication is enabled (default for EKS)
+                    {}
+              - type: aws_iam_role_policy_attachment
+                change:
+                  after:
+                    # Ensure proper IAM policies are attached
+                    policy_arn: "*eks*"

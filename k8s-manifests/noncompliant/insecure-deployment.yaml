@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: insecure-app
+  namespace: default  # Using default namespace (CIS 4.5.2)
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: insecure-app
+  template:
+    metadata:
+      labels:
+        app: insecure-app
+    spec:
+      # Using default service account (CIS 4.1.5)
+      # automountServiceAccountToken defaults to true (CIS 4.1.6)
+      containers:
+      - name: app
+        image: myapp:latest  # Using floating tag (best practice violation)
+        env:
+        - name: DB_PASSWORD  # Secrets as env vars (CIS 4.4.1)
+          value: "password123"
+        - name: DB_USER
+          value: "admin"
+        securityContext:
+          privileged: true  # Privileged container (CIS 4.2.1)
+          allowPrivilegeEscalation: true  # Allows privilege escalation (CIS 4.2.5)
+        resources: {}  # No resource limits (best practice violation)

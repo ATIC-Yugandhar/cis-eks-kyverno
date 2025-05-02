@@ -1,0 +1,28 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: terraform-cis-3.2.9-rotate-kubelet-server-certificate
+  annotations:
+    policies.kyverno.io/title: "Terraform CIS 3.2.9 - Ensure RotateKubeletServerCertificate is true"
+    policies.kyverno.io/category: Terraform IaC Scanning
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/description: >-
+      Validate that RotateKubeletServerCertificate is true for EKS nodes in Terraform plan.
+spec:
+  validationFailureAction: audit
+  rules:
+    - name: rotate-kubelet-server-certificate-true
+      match:
+        any:
+          - resources:
+              kinds:
+                - TerraformPlan
+      validate:
+        message: "RotateKubeletServerCertificate must be true."
+        pattern:
+          plan:
+            resource_changes:
+              - type: aws_launch_template
+                change:
+                  after:
+                    user_data: "*featureGates:\n  RotateKubeletServerCertificate: true*"
