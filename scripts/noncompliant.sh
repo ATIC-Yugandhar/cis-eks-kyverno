@@ -8,22 +8,36 @@ LOCAL_REPORT="docs/compliance-local.md"
 NONCOMPLIANT_DIR="terraform/noncompliant"
 NONCOMPLIANT_REPORT="docs/compliance-report-noncompliant.md"
 
-# Local Kyverno Validation
-echo "# Local Kyverno Validation" > "$LOCAL_REPORT"
-echo '```' >> "$LOCAL_REPORT"
-for policy in "$POLICY_DIR"/*.yaml; do
-  echo "Validating policy: $policy" >> "$LOCAL_REPORT"
-  kyverno apply "$policy" --resource "$SAMPLE_MANIFEST" >> "$LOCAL_REPORT" 2>&1 || true
-  echo "" >> "$LOCAL_REPORT"
-done
-echo '```' >> "$LOCAL_REPORT"
-
 # Provision non-compliant cluster
 echo "Provisioning non-compliant cluster..."
 cd "$NONCOMPLIANT_DIR"
 terraform init -input=false
 terraform apply -auto-approve
 cd - > /dev/null
+
+# Update Kubernetes config
+echo "Updating Kubernetes config..."
+aws eks update-kubeconfig --name noncompliant-eks-cluster --region us-west-2
+
+# Wait for cluster to become reachable
+echo "Waiting for cluster to become reachable..."
+max_wait=600 # 10 minutes
+start_time=$(date +%s)
+success=false
+
+while [[ $(( $(date +%s) - $start_time )) -lt $max_wait ]]; do
+    if kubectl cluster-info > /dev/null 2>&1; then
+        success=true
+        break
+    fi
+    echo -n "."
+    sleep 15
+done
+
+if [ "$success" = false ]; then
+    echo "Cluster not reachable after timeout. Exiting."
+    exit 1
+fi
 
 # Deploy Kyverno controller to the cluster (using Helm)
 echo "Deploying Kyverno controller to cluster..."
@@ -35,7 +49,7 @@ helm upgrade --install kyverno kyverno/kyverno -n kyverno
 # Apply all Kyverno policies
 echo "Applying Kyverno policies..."
 for policy in "$POLICY_DIR"/*.yaml; do
-  kubectl apply -f "$policy"
+    kubectl apply -f "$policy"
 done
 
 # Deploy test workloads

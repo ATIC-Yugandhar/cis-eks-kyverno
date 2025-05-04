@@ -39,3 +39,8 @@ variable "cluster_version" {
   type        = string
   default     = "1.29"
 }
+variable "trusted_ssh_cidr_blocks" {
+  description = "List of CIDR blocks allowed SSH access to bastion"
+  type        = list(string)
+  default     = ["0.0.0.0/0"]
+}

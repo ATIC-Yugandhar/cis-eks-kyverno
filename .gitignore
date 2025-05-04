@@ -34,3 +34,5 @@ tfplan-*.json
 # Logs
 *.log
 docs/changelog.md
+# Sensitive Terraform-generated private key
+terraform/compliant/bastion_key.pem
