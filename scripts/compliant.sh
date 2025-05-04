@@ -67,38 +67,38 @@ check_remote_hash() {
   local remote_hash
 
   if [ -d "$local_file" ]; then
-    # Directory: check all files recursively
     find "$local_file" -type f | while read -r f; do
-      rel_path="${f#$local_file/}"
-      remote_path="~/$remote_file/$rel_path"
+      rel_path="${f#"$local_file"/}"
+      remote_path="\$HOME/$remote_file/$rel_path"
       local_hash=$(sha256sum "$f" | awk '{print $1}')
-      remote_hash=$(ssh -i "$SSH_KEY" -o StrictHostKeyChecking=no "$BASTION_USER@$BASTION_IP" "sha256sum $remote_path 2>/dev/null | awk '{print \$1}'" || echo "MISSING")
+      remote_hash=$(ssh -i "$SSH_KEY" -o StrictHostKeyChecking=no "$BASTION_USER@$BASTION_IP" \
+        "sha256sum $remote_path 2>/dev/null | awk '{print \\$1}'" || echo "MISSING")
       if [ "$local_hash" != "$remote_hash" ]; then
         echo "[COPY] $f differs from $remote_path"
-        copy_needed=1
         return 1
       fi
     done
   else
     local_hash=$(sha256sum "$local_file" | awk '{print $1}')
-    remote_hash=$(ssh -i "$SSH_KEY" -o StrictHostKeyChecking=no "$BASTION_USER@$BASTION_IP" "sha256sum ~/$remote_file 2>/dev/null | awk '{print \$1}'" || echo "MISSING")
+    remote_path="\$HOME/$remote_file"
+    remote_hash=$(ssh -i "$SSH_KEY" -o StrictHostKeyChecking=no "$BASTION_USER@$BASTION_IP" \
+      "sha256sum $remote_path 2>/dev/null | awk '{print \\$1}'" || echo "MISSING")
     if [ "$local_hash" != "$remote_hash" ]; then
-      echo "[COPY] $local_file differs from ~/$remote_file"
-      copy_needed=1
+      echo "[COPY] $local_file differs from $remote_path"
       return 1
     fi
   fi
   return 0
 }
 
-# Check differences without exiting on error
-set +e
-check_remote_hash "$POLICY_DIR" "$POLICY_DIR"
-if [ $? -ne 0 ]; then files_to_copy+=("$POLICY_DIR"); fi
-
-check_remote_hash "$SAMPLE_MANIFEST" "$(basename "$SAMPLE_MANIFEST")"
-if [ $? -ne 0 ]; then files_to_copy+=("$SAMPLE_MANIFEST"); fi
-set -e
+# Check differences and collect files_to_copy
+files_to_copy=()
+if ! check_remote_hash "$POLICY_DIR" "$POLICY_DIR"; then
+  files_to_copy+=("$POLICY_DIR")
+fi
+if ! check_remote_hash "$SAMPLE_MANIFEST" "$(basename "$SAMPLE_MANIFEST")"; then
+  files_to_copy+=("$SAMPLE_MANIFEST")
+fi
 
 if [ ${#files_to_copy[@]} -eq 0 ]; then
   echo "[SKIP] All files already exist and match on bastion. Skipping copy."
@@ -108,19 +108,14 @@ else
 fi
 
 # Determine cluster region and name locally
-disable_exit=false
 LOCAL_REGION=$(cd "$COMPLIANT_DIR" && terraform output -raw region)
 LOCAL_CLUSTER=$(cd "$COMPLIANT_DIR" && terraform output -raw cluster_name)
 
 # Run remote compliance workflow on bastion
 echo "Running compliance workflow on bastion..."
-
-ssh -i "$SSH_KEY" -o StrictHostKeyChecking=no "$BASTION_USER@$BASTION_IP" bash -s <<EOF
+ssh -i "$SSH_KEY" -o StrictHostKeyChecking=no "$BASTION_USER@$BASTION_IP" \
+  "export REGION='$LOCAL_REGION' CLUSTER_NAME='$LOCAL_CLUSTER'; bash -s" <<'EOF'
 set -euo pipefail
-
-# Set environment for AWS CLI
-export REGION="$LOCAL_REGION"
-export CLUSTER_NAME="$LOCAL_CLUSTER"
 
 # Install AWS CLI, kubectl, and Kyverno CLI if not present
 if ! command -v aws >/dev/null; then
@@ -163,15 +158,14 @@ if ! command -v kyverno >/dev/null; then
 fi
 
 # Set up kubeconfig
-# Removed remote Terraform lookups
 aws eks update-kubeconfig --region "$REGION" --name "$CLUSTER_NAME"
 
 # Wait for cluster to become reachable
 echo "Waiting for cluster to become reachable..."
 max_wait=600
-start_time=\$(date +%s)
+start_time=$(date +%s)
 success=false
-while [[ \$(( \$(date +%s) - \$start_time )) -lt \$max_wait ]]; do
+while [[ $(( $(date +%s) - $start_time )) -lt $max_wait ]]; do
     if kubectl cluster-info > /dev/null 2>&1; then
         success=true
         break
@@ -179,7 +173,7 @@ while [[ \$(( \$(date +%s) - \$start_time )) -lt \$max_wait ]]; do
     echo -n "."
     sleep 15
 done
-if [ "\$success" = false ]; then
+if [ "$success" = false ]; then
     echo "Cluster not reachable after timeout. Exiting."
     exit 1
 fi
@@ -196,7 +190,7 @@ helm upgrade --install kyverno kyverno/kyverno -n kyverno
 # Apply all Kyverno policies
 echo "Applying Kyverno policies..."
 for policy in kyverno-policies/*.yaml; do
-    kubectl apply -f "\$policy"
+    kubectl apply -f "$policy"
 done
 
 # Deploy test workloads
@@ -204,11 +198,9 @@ echo "Deploying test workloads from docs/sample-eks.yaml..."
 kubectl apply -f docs/sample-eks.yaml
 
 # Run compliance scan
-echo "# Compliance Scan Report" > compliance-report-compliant.md
-echo '```' >> compliance-report-compliant.md
+printf "# Compliance Scan Report\n\`\`\`\n" > compliance-report-compliant.md
 kyverno report >> compliance-report-compliant.md 2>&1 || true
-echo '```' >> compliance-report-compliant.md
-
+printf "\`\`\`\n" >> compliance-report-compliant.md
 EOF
 
 # Copy compliance report back to local machine

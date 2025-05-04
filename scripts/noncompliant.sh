@@ -25,7 +25,7 @@ max_wait=600 # 10 minutes
 start_time=$(date +%s)
 success=false
 
-while [[ $(( $(date +%s) - $start_time )) -lt $max_wait ]]; do
+while (( $(date +%s) - start_time < max_wait )); do
     if kubectl cluster-info > /dev/null 2>&1; then
         success=true
         break
