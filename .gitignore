@@ -3,7 +3,34 @@
 
 # Terraform local state and configuration
 .terraform/
-m*.tfstate
+.terraform.lock.hcl
+*.tfstate
 *.tfstate.*
-/results
-terraform/examples/cluster/tfplan-compliant.binary
+terraform.tfvars
+*.tfplan
+tfplan-*.binary
+tfplan-*.json
+*_wrapped.json
+
+# Results and temporary files
+/results/*
+!results/.gitkeep
+
+# Temporary editor files
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# Backup files
+*.bak
+*.tmp
+*.orig
+
+# Don't ignore the changelog - ensure it's tracked
+!docs/changelog.md
+
+# Logs
+*.log
+docs/changelog.md

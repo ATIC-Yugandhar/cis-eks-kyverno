@@ -1,0 +1,61 @@
+name: Kyverno Policy Check
+
+on:
+  push:
+    branches:
+      - main
+      - 'main/**'
+  pull_request:
+    branches:
+      - main
+      - 'main/**'
+
+jobs:
+  kyverno-policy-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Kyverno CLI
+        run: |
+          curl -L https://github.com/kyverno/kyverno/releases/latest/download/kyverno-cli_linux_x86_64.tar.gz -o kyverno.tar.gz
+          tar -xzf kyverno.tar.gz kyverno
+          sudo mv kyverno /usr/local/bin/
+          kyverno version
+
+      - name: Validate Kyverno policies
+        run: |
+          mkdir -p reports
+          kyverno validate kyverno-policies/*.yaml | tee reports/validate.txt
+
+      - name: Prepare sample EKS manifest
+        run: |
+          cat <<EOF > sample-eks-manifest.yaml
+          apiVersion: v1
+          kind: Pod
+          metadata:
+            name: placeholder-pod
+            namespace: default
+          spec:
+            containers:
+            - name: nginx
+              image: nginx
+          EOF
+
+      - name: Apply Kyverno policies in audit mode
+        run: |
+          kyverno apply kyverno-policies/*.yaml --resource sample-eks-manifest.yaml --audit | tee reports/apply.txt
+
+      - name: Upload Kyverno reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: kyverno-reports
+          path: reports/
+
+      - name: Fail if mandatory policy violations are found
+        run: |
+          if grep -q 'violation' reports/apply.txt; then
+            echo "Mandatory policy violations detected."
+            exit 1
+          fi

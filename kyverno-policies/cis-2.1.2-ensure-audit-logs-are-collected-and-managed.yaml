@@ -1,0 +1,14 @@
+# CIS Control: 2.1.2
+# Description: Ensure audit logs are collected and managed
+# Not enforceable by Kyverno; requires external log aggregation and management tooling, such as a centralized logging solution or manual audit.
+
+apiVersion: kyverno.io/v1
+kind: Policy
+metadata:
+  name: cis-2.1.2-ensure-audit-logs-are-collected-and-managed
+  annotations:
+    cis.kubernetes.io/id: "2.1.2"
+    cis.kubernetes.io/description: "Ensure audit logs are collected and managed"
+spec:
+  background: false
+  rules: []

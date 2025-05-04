@@ -1,0 +1,13 @@
+# CIS Control: 3.2.7
+# Description: --eventRecordQPS set appropriately or to 0
+# NOTE: This control is not enforceable via Kyverno policy. Stub only.
+
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: cis-3.2.7-eventrecordqps-set-appropriately-or-to-0
+  annotations:
+    cis.kubernetes.io/id: "3.2.7"
+    cis.kubernetes.io/description: "--eventRecordQPS set appropriately or to 0"
+spec:
+  rules: []

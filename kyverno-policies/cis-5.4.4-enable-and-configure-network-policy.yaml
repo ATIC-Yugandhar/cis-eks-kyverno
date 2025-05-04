@@ -1,0 +1,11 @@
+# This is a stub Kyverno policy for CIS 5.4.4: Enable and configure Network Policy
+# Replace this stub with the official Kyverno policy when available
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: cis-5.4.4-enable-and-configure-network-policy
+  annotations:
+    cis.kubernetes.io/id: "5.4.4"
+    description: "Enable and configure Network Policy"
+spec:
+  # TODO: Replace with official Kyverno policy spec

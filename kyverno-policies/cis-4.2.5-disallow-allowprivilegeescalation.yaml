@@ -1,0 +1,11 @@
+# This is a stub Kyverno policy for CIS 4.2.5: Disallow allowPrivilegeEscalation
+# Replace this stub with the official Kyverno policy when available
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: cis-4.2.5-disallow-allowprivilegeescalation
+  annotations:
+    cis.kubernetes.io/id: "4.2.5"
+    description: "Disallow allowPrivilegeEscalation"
+spec:
+  # TODO: Replace with official Kyverno policy spec

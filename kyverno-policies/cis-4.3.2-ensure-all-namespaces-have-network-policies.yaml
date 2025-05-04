@@ -1,0 +1,11 @@
+# This is a stub Kyverno policy for CIS 4.3.2: Ensure all Namespaces have Network Policies
+# Replace this stub with the official Kyverno policy when available
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: cis-4.3.2-ensure-all-namespaces-have-network-policies
+  annotations:
+    cis.kubernetes.io/id: "4.3.2"
+    description: "Ensure all Namespaces have Network Policies"
+spec:
+  # TODO: Replace with official Kyverno policy spec

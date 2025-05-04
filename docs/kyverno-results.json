@@ -1,0 +1,12 @@
+
+Applying 8 policy rule(s) to 3 resource(s)...
+----------------------------------------------------------------------
+Policies Skipped (as required variables are not provided by the user):
+1. cis-4.1.1
+2. cis-4.1.2
+3. cis-4.1.3
+4. cis-4.1.4
+5. cis-4-5-1-use-namespaces-for-boundaries
+----------------------------------------------------------------------
+
+pass: 0, fail: 0, warn: 0, error: 5, skip: 0 

@@ -1,0 +1,13 @@
+# CIS Control: 3.2.4
+# Description: --read-only-port is disabled
+# NOTE: This control is not enforceable via Kyverno policy. Stub only.
+
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: cis-3.2.4-read-only-port-is-disabled
+  annotations:
+    cis.kubernetes.io/id: "3.2.4"
+    cis.kubernetes.io/description: "--read-only-port is disabled"
+spec:
+  rules: []

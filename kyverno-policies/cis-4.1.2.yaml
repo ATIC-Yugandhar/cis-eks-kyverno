@@ -1,0 +1,18 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: cis-4.1.2
+  annotations:
+    cis.aws.eks.benchmark: "4.1.2"
+    description: "Minimize access to secrets"
+spec:
+  rules:
+    - name: placeholder
+      match:
+        any:
+          - resources:
+              kinds:
+                - "*"
+      validate:
+        message: "Placeholder for CIS 4.1.2: Minimize access to secrets"
+        pattern: {}

@@ -1,0 +1,11 @@
+# This is a stub Kyverno policy for CIS 4.2.2: Minimize host PID namespace sharing
+# Replace this stub with the official Kyverno policy when available
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: cis-4.2.2-minimize-host-pid-namespace-sharing
+  annotations:
+    cis.kubernetes.io/id: "4.2.2"
+    description: "Minimize host PID namespace sharing"
+spec:
+  # TODO: Replace with official Kyverno policy spec

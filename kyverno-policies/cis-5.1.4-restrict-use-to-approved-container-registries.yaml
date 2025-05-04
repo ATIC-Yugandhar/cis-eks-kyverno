@@ -1,0 +1,11 @@
+# This is a stub Kyverno policy for CIS 5.1.4: Restrict use to approved container registries
+# Replace this stub with the official Kyverno policy when available
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: cis-5.1.4-restrict-use-to-approved-container-registries
+  annotations:
+    cis.kubernetes.io/id: "5.1.4"
+    description: "Restrict use to approved container registries"
+spec:
+  # TODO: Replace with official Kyverno policy spec

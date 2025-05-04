@@ -1,0 +1,11 @@
+# This is a stub Kyverno policy for CIS 4.5.2: Avoid using the default namespace
+# Replace this stub with the official Kyverno policy when available
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: cis-4.5.2-avoid-using-the-default-namespace
+  annotations:
+    cis.kubernetes.io/id: "4.5.2"
+    description: "Avoid using the default namespace"
+spec:
+  # TODO: Replace with official Kyverno policy spec

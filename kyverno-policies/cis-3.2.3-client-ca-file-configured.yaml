@@ -1,0 +1,13 @@
+# CIS Control: 3.2.3
+# Description: Client CA file configured
+# NOTE: This control is not enforceable via Kyverno policy. Stub only.
+
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: cis-3.2.3-client-ca-file-configured
+  annotations:
+    cis.kubernetes.io/id: "3.2.3"
+    cis.kubernetes.io/description: "Client CA file configured"
+spec:
+  rules: []

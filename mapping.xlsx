@@ -1,0 +1,48 @@
+PKL:MS Excel
+CIS ID	Description	Kyverno Supported	Kyverno Action
+2.1.1	Enable audit logs	❌	-
+2.1.2	Ensure audit logs are collected and managed	❌	-
+3.1.1	kubeconfig file permissions set to 644 or more restrictive	❌	-
+3.1.2	kubelet kubeconfig file owned by root:root	❌	-
+3.1.3	kubelet config file permissions set to 644 or more restrictive	❌	-
+3.1.4	kubelet config file owned by root:root	❌	-
+3.2.1	Anonymous Auth not enabled	⚠️ Partial	Audit (external)
+3.2.2	--authorization-mode not set to AlwaysAllow	⚠️ Partial	Audit
+3.2.3	Client CA file configured	❌	-
+3.2.4	--read-only-port is disabled	❌	-
+3.2.5	--streaming-connection-idle-timeout not set to 0	❌	-
+3.2.6	--make-iptables-util-chains set to true	❌	-
+3.2.7	--eventRecordQPS set appropriately or to 0	❌	-
+3.2.8	--rotate-certificates is true or absent	❌	-
+3.2.9	RotateKubeletServerCertificate is true	❌	-
+4.1.1	Use cluster-admin role only when required	✅	Validate
+4.1.2	Minimize access to secrets	✅	Validate
+4.1.3	Minimize wildcard use in roles	✅	Validate
+4.1.4	Minimize access to create pods	✅	Validate
+4.1.5	Default service accounts should not be used	✅	Validate
+4.1.6	Mount service account tokens only when necessary	✅	Validate
+4.1.7	Use Cluster Access Manager API	❌	-
+4.1.8	Limit Bind, Impersonate, Escalate permissions	⚠️ Partial	Audit
+4.2.1	Minimize privileged containers	✅	Validate
+4.2.2	Minimize host PID namespace sharing	✅	Validate
+4.2.3	Minimize host IPC namespace sharing	✅	Validate
+4.2.4	Minimize host network namespace sharing	✅	Validate
+4.2.5	Disallow allowPrivilegeEscalation	✅	Validate
+4.3.1	Ensure CNI plugin supports network policies	❌	-
+4.3.2	Ensure all Namespaces have Network Policies	✅	Validate
+4.4.1	Use secrets as files, not environment variables	✅	Validate
+4.4.2	Use external secret storage	❌	-
+4.5.1	Use namespaces for resource boundaries	⚠️ Partial	Validate
+4.5.2	Avoid using the default namespace	✅	Validate
+5.1.1	Enable image scanning in ECR or third-party	❌	-
+5.1.2	Minimize user access to ECR	❌	-
+5.1.3	Limit cluster ECR access to read-only	❌	-
+5.1.4	Restrict use to approved container registries	✅	Validate
+5.2.1	Use dedicated EKS Service Accounts	✅	Validate
+5.3.1	Encrypt Kubernetes Secrets with KMS CMKs	❌	-
+5.4.1	Restrict control plane endpoint access	❌	-
+5.4.2	Use private endpoint, disable public access	❌	-
+5.4.3	Deploy private nodes	❌	-
+5.4.4	Enable and configure Network Policy	✅	Validate
+5.4.5	Use TLS to encrypt load balancer traffic	❌	-
+5.5.1	Manage users via IAM Authenticator or AWS CLI	❌	-
