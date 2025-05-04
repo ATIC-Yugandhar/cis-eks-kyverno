@@ -1,0 +1,13 @@
+# CIS Control: 4.3.1
+# Description: Ensure CNI plugin supports network policies
+# NOTE: This control is not enforceable via Kyverno policy. Stub only.
+
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: cis-4.3.1-ensure-cni-plugin-supports-network-policies
+  annotations:
+    cis.kubernetes.io/id: "4.3.1"
+    cis.kubernetes.io/description: "Ensure CNI plugin supports network policies"
+spec:
+  rules: []

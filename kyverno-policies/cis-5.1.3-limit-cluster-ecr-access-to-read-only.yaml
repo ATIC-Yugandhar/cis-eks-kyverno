@@ -1,0 +1,13 @@
+# CIS Control: 5.1.3
+# Description: Limit cluster ECR access to read-only
+# NOTE: This control is not enforceable via Kyverno policy. Stub only.
+
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: cis-5.1.3-limit-cluster-ecr-access-to-read-only
+  annotations:
+    cis.kubernetes.io/id: "5.1.3"
+    cis.kubernetes.io/description: "Limit cluster ECR access to read-only"
+spec:
+  rules: []

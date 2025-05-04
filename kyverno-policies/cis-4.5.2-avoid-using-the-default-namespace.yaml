@@ -8,4 +8,31 @@ metadata:
     cis.kubernetes.io/id: "4.5.2"
     description: "Avoid using the default namespace"
 spec:
-  # TODO: Replace with official Kyverno policy spec
+  validationFailureAction: Audit # Change to 'enforce' to block
+  background: true
+  rules:
+  - name: disallow-default-namespace
+    match:
+      any:
+      - resources:
+          # Define kinds you want to restrict from the default namespace
+          kinds:
+          - Pod
+          - Deployment
+          - StatefulSet
+          - DaemonSet
+          - Job
+          - CronJob
+          - Service
+          - Ingress
+          - ConfigMap
+          - Secret
+          # Add other relevant kinds
+    validate:
+      message: "Creating resources in the 'default' namespace is disallowed. Please specify a namespace."
+      pattern:
+        metadata:
+          # Check if namespace is explicitly set to something other than 'default'
+          # Or if namespace is not set (which defaults to 'default' during creation, but this pattern allows it if the request context has a namespace)
+          # A better approach might be to check request context if possible, or simply deny if metadata.namespace is 'default'.
+          =(namespace): "!default" # Denies if namespace is explicitly 'default'

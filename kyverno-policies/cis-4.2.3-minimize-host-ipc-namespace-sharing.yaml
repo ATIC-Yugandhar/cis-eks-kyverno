@@ -8,4 +8,18 @@ metadata:
     cis.kubernetes.io/id: "4.2.3"
     description: "Minimize host IPC namespace sharing"
 spec:
-  # TODO: Replace with official Kyverno policy spec
+  validationFailureAction: Audit # Change to 'enforce' to block
+  background: true
+  rules:
+    - name: host-ipc-sharing
+      match:
+        any:
+        - resources:
+            kinds:
+              - Pod
+      validate:
+        message: >-
+          Sharing the host IPC namespace is disallowed. The field spec.hostIPC must be unset or set to `false`.
+        pattern:
+          spec:
+            =(hostIPC): "false"

@@ -8,4 +8,27 @@ metadata:
     cis.kubernetes.io/id: "4.2.1"
     description: "Minimize privileged containers"
 spec:
-  # TODO: Replace with official Kyverno policy spec
+  validationFailureAction: Audit # Change to 'enforce' to block
+  background: true
+  rules:
+    - name: privileged-containers
+      match:
+        any:
+        - resources:
+            kinds:
+              - Pod
+      validate:
+        message: >-
+          Privileged containers are disallowed. The field
+          spec.containers[*].securityContext.privileged must be unset or set to `false`.
+        pattern:
+          spec:
+            =(initContainers):
+              - =(securityContext):
+                  =(privileged): "false"
+            containers:
+              - =(securityContext):
+                  =(privileged): "false"
+            =(ephemeralContainers):
+              - =(securityContext):
+                  =(privileged): "false"

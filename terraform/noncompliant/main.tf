@@ -25,6 +25,9 @@ module "vpc" {
   enable_dns_hostnames = false
   enable_dns_support   = false
 
+  # Ensure public subnets auto-assign public IPs for EKS nodes
+  map_public_ip_on_launch = true
+
   # Non-compliant: NAT gateway disabled, public subnets used for nodes
   enable_nat_gateway = false
   single_nat_gateway = false

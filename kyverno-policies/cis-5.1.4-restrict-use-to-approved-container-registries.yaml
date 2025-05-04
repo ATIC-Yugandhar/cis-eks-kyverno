@@ -8,4 +8,23 @@ metadata:
     cis.kubernetes.io/id: "5.1.4"
     description: "Restrict use to approved container registries"
 spec:
-  # TODO: Replace with official Kyverno policy spec
+  validationFailureAction: Audit # Change to 'enforce' to block
+  background: true
+  rules:
+  - name: validate-registries
+    match:
+      any:
+      - resources:
+          kinds:
+          - Pod
+    validate:
+      message: "Images must be from approved registries (your-registry.com, another-registry.com)."
+      # Customize the image pattern below with your allowed registries
+      pattern:
+        spec:
+          =(initContainers):
+          - image: "your-registry.com/* | another-registry.com/*"
+          containers:
+          - image: "your-registry.com/* | another-registry.com/*"
+          =(ephemeralContainers):
+          - image: "your-registry.com/* | another-registry.com/*"

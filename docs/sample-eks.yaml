@@ -8,6 +8,9 @@ kind: ServiceAccount
 metadata:
   name: sample-sa
   namespace: sample-namespace
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::123456789012:role/sample-irsa-role
+automountServiceAccountToken: false
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -23,10 +26,13 @@ spec:
     metadata:
       labels:
         app: sample
+        network-policy/status: applied
     spec:
       serviceAccountName: sample-sa
       containers:
         - name: sample-container
-          image: nginx:1.25
+          image: 123456789012.dkr.ecr.us-west-2.amazonaws.com/nginx:1.25
+          securityContext:
+            allowPrivilegeEscalation: false
           ports:
             - containerPort: 80

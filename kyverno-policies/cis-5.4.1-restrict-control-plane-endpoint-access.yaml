@@ -1,0 +1,13 @@
+# CIS Control: 5.4.1
+# Description: Restrict control plane endpoint access
+# NOTE: This control is not enforceable via Kyverno policy. Stub only.
+
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: cis-5.4.1-restrict-control-plane-endpoint-access
+  annotations:
+    cis.kubernetes.io/id: "5.4.1"
+    cis.kubernetes.io/description: "Restrict control plane endpoint access"
+spec:
+  rules: []

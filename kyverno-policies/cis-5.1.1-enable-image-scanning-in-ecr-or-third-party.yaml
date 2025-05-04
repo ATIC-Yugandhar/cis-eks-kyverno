@@ -1,0 +1,13 @@
+# CIS Control: 5.1.1
+# Description: Enable image scanning in ECR or third-party
+# NOTE: This control is not enforceable via Kyverno policy. Stub only.
+
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: cis-5.1.1-enable-image-scanning-in-ecr-or-third-party
+  annotations:
+    cis.kubernetes.io/id: "5.1.1"
+    cis.kubernetes.io/description: "Enable image scanning in ECR or third-party"
+spec:
+  rules: []
