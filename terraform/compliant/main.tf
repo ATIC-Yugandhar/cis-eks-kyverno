@@ -1,191 +1,102 @@
-terraform {
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = ">= 5.0"
-    }
-  }
-}
-
 provider "aws" {
   region = var.region
 }
 
-module "vpc" {
-  source  = "terraform-aws-modules/vpc/aws"
-  version = "5.1.0"
-
-  name = "compliant-eks-vpc"
-  cidr = var.vpc_cidr
-
-  azs             = var.azs
-  private_subnets = var.private_subnets
-  public_subnets  = var.public_subnets
-
-  enable_dns_hostnames = true
-  enable_dns_support   = true
-
-  # CIS: Only private subnets for worker nodes
-  enable_nat_gateway = true
-  single_nat_gateway = true
+# VPC with private subnets
+resource "aws_vpc" "main" {
+  cidr_block = var.vpc_cidr
 }
 
-module "eks" {
-  source          = "terraform-aws-modules/eks/aws"
-  version         = "20.8.4"
+resource "aws_subnet" "private" {
+  count             = length(var.private_subnets)
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = var.private_subnets[count.index]
+  availability_zone = element(["${var.region}a", "${var.region}b", "${var.region}c"], count.index)
+}
 
-  cluster_name    = var.cluster_name
-  cluster_version = var.cluster_version
+# VPC Flow Logs (CIS: VPC logging)
+resource "aws_cloudwatch_log_group" "vpc_flow" {
+  name = "/aws/vpc/flowlogs"
+}
 
-  vpc_id     = module.vpc.vpc_id
-  subnet_ids = module.vpc.private_subnets
+resource "aws_flow_log" "vpc" {
+  log_destination      = aws_cloudwatch_log_group.vpc_flow.arn
+  log_destination_type = "cloud-watch-logs"
+  traffic_type         = "ALL"
+  vpc_id               = aws_vpc.main.id
+}
 
-  enable_irsa = true
+# KMS Key for EKS secrets encryption
+resource "aws_kms_key" "eks" {
+  description             = "EKS Secret Encryption Key"
+  deletion_window_in_days = 7
+  enable_key_rotation     = true
+}
 
-  cluster_enabled_log_types = [
-    "api",
-    "audit",
-    "authenticator",
-    "controllerManager",
-    "scheduler"
-  ]
+# IAM Role for EKS
+resource "aws_iam_role" "eks" {
+  name = "${var.cluster_name}-eks-role"
+  assume_role_policy = data.aws_iam_policy_document.eks_assume_role.json
+}
 
-  # CIS: Enable control plane logging, restrict public access, use IRSA, etc.
-  cluster_endpoint_public_access  = false
-  cluster_endpoint_private_access = true
-
-  eks_managed_node_groups = {
-    default = {
-      desired_size = 2
-      max_size     = 3
-      min_size     = 1
-
-      instance_types = ["t3.medium"]
-
-      subnet_ids = module.vpc.private_subnets
+data "aws_iam_policy_document" "eks_assume_role" {
+  statement {
+    actions = ["sts:AssumeRole"]
+    principals {
+      type        = "Service"
+      identifiers = ["eks.amazonaws.com"]
     }
   }
 }
 
-output "cluster_name" {
-  value = module.eks.cluster_name
-}
+# EKS Cluster with audit logging, private endpoint, encryption, OIDC
+resource "aws_eks_cluster" "main" {
+  name     = var.cluster_name
+  role_arn = aws_iam_role.eks.arn
+  version  = var.cluster_version
 
-output "cluster_endpoint" {
-  value = module.eks.cluster_endpoint
-}
-resource "aws_security_group" "bastion" {
-  name        = "bastion-sg"
-  description = "Allow SSH from trusted IPs and access to EKS endpoint"
-  vpc_id      = module.vpc.vpc_id
-
-  ingress {
-    description = "SSH from trusted IPs"
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = var.trusted_ssh_cidr_blocks
+  vpc_config {
+    subnet_ids              = aws_subnet.private[*].id
+    endpoint_private_access = true
+    endpoint_public_access  = false
   }
 
-  egress {
-    description = "Allow all outbound"
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
+  enabled_cluster_log_types = ["api", "audit", "authenticator", "controllerManager", "scheduler"]
+
+  kubernetes_network_config {
+    service_ipv4_cidr = "10.100.0.0/16"
   }
-}
 
-resource "tls_private_key" "bastion_ssh_key" {
-  algorithm = "RSA"
-  rsa_bits  = 4096
-}
-
-resource "aws_key_pair" "bastion" {
-  key_name   = "bastion-key"
-  public_key = tls_private_key.bastion_ssh_key.public_key_openssh
-}
-
-resource "local_file" "bastion_private_key" {
-  content              = tls_private_key.bastion_ssh_key.private_key_pem
-  filename             = "${path.module}/bastion_key.pem"
-  file_permission      = "0600"
-  directory_permission = "0700"
-}
-
-# IAM role and instance profile for bastion
-resource "aws_iam_role" "bastion_role" {
-  name = "bastion-iam-role"
-  assume_role_policy = <<EOF
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Principal": {"Service": "ec2.amazonaws.com"},
-      "Action": "sts:AssumeRole"
+  encryption_config {
+    resources = ["secrets"]
+    provider {
+      key_arn = aws_kms_key.eks.arn
     }
-  ]
-}
-EOF
-}
-
-resource "aws_iam_role_policy_attachment" "bastion_eks" {
-  role       = aws_iam_role.bastion_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
-}
-
-resource "aws_iam_role_policy_attachment" "bastion_eks_readonly" {
-  role       = aws_iam_role.bastion_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSReadOnlyAccess"
-}
-
-resource "aws_iam_instance_profile" "bastion_profile" {
-  name = "bastion-instance-profile"
-  role = aws_iam_role.bastion_role.name
-}
-
-resource "aws_instance" "bastion" {
-  ami                    = data.aws_ami.ubuntu.id  # use Ubuntu Jammy
-  instance_type          = "t3.micro"
-  subnet_id              = module.vpc.public_subnets[0]
-  vpc_security_group_ids = [aws_security_group.bastion.id]
-  key_name               = aws_key_pair.bastion.key_name
-  associate_public_ip_address = true
-  iam_instance_profile   = aws_iam_instance_profile.bastion_profile.name
-
-  tags = {
-    Name = "bastion-host"
   }
 }
 
-data "aws_ami" "ubuntu" {
-  most_recent = true
-  owners      = ["099720109477"]  # Canonical
-
-  filter {
-    name   = "name"
-    values = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"]
+# Node Group in private subnets
+resource "aws_eks_node_group" "main" {
+  cluster_name    = aws_eks_cluster.main.name
+  node_group_name = "compliant-ng"
+  node_role_arn   = aws_iam_role.eks.arn
+  subnet_ids      = aws_subnet.private[*].id
+  instance_types  = [var.node_instance_type]
+  scaling_config {
+    desired_size = var.desired_capacity
+    min_size     = var.min_size
+    max_size     = var.max_size
   }
-
-  filter {
-    name   = "virtualization-type"
-    values = ["hvm"]
-  }
 }
 
-output "bastion_public_ip" {
-  value = aws_instance.bastion.public_ip
+# Kyverno via Helm
+resource "helm_release" "kyverno" {
+  name       = "kyverno"
+  repository = "https://kyverno.github.io/kyverno/"
+  chart      = "kyverno"
+  version    = "3.0.0"
+  namespace  = "kyverno"
+  create_namespace = true
 }
 
-output "bastion_ssh_instructions" {
-  value = "ssh -i <path-to-private-key> ubuntu@${aws_instance.bastion.public_ip}"
-}
-
-output "bastion_key_name" {
-  value = aws_key_pair.bastion.key_name
-}
-
-output "bastion_public_key" {
-  value = aws_key_pair.bastion.public_key
-}
+# (Optional) CloudTrail, Config, GuardDuty, etc. can be added similarly 

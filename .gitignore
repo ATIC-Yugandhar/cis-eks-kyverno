@@ -1,38 +1,60 @@
-# macOS
+# System files
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
 
-# Terraform local state and configuration
+# Terraform files
 .terraform/
 .terraform.lock.hcl
+terraform.tfstate
+terraform.tfstate.backup
 *.tfstate
 *.tfstate.*
-terraform.tfvars
-*.tfplan
-tfplan-*.binary
-tfplan-*.json
-*_wrapped.json
+crash.log
+crash.*.log
+*.tfvars
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Python virtual environment
+.venv/
+venv/
+ENV/
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Test results
+*.json
+!package.json
+!package-lock.json
+
+# Temporary files
+*.log
+*.tmp
+*.temp
 
 # Results and temporary files
 /results/*
 !results/.gitkeep
 
-# Temporary editor files
-*.swp
-*.swo
-*~
-.vscode/
-.idea/
-
 # Backup files
 *.bak
-*.tmp
 *.orig
 
 # Don't ignore the changelog - ensure it's tracked
 !docs/changelog.md
 
 # Logs
-*.log
 docs/changelog.md
 # Sensitive Terraform-generated private key
 terraform/compliant/bastion_key.pem

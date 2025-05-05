@@ -6,6 +6,21 @@ This report summarizes the validation of Amazon EKS clusters against the CIS Ben
 
 ---
 
+## Test Automation and Policy Coverage
+
+- All custom and supported Kyverno policies are now covered by automated tests.
+- Each policy has compliant and noncompliant test cases in the `tests/` directory.
+- The script `./scripts/test-all-policies.sh` runs all tests, deletes previous results, and prints a summary of passed, failed, and errored cases.
+- As of the last run, **all test cases are passing**.
+- Results are written to `results-kyverno-tests.txt` (detailed) and `results-kyverno-summary.txt` (summary).
+
+### Usage
+```bash
+./scripts/test-all-policies.sh
+```
+
+---
+
 ## Testing Workflows
 
 ### Local Testing
@@ -16,7 +31,7 @@ This report summarizes the validation of Amazon EKS clusters against the CIS Ben
 ### Cluster-Based Testing
 
 - Policies were deployed to live EKS clusters (both compliant and noncompliant).
-- Validation was performed using Kyverno’s reporting features and manual inspection of cluster resources.
+- Validation was performed using Kyverno's reporting features and manual inspection of cluster resources.
 
 ---
 
@@ -58,6 +73,7 @@ This report summarizes the validation of Amazon EKS clusters against the CIS Ben
 - **scripts/compliant.sh:** Provisions a compliant EKS cluster with all security controls enabled.
 - **scripts/noncompliant.sh:** Provisions a noncompliant EKS cluster with relaxed controls for negative testing.
 - **scripts/cleanup.sh:** Tears down clusters and cleans up resources.
+- **scripts/test-all-policies.sh:** Runs all Kyverno policy tests and prints a summary (see above).
 
 ### Usage
 
@@ -70,9 +86,19 @@ This report summarizes the validation of Amazon EKS clusters against the CIS Ben
 
 # Cleanup resources
 ./scripts/cleanup.sh
+
+# Run all Kyverno policy tests
+./scripts/test-all-policies.sh
 ```
 
-Scripts automate cluster provisioning, policy application, and resource cleanup to ensure repeatable and consistent testing.
+Scripts automate cluster provisioning, policy application, resource cleanup, and policy test validation to ensure repeatable and consistent testing.
+
+---
+
+## Known Limitations
+
+- Some CIS controls require AWS-side enforcement or are only partially enforceable by Kyverno (see `docs/UNENFORCEABLE_CONTROLS.md`).
+- Kyverno CLI has limitations with pattern matching in multi-line string fields (e.g., for audit logging controls 2.1.1, 2.1.2). These may require manual review for full assurance.
 
 ---
 

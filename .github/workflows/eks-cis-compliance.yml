@@ -1,0 +1,130 @@
+name: CIS EKS Compliance Testing
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '0 0 * * 0'  # Run weekly on Sundays at midnight
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  verify:
+    name: Verify code and lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.5.0
+
+      - name: Format check
+        run: terraform fmt -check -recursive
+
+      - name: Initialize Terraform
+        run: |
+          cd terraform/enhanced/compliant
+          terraform init -backend=false
+          cd ../noncompliant
+          terraform init -backend=false
+
+      - name: Validate Terraform
+        run: |
+          cd terraform/enhanced/compliant
+          terraform validate
+          cd ../noncompliant
+          terraform validate
+
+  test:
+    name: Run compliance tests
+    needs: verify
+    runs-on: ubuntu-latest
+    # Only run on scheduled runs or if explicitly requested via PR label
+    if: github.event_name == 'schedule' || contains(github.event.pull_request.labels.*.name, 'run-tests')
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: us-west-2
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.5.0
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'v1.26.0'
+
+      - name: Install Kyverno CLI
+        run: |
+          curl -LO https://github.com/kyverno/kyverno/releases/download/v1.10.0/kyverno-cli_v1.10.0_linux_x86_64.tar.gz
+          tar -xvf kyverno-cli_v1.10.0_linux_x86_64.tar.gz
+          sudo mv kyverno /usr/local/bin/
+          kyverno version
+
+      - name: Deploy test clusters
+        run: ./bin/eks-kyverno-test setup --auto-approve
+
+      - name: Run tests
+        run: ./bin/eks-kyverno-test test --compliant-kubeconfig kubeconfig-compliant --noncompliant-kubeconfig kubeconfig-noncompliant
+
+      - name: Generate reports
+        run: ./bin/eks-kyverno-test report --output-format markdown,json,html
+
+      - name: Clean up resources
+        if: always()
+        run: ./bin/eks-kyverno-test cleanup --auto-approve
+
+      - name: Archive reports
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: compliance-reports
+          path: reports/
+
+  report-pr:
+    name: Add report to PR
+    needs: test
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Download reports
+        uses: actions/download-artifact@v3
+        with:
+          name: compliance-reports
+          path: reports
+
+      - name: Comment on PR
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const reportPath = 'reports/compliance/compliant-cluster.md';
+            
+            if (fs.existsSync(reportPath)) {
+              const report = fs.readFileSync(reportPath, 'utf8');
+              const summary = report.split('\n').slice(0, 20).join('\n');
+              
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: `## Compliance Test Results\n\n${summary}\n\n[See full report in artifacts](${process.env.GITHUB_SERVER_URL}/${context.repo.owner}/${context.repo.repo}/actions/runs/${process.env.GITHUB_RUN_ID})`
+              });
+            }

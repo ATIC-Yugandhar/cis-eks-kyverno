@@ -1,0 +1,28 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: custom-5-1-2-minimize-ecr-access
+  annotations:
+    policies.kyverno.io/category: CIS 5.1.2
+    policies.kyverno.io/description: |
+      Checks for ECR access annotation or label in ServiceAccount or Namespace if available.
+spec:
+  validationFailureAction: audit
+  background: true
+  rules:
+    - name: check-minimize-ecr-access
+      match:
+        any:
+        - resources:
+            kinds:
+              - ServiceAccount
+              - Namespace
+      validate:
+        message: "ECR access should be minimized (look for ecr-access annotation or label)."
+        anyPattern:
+          - metadata:
+              annotations:
+                ecr-access: "read-only"
+          - metadata:
+              labels:
+                ecr-access: "read-only" 

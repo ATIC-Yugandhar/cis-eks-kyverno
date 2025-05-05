@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: compliant-pod
+  annotations:
+    image-scanning: "enabled"
+spec:
+  containers:
+    - name: nginx
+      image: nginx:latest 

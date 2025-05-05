@@ -1,0 +1,15 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: custom-3.1.4-noncompliant
+policies:
+  - ../../../kyverno-policies/custom-3.1.4.yaml
+resources:
+  - node.yaml
+results:
+  - policy: custom-3-1-4-kubelet-config-owner
+    rule: check-kubelet-config-owner
+    resources:
+      - noncompliant-node
+    kind: Node
+    result: fail 
