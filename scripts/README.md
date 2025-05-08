@@ -1,40 +1,29 @@
-# EKS CIS Benchmark Scripts
+# Automation Scripts
 
-This directory contains utility scripts for the EKS CIS Benchmark project.
+This folder contains automation scripts for validating CIS EKS compliance at the Terraform plan level using Kyverno JSON policies.
 
-## Available Scripts
+## Main Script: test-terraform-cis-policies.sh
 
-### cleanup-repo.sh
+This script automates the following workflow:
 
-Cleans up the repository after the enhanced structure implementation:
+1. Generates Terraform plans for both the compliant and noncompliant EKS stacks.
+2. Converts the plans to JSON format.
+3. Runs all Kyverno JSON policies (from `kyverno-policies/terraform/`) against each plan using `kyverno-json`.
+4. Writes results to `reports/compliance/` for both stacks.
 
-- Removes redundant directories (`terraform/compliant` and `terraform/noncompliant`) now replaced by the enhanced structure
-- Removes unnecessary comments and debug code from Terraform files, Python scripts, and shell scripts
-- Provides a safer cleanup process with user confirmation
+### Usage
 
-Usage:
-
-```bash
-./cleanup-repo.sh
+```sh
+./test-terraform-cis-policies.sh
 ```
 
-### test-all-policies.sh
+- Requires: Terraform, kyverno-json CLI, and AWS credentials for planning.
 
-Runs tests for all Kyverno policies against a Kubernetes cluster:
+## Other Scripts
+- `test-all-policies.sh`: Runs Kyverno tests for all test cases in the `tests/` folder (if present).
+- `compliant-validate.sh`, `noncompliant-validate.sh`: Validate individual stacks.
+- `cleanup.sh`: Clean up generated files and plans.
 
-```bash
-export KUBECONFIG=/path/to/your/kubeconfig
-./test-all-policies.sh
-```
-
-### compliant.sh and noncompliant.sh
-
-Legacy deployment scripts for compliant and non-compliant clusters. These are kept for reference but the new approach uses the centralized configuration in the enhanced structure.
-
-## Adding New Scripts
-
-When adding new scripts to this directory:
-
-1. Make them executable: `chmod +x scripts/your-script.sh`
-2. Add documentation in this README file
-3. Ensure they follow best practices for shell scripts (use `set -e`, provide help text, etc.)
+## References
+- See `kyverno-policies/terraform/README.md` for policy details.
+- See `terraform/compliant/README.md` and `terraform/noncompliant/README.md` for stack documentation. 

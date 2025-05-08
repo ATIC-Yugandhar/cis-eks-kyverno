@@ -1,146 +1,86 @@
 # CIS EKS Kyverno Compliance Framework
 
-A comprehensive framework for implementing and testing CIS benchmarks on Amazon EKS using Kyverno policies.
+A robust, auditable framework for implementing and validating CIS Amazon EKS Benchmark controls using Kyverno policies and Terraform. The repo enables automated deployment, testing, and reporting for both compliant and noncompliant EKS clusters.
 
-## 🌟 Enhanced Structure Overview
+---
 
-This repository has been enhanced with a new modular infrastructure that provides:
+## Key Features
 
-1. **Parameter-driven compliance controls**: A centralized configuration system maps CIS controls to specific Terraform settings
-2. **Enhanced module structure**: Hierarchical modules for EKS cluster, networking, security, logging, and Kyverno integration
-3. **Testing framework**: Automated validation of compliant and non-compliant configurations
-4. **Reporting infrastructure**: Comprehensive compliance reporting and visualization
-5. **CI/CD pipeline**: GitHub Actions workflows for automated testing and validation
+- **CIS-Compliant and Noncompliant EKS Deployments:** Automated Terraform stacks for both secure (compliant) and intentionally insecure (noncompliant) EKS clusters.
+- **Policy-as-Code:** Kyverno policies mapped to CIS controls, with test cases for each.
+- **Automated Validation:** Scripts to deploy clusters, generate Terraform JSON plans, and scan them with Kyverno.
+- **Test Framework:** Organized test cases for each CIS control, with expected pass/fail results.
+- **Cleanup Automation:** Scripted teardown of all resources.
+- **Separation of Concerns:** All sensitive operations and validation are performed inside the VPC for compliance.
 
-## 📂 Repository Structure
+---
+
+## Repository Structure
 
 ```
 .
-├── bin/                        # CLI tools
-│   └── eks-kyverno-test        # Unified workflow command-line tool
-├── terraform/
-│   ├── enhanced/               # Enhanced Terraform configurations
-│   │   ├── compliant/          # Compliant EKS cluster configuration  
-│   │   └── noncompliant/       # Non-compliant EKS cluster configuration
-│   ├── modules/                # Terraform modules
-│   │   ├── eks/               # Main orchestration module
-│   │   ├── eks_cluster/       # Core EKS cluster deployment
-│   │   ├── eks_config/        # Central configuration management
-│   │   ├── eks_logging/       # Logging and monitoring
-│   │   ├── eks_networking/    # Network configurations for EKS
-│   │   ├── eks_security/      # Security configurations for EKS
-│   │   ├── kyverno/           # Kyverno deployment and policies
-│   │   └── reporting/         # Compliance reporting infrastructure
-│   └── templates/              # Templates for resources
-│       └── kyverno/           # Kyverno policy templates
-├── kyverno-policies/           # Kyverno policies for CIS controls
-├── tests/                      # Test scenarios
-│   └── [control-id]/           # Test cases for each control
-├── reports/                    # Generated compliance reports
-│   ├── compliance/             # Compliance state reports
-│   ├── comparison/             # Comparative analysis
-│   ├── metrics/                # Performance and coverage metrics
-│   └── dashboard/              # Interactive dashboards
-└── scripts/                    # Utility scripts
+├── terraform/           # Infrastructure as code (compliant & noncompliant)
+├── kyverno-policies/    # Kyverno policies for CIS controls
+├── tests/               # Kyverno test cases for each control
+├── scripts/             # Automation scripts (deploy, validate, cleanup)
+├── reports/             # Generated compliance reports
+└── README.md            # This file
 ```
 
-## 🚀 Getting Started
+---
 
-### Quick Start
+## Quick Start
 
-1. Clone the repository
-2. Run the setup script:
+1. **Deploy a Compliant Cluster and Validate:**
+   ```bash
+   bash scripts/compliant-validate.sh
+   ```
+   - Deploys the compliant stack, generates a Terraform plan, and scans it with all Kyverno policies.
 
-```bash
-cd terraform/enhanced
-./setup.sh
-```
+2. **Deploy a Noncompliant Cluster and Validate:**
+   ```bash
+   bash scripts/noncompliant-validate.sh
+   ```
 
-3. Deploy a compliant cluster:
+3. **Cleanup All Resources:**
+   ```bash
+   bash scripts/cleanup.sh
+   ```
 
-```bash
-bin/eks-kyverno-test run --cluster-type compliant
-```
+---
 
-### CLI Usage
-
-The framework includes a CLI tool for managing the workflow:
-
-```bash
-# Deploy both cluster types and run all tests
-bin/eks-kyverno-test run-all
-
-# Deploy only compliant cluster and run specific tests
-bin/eks-kyverno-test run --cluster-type compliant --tests cis-3.2.1,cis-4.1.1
-
-# Run tests against existing clusters
-bin/eks-kyverno-test test --compliant-kubeconfig ~/kubeconfig-compliant \
-                        --noncompliant-kubeconfig ~/kubeconfig-noncompliant
-
-# Generate comprehensive compliance report
-bin/eks-kyverno-test report --output-format html,json,markdown
-
-# Clean up resources
-bin/eks-kyverno-test cleanup
-```
-
-## 🔒 CIS Controls Covered
-
-This framework implements and tests the following CIS EKS Benchmark controls:
-
-### Identity and Access Management
-
-- Control plane authentication and authorization
-- Pod Security Standards
-- Service account management
-- RBAC configuration
-
-### Logging and Monitoring
-
-- Control plane logging
-- Audit logging retention
-- Pod-level logging
-
-### Network Security
-
-- Network policy implementation
-- Cluster endpoint access
-- Service configuration
-
-### Data Encryption
-
-- Secrets encryption at rest
-- TLS configuration
-- Key management
-
-## 📊 Reporting
-
-The reporting infrastructure generates:
-
-1. **Compliance reports**: Detailed compliance state for each cluster
-2. **Comparison reports**: Side-by-side comparison of compliant vs. non-compliant clusters
-3. **Metrics**: Policy effectiveness and coverage metrics
-4. **Dashboards**: Interactive visualizations of compliance state
-
-## 🔄 CI/CD Integration
-
-The framework includes GitHub Actions workflows for:
-- Test execution on PR/push
-- Scheduled compliance checks
-- Report generation and publishing
-
-## 📦 Requirements
+## Requirements
 
 - Terraform v1.0+
 - AWS CLI v2
-- kubectl
 - Kyverno CLI
 - Python 3.8+
 
-## 🤝 Contributing
+---
+
+## How It Works
+
+- **Terraform** provisions EKS clusters (compliant and noncompliant) with all required AWS resources.
+- **Kyverno policies** are applied to the generated Terraform JSON plan to validate compliance.
+- **Test cases** in `tests/` provide resource manifests and expected results for each CIS control.
+- **Reports** are generated in `reports/compliance/` for both cluster types.
+
+---
+
+## Folder Overview
+
+- **terraform/**: Infrastructure as code for compliant and noncompliant EKS clusters.
+- **kyverno-policies/**: Kyverno policies mapped to CIS EKS Benchmark controls.
+- **tests/**: Kyverno test cases for each CIS control, with compliant and noncompliant scenarios.
+- **scripts/**: Automation scripts for deployment, validation, and cleanup.
+- **reports/**: Generated compliance reports from Kyverno scans.
+
+---
+
+## Contributing
 
 Contributions are welcome! Please feel free to submit a pull request.
 
-## 📜 License
+## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.

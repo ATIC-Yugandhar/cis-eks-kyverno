@@ -19,7 +19,7 @@ variable "cluster_version" {
 variable "node_instance_type" {
   description = "Instance type for EKS node group"
   type        = string
-  default     = "t3.medium"
+  default     = "t3.small"
 }
 
 variable "desired_capacity" {

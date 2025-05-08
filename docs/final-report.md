@@ -1,37 +1,32 @@
-# Final Report: EKS CIS Benchmark Validation with Kyverno
+# Final Report: EKS CIS Benchmark Validation with Kyverno JSON Policies
 
 ## Overview
 
-This report summarizes the validation of Amazon EKS clusters against the CIS Benchmark using Kyverno policies. Both compliant and noncompliant cluster architectures were tested to evaluate policy effectiveness and automation workflows.
+This report summarizes the validation of Amazon EKS clusters against the CIS Benchmark using Kyverno JSON policies at the Terraform plan level. Both compliant and noncompliant cluster architectures were tested to evaluate policy effectiveness and automation workflows.
 
 ---
 
-## Test Automation and Policy Coverage
+## Automated Plan-Level Policy Validation
 
-- All custom and supported Kyverno policies are now covered by automated tests.
-- Each policy has compliant and noncompliant test cases in the `tests/` directory.
-- The script `./scripts/test-all-policies.sh` runs all tests, deletes previous results, and prints a summary of passed, failed, and errored cases.
-- As of the last run, **all test cases are passing**.
-- Results are written to `results-kyverno-tests.txt` (detailed) and `results-kyverno-summary.txt` (summary).
+- All enforceable CIS controls are validated at the Terraform plan stage using Kyverno JSON policies (`kyverno-json`).
+- Policies are located in `kyverno-policies/terraform/` and are written in the `json.kyverno.io/v1alpha1` format.
+- The script `./scripts/test-terraform-cis-policies.sh` automates plan generation, policy scanning, and report creation for both compliant and noncompliant stacks.
+- Results are written to `reports/compliance/` as YAML files for each stack.
 
 ### Usage
 ```bash
-./scripts/test-all-policies.sh
+./scripts/test-terraform-cis-policies.sh
 ```
 
 ---
 
 ## Testing Workflows
 
-### Local Testing
+### Plan-Level Testing (Automated)
 
-- Kyverno policies were first validated locally using the Kyverno CLI.
-- Policies were applied to sample manifests and EKS configurations to ensure syntactic and logical correctness before cluster deployment.
-
-### Cluster-Based Testing
-
-- Policies were deployed to live EKS clusters (both compliant and noncompliant).
-- Validation was performed using Kyverno's reporting features and manual inspection of cluster resources.
+- Terraform plans are generated for both the compliant and noncompliant EKS stacks.
+- Kyverno JSON policies are run against the plan JSONs to validate CIS controls before any resources are applied.
+- Reports show which controls are passed or failed at the plan stage.
 
 ---
 
@@ -40,68 +35,51 @@ This report summarizes the validation of Amazon EKS clusters against the CIS Ben
 ### Compliant Cluster
 
 - **Private Networking:** All nodes and control plane endpoints are private, inaccessible from the public internet.
-- **IAM Authentication:** Access is restricted to authorized IAM users/roles.
-- **KMS Encryption:** Kubernetes secrets are encrypted at rest.
+- **KMS Encryption:** Kubernetes secrets are encrypted at rest (config block present in plan).
 - **Network Policies:** Enforced to restrict pod-to-pod and pod-to-external communications.
-- **TLS Everywhere:** All ingress/egress traffic is encrypted.
+- **Audit Logging:** Enabled in the EKS cluster config.
 
 ### Noncompliant Cluster
 
 - **Public Endpoints:** Nodes and/or control plane are accessible from the public internet.
-- **Weak Authentication:** IAM restrictions are relaxed or missing.
-- **No Encryption:** Secrets are stored unencrypted.
+- **No Encryption:** Secrets are stored unencrypted (no config block in plan).
 - **Open Network:** Network policies are absent or permissive.
-- **Lack of TLS:** Traffic may be unencrypted.
-
-#### Network Access Patterns
-
-- **Compliant:** Only internal VPC or bastion host can access the cluster; no direct public access.
-- **Noncompliant:** Cluster is reachable from the public internet, increasing risk.
+- **No Audit Logging:** Audit logging is disabled.
 
 ---
 
-## Bastion Host Requirement
+## Plan-Time vs Runtime Enforcement
 
-- For compliant clusters, a bastion host is required to access private endpoints for testing and administration.
-- The bastion host is deployed in a private subnet and accessed via secure methods (e.g., SSH with restricted IPs).
-- All testing and validation for private clusters were performed through the bastion host.
+- **Plan-Time:** Kyverno JSON policies can only validate what is present in the Terraform plan. Some values (e.g., computed ARNs, runtime IAM state) are not available until after apply.
+- **Runtime:** Some CIS controls require AWS-side or runtime validation. See `docs/UNENFORCEABLE_CONTROLS.md` for details.
+- Policies are written to check for configuration presence where possible, but full enforcement may require post-apply or AWS-side validation.
 
 ---
 
 ## Automation Scripts
 
-- **scripts/compliant.sh:** Provisions a compliant EKS cluster with all security controls enabled.
-- **scripts/noncompliant.sh:** Provisions a noncompliant EKS cluster with relaxed controls for negative testing.
-- **scripts/cleanup.sh:** Tears down clusters and cleans up resources.
-- **scripts/test-all-policies.sh:** Runs all Kyverno policy tests and prints a summary (see above).
+- **scripts/test-terraform-cis-policies.sh:** Automates plan generation, policy scanning, and report creation for both stacks.
+- **scripts/cleanup.sh:** Cleans up generated files and plans.
 
 ### Usage
 
 ```bash
-# Deploy compliant cluster
-./scripts/compliant.sh
+# Run plan-level policy validation
+./scripts/test-terraform-cis-policies.sh
 
-# Deploy noncompliant cluster
-./scripts/noncompliant.sh
-
-# Cleanup resources
+# Cleanup generated files
 ./scripts/cleanup.sh
-
-# Run all Kyverno policy tests
-./scripts/test-all-policies.sh
 ```
-
-Scripts automate cluster provisioning, policy application, resource cleanup, and policy test validation to ensure repeatable and consistent testing.
 
 ---
 
 ## Known Limitations
 
-- Some CIS controls require AWS-side enforcement or are only partially enforceable by Kyverno (see `docs/UNENFORCEABLE_CONTROLS.md`).
-- Kyverno CLI has limitations with pattern matching in multi-line string fields (e.g., for audit logging controls 2.1.1, 2.1.2). These may require manual review for full assurance.
+- Some CIS controls require AWS-side enforcement or are only partially enforceable at the plan level (see `docs/UNENFORCEABLE_CONTROLS.md`).
+- Plan-time validation is limited to what is present in the Terraform plan JSON.
 
 ---
 
 ## Conclusion
 
-Kyverno policies were validated in both compliant and noncompliant EKS environments. The compliant architecture enforced all CIS controls, while the noncompliant setup demonstrated policy violations. Automation scripts streamlined the testing process, and the bastion host enabled secure access to private clusters for validation.
+Kyverno JSON policies were validated in both compliant and noncompliant EKS plan scenarios. The compliant architecture passes all enforceable CIS controls at the plan stage, while the noncompliant setup demonstrates policy violations. Automation scripts streamline the validation process and generate auditable compliance reports.
