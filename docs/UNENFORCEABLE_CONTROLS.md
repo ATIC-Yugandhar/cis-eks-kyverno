@@ -9,16 +9,16 @@ This document lists all CIS EKS Benchmark controls that cannot be fully enforced
 
 | CIS ID  | Description                                              | Reason Not Enforceable at Plan Level             |
 |---------|----------------------------------------------------------|--------------------------------------------------|
-| 4.1.7   | Use Cluster Access Manager API                           | Requires AWS IAM/AWS API, not visible in plan    |
+| 4.1.7   | Use Cluster Access Manager API                           | Full enforcement requires AWS IAM/API access. Partial validation of `aws_eks_access_entry` configurations is possible if defined in the Terraform plan. |
 | 4.3.1   | Ensure CNI plugin supports network policies              | CNI plugin config is outside Terraform plan      |
 | 4.4.2   | Use external secret storage                              | External secret storage is not a Terraform/K8s resource |
-| 5.1.1   | Enable image scanning in ECR or third-party              | ECR/3rd-party scanning is outside Terraform plan |
-| 5.1.2   | Minimize user access to ECR                              | ECR is an AWS resource, not in plan              |
-| 5.1.3   | Limit cluster ECR access to read-only                    | ECR is an AWS resource, not in plan              |
-| 5.4.1   | Restrict control plane endpoint access                   | Control plane endpoint is managed by AWS         |
+| 5.1.1   | Enable image scanning in ECR or third-party              | Full enforcement relies on ECR/3rd-party scanning status. If ECR repositories are managed via Terraform, the `scan_on_push` setting is directly verifiable at plan-time. |
+| 5.1.2   | Minimize user access to ECR                              | Full enforcement can be complex due to policy subjectivity. Partial validation of relevant IAM and ECR policies is possible if defined in the Terraform plan. |
+| 5.1.3   | Limit cluster ECR access to read-only                    | Full enforcement can be complex due to policy subjectivity. Partial validation of relevant IAM and ECR policies (ensuring read-only access for the cluster) is possible if defined in the Terraform plan. |
+| 5.4.1   | Restrict control plane endpoint access                   | Directly enforceable if EKS cluster settings (`endpoint_public_access`, `public_access_cidrs`) are defined in the Terraform plan. Otherwise, requires AWS-side validation. |
 | 5.4.3   | Deploy private nodes                                     | Node deployment is managed by AWS                |
-| 5.4.5   | Use TLS to encrypt load balancer traffic                 | Load balancer TLS is managed by AWS              |
-| 5.5.1   | Manage users via IAM Authenticator or AWS CLI            | IAM Authenticator is outside Terraform plan      |
+| 5.4.5   | Use TLS to encrypt load balancer traffic                 | Verifiable if LoadBalancer Kubernetes Services or AWS Load Balancer resources (and their TLS configurations) are defined within the Terraform plan. Otherwise, requires AWS-side validation. |
+| 5.5.1   | Manage users via IAM Authenticator or AWS CLI            | Full enforcement is complex. Partial validation of `aws-auth` ConfigMap or EKS Access Entries is possible if managed via Terraform. |
 
 **Note:** Some controls are only partially enforceable (e.g., those requiring audit or external validation). For these, see the corresponding policy with `audit` mode and annotations.
 
