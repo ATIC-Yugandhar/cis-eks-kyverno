@@ -2,6 +2,10 @@
 
 This folder contains automation scripts for validating CIS EKS compliance at the Terraform plan level using Kyverno JSON policies.
 
+## Prerequisites
+
+- [Kyverno CLI must be installed](https://kyverno.io/docs/installation/) locally and/or in your Kubernetes cluster.
+
 ## Main Script: test-terraform-cis-policies.sh
 
 This script automates the following workflow:

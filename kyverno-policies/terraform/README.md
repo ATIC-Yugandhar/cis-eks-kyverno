@@ -6,6 +6,10 @@ This folder contains Kyverno policies written in the `json.kyverno.io/v1alpha1` 
 - Policies here are tailored for IaC (Terraform) security and compliance checks, specifically for CIS EKS Benchmark controls that can be enforced at the Terraform plan level.
 - The policies are used in an automated workflow (see `scripts/test-terraform-cis-policies.sh`) to validate both compliant and noncompliant EKS clusters.
 
+## Prerequisites
+
+- [Kyverno CLI must be installed](https://kyverno.io/docs/installation/) locally and/or in your Kubernetes cluster.
+
 ## Limitations
 
 - Some CIS controls (e.g., KMS encryption for secrets) rely on values that are only known after `terraform apply` (such as computed ARNs). In these cases, policies check for the presence of the configuration block (e.g., `encryption_config` for secrets) rather than the actual resolved value.

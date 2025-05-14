@@ -5,6 +5,10 @@
 - Automated validation is performed using `scripts/test-terraform-cis-policies.sh`.
 - See `kyverno-policies/terraform/README.md` for policy details and plan-time limitations.
 
+## Prerequisites
+
+- [Kyverno CLI must be installed](https://kyverno.io/docs/installation/) locally and/or in your Kubernetes cluster.
+
 ---
 
 ## Overview

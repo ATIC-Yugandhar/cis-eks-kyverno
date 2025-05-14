@@ -53,8 +53,10 @@ A robust, auditable framework for implementing and validating CIS Amazon EKS Ben
 
 - Terraform v1.0+
 - AWS CLI v2
-- Kyverno CLI
+- Kyverno CLI ([installation guide](https://kyverno.io/docs/installation/))
 - Python 3.8+
+
+**Prerequisite:** Kyverno must be installed in your Kubernetes cluster and/or locally for CLI usage. See the [Kyverno installation documentation](https://kyverno.io/docs/installation/) for instructions.
 
 ---
 

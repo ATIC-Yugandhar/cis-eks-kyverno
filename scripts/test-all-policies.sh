@@ -1,10 +1,11 @@
 #!/bin/bash
 set -e
 
-RESULTS_FILE="results-kyverno-tests.txt"
-SUMMARY_FILE="results-kyverno-summary.txt"
+RESULTS_FILE="reports/results-kyverno-tests.txt"
+SUMMARY_FILE="reports/results-kyverno-summary.txt"
 
-# Delete previous results files
+# Ensure reports directory exists and delete previous results files
+mkdir -p reports
 rm -f "$RESULTS_FILE" "$SUMMARY_FILE"
 
 PASSED=0
