@@ -34,7 +34,6 @@ ENV/
 *.swo
 
 # Test results
-*.json
 !package.json
 !package-lock.json
 
