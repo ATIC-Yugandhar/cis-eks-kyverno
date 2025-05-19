@@ -13,6 +13,7 @@ metadata:
       1. Terraform validation of EKS cluster encryption configuration
       2. Runtime validation of secret encryption
       3. KMS key policy validation
+spec:
   rules:
     # Rule 1: Validate Terraform EKS cluster configuration
     - name: validate-terraform-eks-encryption
@@ -97,4 +98,4 @@ metadata:
                 kms-key: "?*"
           - metadata:
               labels:
-                kms-key: "?*" 
+                kms-key: "?*"
