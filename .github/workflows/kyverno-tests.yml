@@ -18,9 +18,18 @@ jobs:
         with:
           terraform_version: 1.5.0
 
+      - name: Install jq
+        run: |
+          sudo apt-get update && sudo apt-get install -y jq
       - name: Install Kyverno CLI
         run: |
-          curl -sSfL https://raw.githubusercontent.com/kyverno/kyverno/main/cmd/cli/install/install.sh | sh
+          KYVERNO_VERSION=$(curl -s "https://api.github.com/repos/kyverno/kyverno/releases/latest" | jq -r .tag_name)
+          echo "Installing Kyverno CLI version: ${KYVERNO_VERSION}"
+          curl -L -o kyverno-cli.tar.gz "https://github.com/kyverno/kyverno/releases/download/${KYVERNO_VERSION}/kyverno-cli_${KYVERNO_VERSION}_linux_x86_64.tar.gz"
+          tar -xvzf kyverno-cli.tar.gz
+          sudo mv kyverno /usr/local/bin/
+          sudo chmod +x /usr/local/bin/kyverno
+          rm kyverno-cli.tar.gz
           kyverno version
 
       - name: Run test-all-policies.sh
