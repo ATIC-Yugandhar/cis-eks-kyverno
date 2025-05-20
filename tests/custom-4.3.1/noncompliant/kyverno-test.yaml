@@ -1,0 +1,15 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: custom-4.3.1-noncompliant
+policies:
+  - ../../../kyverno-policies/custom-4.3.1.yaml
+resources:
+  - namespace.yaml
+results:
+  - policy: custom-4-3-1-cni-supports-network-policies
+    rule: check-cni-supports-network-policies
+    resources:
+      - noncompliant-ns
+    kind: Namespace
+    result: fail 

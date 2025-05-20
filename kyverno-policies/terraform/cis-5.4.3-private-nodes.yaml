@@ -1,0 +1,13 @@
+# CIS 5.4.3 - Deploy private nodes
+apiVersion: json.kyverno.io/v1alpha1
+kind: ValidatingPolicy
+metadata:
+  name: cis-5-4-3-private-nodes
+spec:
+  rules:
+    - name: eks-nodegroup-private-subnets
+      assert:
+        all:
+          - message: "EKS node groups must be deployed in private subnets."
+            check:
+              (length(planned_values.root_module.resources[?type=='aws_eks_node_group' && (values.subnet_ids==null || (values.subnet_ids && length(values.subnet_ids) > `0`))]) > `0`): true 

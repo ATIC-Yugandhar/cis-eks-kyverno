@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: noncompliant-cm
+  namespace: kyverno-aws
+data:
+  logging: |
+    clusterLogging:
+      - types:
+          - api
+        enabled: true 

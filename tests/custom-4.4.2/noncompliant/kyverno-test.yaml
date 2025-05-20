@@ -1,0 +1,15 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: custom-4.4.2-noncompliant
+policies:
+  - ../../../kyverno-policies/custom-4.4.2.yaml
+resources:
+  - secret.yaml
+results:
+  - policy: custom-4-4-2-external-secret-storage
+    rule: check-external-secret-storage
+    resources:
+      - noncompliant-secret
+    kind: Secret
+    result: fail 

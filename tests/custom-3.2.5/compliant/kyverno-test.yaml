@@ -1,0 +1,15 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: custom-3.2.5-compliant
+policies:
+  - ../../../kyverno-policies/custom-3.2.5.yaml
+resources:
+  - node.yaml
+results:
+  - policy: custom-3-2-5-streaming-connection-idle-timeout
+    rule: check-streaming-connection-idle-timeout
+    resources:
+      - compliant-node
+    kind: Node
+    result: pass 

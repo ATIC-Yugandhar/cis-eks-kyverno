@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: compliant-configmap
+  namespace: kyverno-aws
+data:
+  logging: |
+    clusterLogging:
+      - types:
+          - audit
+        enabled: true 

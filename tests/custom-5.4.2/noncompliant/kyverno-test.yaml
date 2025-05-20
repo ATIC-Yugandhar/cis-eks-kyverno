@@ -1,0 +1,15 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: custom-5.4.2-noncompliant
+policies:
+  - ../../../kyverno-policies/custom-5.4.2.yaml
+resources:
+  - configmap.yaml
+results:
+  - policy: custom-5-4-2-private-endpoint
+    rule: check-private-endpoint
+    resources:
+      - noncompliant-cm
+    kind: ConfigMap
+    result: fail 

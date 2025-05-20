@@ -1,0 +1,15 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: custom-5.4.5-noncompliant
+policies:
+  - ../../../kyverno-policies/custom-5.4.5.yaml
+resources:
+  - service.yaml
+results:
+  - policy: custom-5-4-5-tls-load-balancer
+    rule: check-tls-load-balancer
+    resources:
+      - noncompliant-svc
+    kind: Service
+    result: fail 
