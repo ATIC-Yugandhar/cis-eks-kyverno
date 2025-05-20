@@ -13,13 +13,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Kind
-        uses: engineerd/setup-kind@v0.5.0
-
-      - name: Install kubectl
-        uses: azure/setup-kubectl@v3
-        with:
-          version: v1.27.0
+      - name: Create Kind cluster
+        run: |
+          chmod +x demo-kind-kyverno/create_cluster.sh
+          demo-kind-kyverno/create_cluster.sh
 
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v2
