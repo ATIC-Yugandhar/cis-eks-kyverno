@@ -13,6 +13,17 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Install Kyverno CLI
+        run: |
+          KYVERNO_VERSION=$(curl -s "https://api.github.com/repos/kyverno/kyverno/releases/latest" | jq -r .tag_name)
+          echo "Installing Kyverno CLI version: ${KYVERNO_VERSION}"
+          curl -L -o kyverno-cli.tar.gz "https://github.com/kyverno/kyverno/releases/download/${KYVERNO_VERSION}/kyverno-cli_${KYVERNO_VERSION}_linux_x86_64.tar.gz"
+          tar -xvzf kyverno-cli.tar.gz
+          sudo mv kyverno /usr/local/bin/
+          sudo chmod +x /usr/local/bin/kyverno
+          rm kyverno-cli.tar.gz
+          kyverno version
+          
       - name: Create Kind cluster
         run: |
           chmod +x demo-kind-kyverno/create_cluster.sh
@@ -27,16 +38,6 @@ jobs:
         run: |
           sudo apt-get update && sudo apt-get install -y jq
 
-      - name: Install Kyverno CLI
-        run: |
-          KYVERNO_VERSION=$(curl -s "https://api.github.com/repos/kyverno/kyverno/releases/latest" | jq -r .tag_name)
-          echo "Installing Kyverno CLI version: ${KYVERNO_VERSION}"
-          curl -L -o kyverno-cli.tar.gz "https://github.com/kyverno/kyverno/releases/download/${KYVERNO_VERSION}/kyverno-cli_${KYVERNO_VERSION}_linux_x86_64.tar.gz"
-          tar -xvzf kyverno-cli.tar.gz
-          sudo mv kyverno /usr/local/bin/
-          sudo chmod +x /usr/local/bin/kyverno
-          rm kyverno-cli.tar.gz
-          kyverno version
 
       - name: Run test-all-policies.sh
         run: ./scripts/test-all-policies.sh
