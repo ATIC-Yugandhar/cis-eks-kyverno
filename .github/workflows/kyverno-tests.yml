@@ -33,19 +33,15 @@ jobs:
           kyverno version
 
       - name: Run test-all-policies.sh
-        run: |
-          mkdir -p reports/script-tests
-          ./scripts/test-all-policies.sh > reports/script-tests/test-all-policies-report.txt || true
+        run: ./scripts/test-all-policies.sh
 
       - name: Run test-terraform-cis-policies.sh
-        run: |
-          mkdir -p reports/script-tests
-          ./scripts/test-terraform-cis-policies.sh > reports/script-tests/test-terraform-cis-policies-report.txt || true
+        run: ./scripts/test-terraform-cis-policies.sh
 
-      - name: Upload script test reports
+      - name: Upload test reports
         uses: actions/upload-artifact@v4
         with:
-          name: script-test-reports
+          name: kyverno-test-reports
           path: |
-            reports/script-tests/test-all-policies-report.txt
-            reports/script-tests/test-terraform-cis-policies-report.txt
+            reports/script-tests/**
+            reports/kyverno_scan_cluster_resources_report.yaml
