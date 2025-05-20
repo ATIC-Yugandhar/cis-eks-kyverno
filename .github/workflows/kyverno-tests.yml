@@ -24,6 +24,20 @@ jobs:
           rm kyverno-cli.tar.gz
           kyverno version
           
+      - name: Install Kind
+        run: |
+          curl -Lo ./kind https://kind.sigs.k8s.io/dl/latest/kind-linux-amd64
+          chmod +x ./kind
+          sudo mv ./kind /usr/local/bin/kind
+          kind version
+
+      - name: Install yq
+        run: |
+          curl -Lo ./yq https://github.com/mikefarah/yq/releases/download/v4.40.5/yq_linux_amd64
+          chmod +x ./yq
+          sudo mv ./yq /usr/local/bin/yq
+          yq --version
+
       - name: Create Kind cluster
         run: |
           chmod +x demo-kind-kyverno/create_cluster.sh
@@ -37,6 +51,12 @@ jobs:
       - name: Install jq
         run: |
           sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Create directories and set permissions
+        run: |
+          mkdir -p reports/compliance
+          chmod +x scripts/test-all-policies.sh
+          chmod +x scripts/test-terraform-cis-policies.sh
 
 
       - name: Run test-all-policies.sh
@@ -52,5 +72,7 @@ jobs:
         with:
           name: kyverno-test-reports
           path: |
-            reports/script-tests/**
-            reports/kyverno_scan_cluster_resources_report.yaml
+            reports/**
+            reports/results-kyverno-tests.txt
+            reports/results-kyverno-summary.txt
+            reports/compliance/*.yaml
