@@ -7,7 +7,6 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
 # Paths
 POLICIES_DIR="$SCRIPT_DIR/../kyverno-policies" # Main directory for all policy sets
 
-SAMPLE_POLICY_FILE="$SCRIPT_DIR/sample-test-policy.yaml"
 # !!! IMPORTANT: Please update this placeholder with an ACTUAL policy file path from your policy set !!!
 # This policy should be one you expect to apply to the Pod resource (manifests/pod.yaml).
 # For example, from a CIS EKS policy set, it might be something like:
@@ -31,7 +30,9 @@ FULL_POLICIES_APPLY_REPORT_FILE_STDERR="$APPLY_REPORT_DIR/kyverno_full_policies_
 mkdir -p "$APPLY_REPORT_DIR"
 
 # Verify policy files and directories
-if [ ! -f "$SAMPLE_POLICY_FILE" ]; then echo "Error: Sample policy ($SAMPLE_POLICY_FILE) not found."; exit 1; fi
+
+echo "Running Kyverno tests for all policies in kyverno-policies/"
+kyverno test kyverno-policies/
 if [ ! -d "$POLICIES_DIR" ]; then echo "Error: Main Policies directory ($POLICIES_DIR) not found."; exit 1; fi
 
 SKIP_SINGLE_SPECIFIC_POLICY_TEST=true
@@ -54,18 +55,7 @@ if [ ! -f "$POD_RESOURCE_FILE" ]; then echo "Error: Pod resource ($POD_RESOURCE_
 if [ ! -f "$CONFIGMAP_RESOURCE_FILE" ]; then echo "Error: ConfigMap resource ($CONFIGMAP_RESOURCE_FILE) not found."; exit 1; fi
 
 
-echo "====================================================================="
-echo "Attempting 'kyverno apply' with SAMPLE policy ($SAMPLE_POLICY_FILE)"
-echo "against Pod resource ($POD_RESOURCE_FILE)..."
-echo "====================================================================="
-KYVERNO_EXPERIMENTAL=true kyverno apply "$SAMPLE_POLICY_FILE" -r "$POD_RESOURCE_FILE" --audit-warn > "$SAMPLE_POLICY_APPLY_REPORT_FILE"
-if [ -s "$SAMPLE_POLICY_APPLY_REPORT_FILE" ]; then
-  echo "SUCCESS: Sample policy apply. Report:"
-  cat "$SAMPLE_POLICY_APPLY_REPORT_FILE"
-else
-  echo "WARNING: Sample policy apply report is empty."
-fi
-echo; echo
+# Skipped sample policy test invocation as updated to test all policies
 
 if [ "$SKIP_SINGLE_SPECIFIC_POLICY_TEST" = false ]; then
   echo "====================================================================="
