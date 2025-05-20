@@ -2,6 +2,8 @@
 set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
 
+# In GitHub Actions, Kind and yq are installed via the workflow directly
+# This local installation is kept for local development use only
 if ! command -v kind &> /dev/null; then
   echo "Kind not found. Installing to ~/.local/bin..."
   INSTALL_DIR="$HOME/.local/bin"
@@ -15,14 +17,12 @@ fi
 # Check for yq
 if ! command -v yq &> /dev/null; then
   echo "yq not found. Installing yq (version 4.40.5)..."
-  # Adjust version and OS/ARCH as needed. This example is for macOS amd64.
-  # For other systems, refer to: https://github.com/mikefarah/yq/#install
   YQ_VERSION="v4.40.5" # Specify a version
   YQ_BINARY="yq_darwin_amd64"
   if [[ "$(uname -s)" == "Linux" ]]; then
     YQ_BINARY="yq_linux_amd64"
   fi
-  INSTALL_DIR_YQ="$HOME/.local/bin" # Can reuse the same for kind if desired
+  INSTALL_DIR_YQ="$HOME/.local/bin"
   mkdir -p "$INSTALL_DIR_YQ"
   curl -L "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/${YQ_BINARY}" -o "$INSTALL_DIR_YQ/yq"
   chmod +x "$INSTALL_DIR_YQ/yq"

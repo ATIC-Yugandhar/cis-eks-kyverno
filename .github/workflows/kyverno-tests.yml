@@ -60,11 +60,25 @@ jobs:
 
 
       - name: Run test-all-policies.sh
-        run: ./scripts/test-all-policies.sh
+        run: |
+          echo "Current working directory: $(pwd)"
+          echo "Listing test directories:"
+          find tests -type d -name "compliant" | wc -l
+          find tests -type f -name "kyverno-test.yaml" | wc -l
+          chmod +x ./scripts/test-all-policies.sh
+          ./scripts/test-all-policies.sh
         continue-on-error: true
 
       - name: Run test-terraform-cis-policies.sh
-        run: ./scripts/test-terraform-cis-policies.sh
+        run: |
+          echo "Current working directory: $(pwd)"
+          echo "Checking for terraform policies:"
+          find kyverno-policies -path "*/terraform/*.yaml" || echo "No terraform policies found in kyverno-policies dir"
+          echo "Listing terraform directories:"
+          ls -la terraform/compliant || echo "No compliant terraform dir"
+          ls -la terraform/noncompliant || echo "No noncompliant terraform dir"
+          chmod +x ./scripts/test-terraform-cis-policies.sh
+          ./scripts/test-terraform-cis-policies.sh
         continue-on-error: true
 
       - name: Upload test reports
