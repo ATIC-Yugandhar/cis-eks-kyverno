@@ -1,0 +1,44 @@
+name: Kyverno Policy and Plan Compliance Check
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  kyverno-script-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.5.0
+
+      - name: Install Kyverno CLI
+        run: |
+          curl -L https://github.com/kyverno/kyverno/releases/latest/download/kyverno-cli_linux_x86_64.tar.gz -o kyverno.tar.gz
+          tar -xzf kyverno.tar.gz kyverno
+          sudo mv kyverno /usr/local/bin/
+          kyverno version
+
+      - name: Run test-all-policies.sh
+        run: |
+          mkdir -p reports/script-tests
+          ./scripts/test-all-policies.sh > reports/script-tests/test-all-policies-report.txt
+
+      - name: Run test-terraform-cis-policies.sh
+        run: |
+          mkdir -p reports/script-tests
+          ./scripts/test-terraform-cis-policies.sh > reports/script-tests/test-terraform-cis-policies-report.txt
+
+      - name: Upload script test reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: script-test-reports
+          path: |
+            reports/script-tests/test-all-policies-report.txt
+            reports/script-tests/test-terraform-cis-policies-report.txt
