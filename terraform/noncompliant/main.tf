@@ -2,7 +2,6 @@ provider "aws" {
   region = var.region
 }
 
-# VPC with public subnets only (noncompliant)
 resource "aws_vpc" "main" {
   cidr_block = var.vpc_cidr
 }
@@ -15,7 +14,6 @@ resource "aws_subnet" "public" {
   map_public_ip_on_launch = true
 }
 
-# Minimal security group for node group
 resource "aws_security_group" "nodes" {
   name        = "${var.cluster_name}-nodes"
   description = "Node group security group"
@@ -36,7 +34,6 @@ resource "aws_security_group" "nodes" {
   }
 }
 
-# IAM Role for EKS control plane
 resource "aws_iam_role" "eks" {
   name = "${var.cluster_name}-eks-role"
   assume_role_policy = data.aws_iam_policy_document.eks_assume_role.json
@@ -52,7 +49,6 @@ data "aws_iam_policy_document" "eks_assume_role" {
   }
 }
 
-# IAM Role for EKS Node Group
 resource "aws_iam_role" "eks_node_group" {
   name = "${var.cluster_name}-node-group-role"
   assume_role_policy = jsonencode({
@@ -80,7 +76,6 @@ resource "aws_iam_role_policy_attachment" "ec2_container_registry" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
 }
 
-# EKS Cluster (noncompliant: public endpoint, no audit logging, no encryption)
 resource "aws_eks_cluster" "main" {
   name     = var.cluster_name
   role_arn = aws_iam_role.eks.arn
@@ -88,18 +83,17 @@ resource "aws_eks_cluster" "main" {
 
   vpc_config {
     subnet_ids              = aws_subnet.public[*].id
-    endpoint_private_access = false   # Noncompliant: No private endpoint
-    endpoint_public_access  = true    # Noncompliant: Public endpoint
+    endpoint_private_access = false
+    endpoint_public_access  = true
   }
 
-  enabled_cluster_log_types = [] # Noncompliant: Audit logging disabled
+  enabled_cluster_log_types = []
 
   kubernetes_network_config {
     service_ipv4_cidr = "10.100.0.0/16"
   }
 }
 
-# EKS Node Group uses only public subnets and the above security group
 resource "aws_eks_node_group" "main" {
   cluster_name    = aws_eks_cluster.main.name
   node_group_name = "noncompliant-ng"

@@ -15,7 +15,7 @@ jobs:
 
       - name: Install Kyverno CLI
         run: |
-          KYVERNO_VERSION=$(curl -s "https://api.github.com/repos/kyverno/kyverno/releases/latest" | jq -r .tag_name)
+          KYVERNO_VERSION="v1.11.1"
           echo "Installing Kyverno CLI version: ${KYVERNO_VERSION}"
           curl -L -o kyverno-cli.tar.gz "https://github.com/kyverno/kyverno/releases/download/${KYVERNO_VERSION}/kyverno-cli_${KYVERNO_VERSION}_linux_x86_64.tar.gz"
           tar -xvzf kyverno-cli.tar.gz
@@ -33,7 +33,7 @@ jobs:
 
       - name: Install yq
         run: |
-          curl -Lo ./yq https://github.com/mikefarah/yq/releases/download/v4.40.5/yq_linux_amd64
+          curl -Lo ./yq https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
           chmod +x ./yq
           sudo mv ./yq /usr/local/bin/yq
           yq --version
@@ -44,9 +44,9 @@ jobs:
           demo-kind-kyverno/create_cluster.sh
 
       - name: Set up Terraform
-        uses: hashicorp/setup-terraform@v2
+        uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: 1.5.0
+          terraform_version: 1.6.6
 
       - name: Install jq
         run: |
@@ -58,13 +58,26 @@ jobs:
           chmod +x scripts/test-all-policies.sh
           chmod +x scripts/test-terraform-cis-policies.sh
 
+      - name: Configure Terraform providers
+        run: |
+          cd terraform/compliant
+          terraform providers lock -platform=linux_amd64
+          cd ../noncompliant
+          terraform providers lock -platform=linux_amd64
+
       - name: Run test-all-policies.sh
-        run: ./scripts/test-all-policies.sh
-        continue-on-error: true
+        run: |
+          set +e
+          ./scripts/test-all-policies.sh
+          echo "test-all-policies.sh exit code: $?"
+          set -e
 
       - name: Run test-terraform-cis-policies.sh
-        run: ./scripts/test-terraform-cis-policies.sh
-        continue-on-error: true
+        run: |
+          set +e
+          ./scripts/test-terraform-cis-policies.sh
+          echo "test-terraform-cis-policies.sh exit code: $?"
+          set -e
 
       - name: Upload test reports
         uses: actions/upload-artifact@v4
