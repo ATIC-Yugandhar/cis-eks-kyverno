@@ -48,23 +48,39 @@ if [ ! -f "$COMPLIANT_DIR/tfplan.json" ]; then
     exit 1
 fi
 
+# Count total policies first for progress tracking
+TOTAL_POLICIES=$(find "$POLICY_DIR" -name "*.yaml" -type f | wc -l | tr -d ' ')
+
 cat > "$REPORT_DIR/compliant-plan-scan.md" << EOF
-# Kyverno Terraform Plan Compliance Report - Compliant Configuration
+# 📊 Kyverno Terraform Plan Compliance Report - Compliant Configuration
 
 **Generated on**: $(date)
+**Total Policies**: $TOTAL_POLICIES
 
-## Test Results
+## 🎯 Executive Summary
+
+| Metric | Value |
+|--------|-------|
+| **Total Policies** | TOTAL_PLACEHOLDER |
+| **✅ Successful Scans** | SUCCESS_PLACEHOLDER |
+| **❌ Failed Scans** | ERRORS_PLACEHOLDER |
+| **Success Rate** | SUCCESS_RATE_PLACEHOLDER |
+
+## 📋 Detailed Test Results
 
 EOF
 
 POLICY_COUNT=0
 SCAN_ERRORS=0
+CURRENT_POLICY=0
 
 for policy in "$POLICY_DIR"/*.yaml; do
   if [ -f "$policy" ]; then
     ((POLICY_COUNT++))
-    echo "### Policy: \`$(basename "$policy")\`" >> "$REPORT_DIR/compliant-plan-scan.md"
-    echo "[INFO] Scanning $(basename "$policy") against compliant tfplan.json"
+    ((CURRENT_POLICY++))
+    PROGRESS_PERCENT=$((CURRENT_POLICY * 100 / TOTAL_POLICIES))
+    echo "### Policy: \`$(basename "$policy")\` (${CURRENT_POLICY}/${TOTAL_POLICIES} - ${PROGRESS_PERCENT}%)" >> "$REPORT_DIR/compliant-plan-scan.md"
+    echo "[INFO] [$PROGRESS_PERCENT%] Scanning $(basename "$policy") against compliant tfplan.json"
     
     set +e
     SCAN_OUTPUT=$(kyverno json scan --policy "$policy" --payload "$COMPLIANT_DIR/tfplan.json" 2>&1)
@@ -84,8 +100,18 @@ for policy in "$POLICY_DIR"/*.yaml; do
   fi
 done
 
-echo "[INFO] Compliant plan scan completed. Policies scanned: $POLICY_COUNT, Errors: $SCAN_ERRORS"
-echo "[INFO] Results written to $REPORT_DIR/compliant-plan-scan.md"
+# Calculate final statistics for compliant scan
+SUCCESS_COUNT=$((POLICY_COUNT - SCAN_ERRORS))
+SUCCESS_RATE=$(echo "scale=1; $SUCCESS_COUNT * 100 / $POLICY_COUNT" | bc -l)
+
+# Update placeholders in report
+sed -i "" "s/TOTAL_PLACEHOLDER/$POLICY_COUNT/g" "$REPORT_DIR/compliant-plan-scan.md"
+sed -i "" "s/SUCCESS_PLACEHOLDER/$SUCCESS_COUNT/g" "$REPORT_DIR/compliant-plan-scan.md"
+sed -i "" "s/ERRORS_PLACEHOLDER/$SCAN_ERRORS/g" "$REPORT_DIR/compliant-plan-scan.md"
+sed -i "" "s/SUCCESS_RATE_PLACEHOLDER/${SUCCESS_RATE}%/g" "$REPORT_DIR/compliant-plan-scan.md"
+
+echo "[INFO] ✅ Compliant plan scan completed: $SUCCESS_COUNT/$POLICY_COUNT policies passed (${SUCCESS_RATE}%)"
+echo "[INFO] 📊 Results written to $REPORT_DIR/compliant-plan-scan.md"
 
 echo "[INFO] Initializing noncompliant Terraform configuration..."
 terraform -chdir="$NONCOMPLIANT_DIR" init -input=false -no-color
@@ -103,22 +129,35 @@ if [ ! -f "$NONCOMPLIANT_DIR/tfplan.json" ]; then
 fi
 
 cat > "$REPORT_DIR/noncompliant-plan-scan.md" << EOF
-# Kyverno Terraform Plan Compliance Report - Noncompliant Configuration
+# 📊 Kyverno Terraform Plan Compliance Report - Noncompliant Configuration
 
 **Generated on**: $(date)
+**Total Policies**: $TOTAL_POLICIES
 
-## Test Results
+## 🎯 Executive Summary
+
+| Metric | Value |
+|--------|-------|
+| **Total Policies** | TOTAL_NC_PLACEHOLDER |
+| **✅ Successful Scans** | SUCCESS_NC_PLACEHOLDER |
+| **❌ Failed Scans** | ERRORS_NC_PLACEHOLDER |
+| **Success Rate** | SUCCESS_RATE_NC_PLACEHOLDER |
+
+## 📋 Detailed Test Results
 
 EOF
 
 POLICY_COUNT_NC=0
 SCAN_ERRORS_NC=0
+CURRENT_POLICY_NC=0
 
 for policy in "$POLICY_DIR"/*.yaml; do
   if [ -f "$policy" ]; then
     ((POLICY_COUNT_NC++))
-    echo "### Policy: \`$(basename "$policy")\`" >> "$REPORT_DIR/noncompliant-plan-scan.md"
-    echo "[INFO] Scanning $(basename "$policy") against noncompliant tfplan.json"
+    ((CURRENT_POLICY_NC++))
+    PROGRESS_PERCENT_NC=$((CURRENT_POLICY_NC * 100 / TOTAL_POLICIES))
+    echo "### Policy: \`$(basename "$policy")\` (${CURRENT_POLICY_NC}/${TOTAL_POLICIES} - ${PROGRESS_PERCENT_NC}%)" >> "$REPORT_DIR/noncompliant-plan-scan.md"
+    echo "[INFO] [$PROGRESS_PERCENT_NC%] Scanning $(basename "$policy") against noncompliant tfplan.json"
     
     set +e
     SCAN_OUTPUT=$(kyverno json scan --policy "$policy" --payload "$NONCOMPLIANT_DIR/tfplan.json" 2>&1)
@@ -138,19 +177,42 @@ for policy in "$POLICY_DIR"/*.yaml; do
   fi
 done
 
-echo "[INFO] Noncompliant plan scan completed. Policies scanned: $POLICY_COUNT_NC, Errors: $SCAN_ERRORS_NC"
-echo "[INFO] Results written to $REPORT_DIR/noncompliant-plan-scan.md"
+# Calculate final statistics for noncompliant scan
+SUCCESS_COUNT_NC=$((POLICY_COUNT_NC - SCAN_ERRORS_NC))
+SUCCESS_RATE_NC=$(echo "scale=1; $SUCCESS_COUNT_NC * 100 / $POLICY_COUNT_NC" | bc -l)
+
+# Update placeholders in report
+sed -i "" "s/TOTAL_NC_PLACEHOLDER/$POLICY_COUNT_NC/g" "$REPORT_DIR/noncompliant-plan-scan.md"
+sed -i "" "s/SUCCESS_NC_PLACEHOLDER/$SUCCESS_COUNT_NC/g" "$REPORT_DIR/noncompliant-plan-scan.md"
+sed -i "" "s/ERRORS_NC_PLACEHOLDER/$SCAN_ERRORS_NC/g" "$REPORT_DIR/noncompliant-plan-scan.md"
+sed -i "" "s/SUCCESS_RATE_NC_PLACEHOLDER/${SUCCESS_RATE_NC}%/g" "$REPORT_DIR/noncompliant-plan-scan.md"
+
+echo "[INFO] ✅ Noncompliant plan scan completed: $SUCCESS_COUNT_NC/$POLICY_COUNT_NC policies passed (${SUCCESS_RATE_NC}%)"
+echo "[INFO] 📊 Results written to $REPORT_DIR/noncompliant-plan-scan.md"
+
+# Calculate overall statistics
+TOTAL_SCANS=$((POLICY_COUNT + POLICY_COUNT_NC))
+TOTAL_SUCCESS=$((SUCCESS_COUNT + SUCCESS_COUNT_NC))
+TOTAL_SCAN_ERRORS=$((SCAN_ERRORS + SCAN_ERRORS_NC))
+OVERALL_SUCCESS_RATE=$(echo "scale=1; $TOTAL_SUCCESS * 100 / $TOTAL_SCANS" | bc -l)
 
 echo ""
 echo "=========================================="
-echo "TERRAFORM PLAN SCANNING SUMMARY"
+echo "📊 TERRAFORM PLAN SCANNING SUMMARY"
 echo "=========================================="
-echo "Compliant configuration:"
-echo "  - Policies scanned: $POLICY_COUNT"
-echo "  - Scan errors: $SCAN_ERRORS"
-echo "Noncompliant configuration:"
-echo "  - Policies scanned: $POLICY_COUNT_NC"
-echo "  - Scan errors: $SCAN_ERRORS_NC"
+echo "🗋 Overall Statistics:"
+echo "  - Total Scans: $TOTAL_SCANS"
+echo "  - ✅ Successful: $TOTAL_SUCCESS (${OVERALL_SUCCESS_RATE}%)"
+echo "  - ❌ Failed: $TOTAL_SCAN_ERRORS"
+echo "------------------------------------------"
+echo "🟢 Compliant Configuration:"
+echo "  - Scanned: $POLICY_COUNT policies"
+echo "  - ✅ Success: $SUCCESS_COUNT (${SUCCESS_RATE}%)"
+echo "  - ❌ Errors: $SCAN_ERRORS"
+echo "🔴 Noncompliant Configuration:"
+echo "  - Scanned: $POLICY_COUNT_NC policies"
+echo "  - ✅ Success: $SUCCESS_COUNT_NC (${SUCCESS_RATE_NC}%)"
+echo "  - ❌ Errors: $SCAN_ERRORS_NC"
 echo "=========================================="
 
 TOTAL_ERRORS=$((SCAN_ERRORS + SCAN_ERRORS_NC))

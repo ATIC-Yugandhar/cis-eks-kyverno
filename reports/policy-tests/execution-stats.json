@@ -1,0 +1,326 @@
+[
+{
+  "test": "custom-2.1.1/compliant",
+  "duration": .140891000,
+  "result": "pass",
+  "timestamp": "2025-05-23T16:03:41+05:30"
+},
+{
+  "test": "custom-2.1.1/noncompliant",
+  "duration": .141542000,
+  "result": "pass",
+  "timestamp": "2025-05-23T16:03:41+05:30"
+},
+{
+  "test": "custom-2.1.2/compliant",
+  "duration": .143295000,
+  "result": "pass",
+  "timestamp": "2025-05-23T16:03:42+05:30"
+},
+{
+  "test": "custom-2.1.2/noncompliant",
+  "duration": .145151000,
+  "result": "pass",
+  "timestamp": "2025-05-23T16:03:42+05:30"
+},
+{
+  "test": "custom-3.1.1/compliant",
+  "duration": .144316000,
+  "result": "pass",
+  "timestamp": "2025-05-23T16:03:42+05:30"
+},
+{
+  "test": "custom-3.1.1/noncompliant",
+  "duration": .144471000,
+  "result": "pass",
+  "timestamp": "2025-05-23T16:03:42+05:30"
+},
+{
+  "test": "custom-3.1.2/compliant",
+  "duration": .146249000,
+  "result": "pass",
+  "timestamp": "2025-05-23T16:03:43+05:30"
+},
+{
+  "test": "custom-3.1.2/noncompliant",
+  "duration": .146011000,
+  "result": "pass",
+  "timestamp": "2025-05-23T16:03:43+05:30"
+},
+{
+  "test": "custom-3.1.3/compliant",
+  "duration": .145054000,
+  "result": "pass",
+  "timestamp": "2025-05-23T16:03:43+05:30"
+},
+{
+  "test": "custom-3.1.3/noncompliant",
+  "duration": .142810000,
+  "result": "pass",
+  "timestamp": "2025-05-23T16:03:43+05:30"
+},
+{
+  "test": "custom-3.1.4/compliant",
+  "duration": .142731000,
+  "result": "pass",
+  "timestamp": "2025-05-23T16:03:44+05:30"
+},
+{
+  "test": "custom-3.1.4/noncompliant",
+  "duration": .143941000,
+  "result": "pass",
+  "timestamp": "2025-05-23T16:03:44+05:30"
+},
+{
+  "test": "custom-3.2.1/compliant",
+  "duration": .242030000,
+  "result": "pass",
+  "timestamp": "2025-05-23T16:03:44+05:30"
+},
+{
+  "test": "custom-3.2.1/noncompliant",
+  "duration": .236313000,
+  "result": "pass",
+  "timestamp": "2025-05-23T16:03:45+05:30"
+},
+{
+  "test": "custom-3.2.3/compliant",
+  "duration": .143689000,
+  "result": "pass",
+  "timestamp": "2025-05-23T16:03:45+05:30"
+},
+{
+  "test": "custom-3.2.3/noncompliant",
+  "duration": .143387000,
+  "result": "pass",
+  "timestamp": "2025-05-23T16:03:45+05:30"
+},
+{
+  "test": "custom-3.2.4/compliant",
+  "duration": .143105000,
+  "result": "pass",
+  "timestamp": "2025-05-23T16:03:46+05:30"
+},
+{
+  "test": "custom-3.2.4/noncompliant",
+  "duration": .144159000,
+  "result": "pass",
+  "timestamp": "2025-05-23T16:03:46+05:30"
+},
+{
+  "test": "custom-3.2.5/compliant",
+  "duration": .144254000,
+  "result": "pass",
+  "timestamp": "2025-05-23T16:03:46+05:30"
+},
+{
+  "test": "custom-3.2.5/noncompliant",
+  "duration": .141027000,
+  "result": "pass",
+  "timestamp": "2025-05-23T16:03:46+05:30"
+},
+{
+  "test": "custom-3.2.6/compliant",
+  "duration": .143269000,
+  "result": "pass",
+  "timestamp": "2025-05-23T16:03:47+05:30"
+},
+{
+  "test": "custom-3.2.6/noncompliant",
+  "duration": .143926000,
+  "result": "error",
+  "timestamp": "2025-05-23T16:03:47+05:30"
+},
+{
+  "test": "custom-3.2.7/compliant",
+  "duration": .144674000,
+  "result": "pass",
+  "timestamp": "2025-05-23T16:03:47+05:30"
+},
+{
+  "test": "custom-3.2.7/noncompliant",
+  "duration": .144525000,
+  "result": "pass",
+  "timestamp": "2025-05-23T16:03:47+05:30"
+},
+{
+  "test": "custom-3.2.8/compliant",
+  "duration": .142007000,
+  "result": "pass",
+  "timestamp": "2025-05-23T16:03:48+05:30"
+},
+{
+  "test": "custom-3.2.8/noncompliant",
+  "duration": .143153000,
+  "result": "pass",
+  "timestamp": "2025-05-23T16:03:48+05:30"
+},
+{
+  "test": "custom-3.2.9/compliant",
+  "duration": .146955000,
+  "result": "pass",
+  "timestamp": "2025-05-23T16:03:48+05:30"
+},
+{
+  "test": "custom-3.2.9/noncompliant",
+  "duration": .144880000,
+  "result": "pass",
+  "timestamp": "2025-05-23T16:03:49+05:30"
+},
+{
+  "test": "custom-4.1.7/compliant",
+  "duration": .135613000,
+  "result": "pass",
+  "timestamp": "2025-05-23T16:03:49+05:30"
+},
+{
+  "test": "custom-4.1.7/noncompliant",
+  "duration": .144197000,
+  "result": "pass",
+  "timestamp": "2025-05-23T16:03:49+05:30"
+},
+{
+  "test": "custom-4.1.8/compliant",
+  "duration": .147387000,
+  "result": "pass",
+  "timestamp": "2025-05-23T16:03:49+05:30"
+},
+{
+  "test": "custom-4.1.8/noncompliant",
+  "duration": .145483000,
+  "result": "pass",
+  "timestamp": "2025-05-23T16:03:50+05:30"
+},
+{
+  "test": "custom-4.3.1/compliant",
+  "duration": .145900000,
+  "result": "pass",
+  "timestamp": "2025-05-23T16:03:50+05:30"
+},
+{
+  "test": "custom-4.3.1/noncompliant",
+  "duration": .143920000,
+  "result": "pass",
+  "timestamp": "2025-05-23T16:03:50+05:30"
+},
+{
+  "test": "custom-4.4.2/compliant",
+  "duration": .142988000,
+  "result": "pass",
+  "timestamp": "2025-05-23T16:03:50+05:30"
+},
+{
+  "test": "custom-4.4.2/noncompliant",
+  "duration": .143131000,
+  "result": "pass",
+  "timestamp": "2025-05-23T16:03:51+05:30"
+},
+{
+  "test": "custom-4.5.1/compliant",
+  "duration": .143241000,
+  "result": "pass",
+  "timestamp": "2025-05-23T16:03:51+05:30"
+},
+{
+  "test": "custom-4.5.1/noncompliant",
+  "duration": .143944000,
+  "result": "pass",
+  "timestamp": "2025-05-23T16:03:51+05:30"
+},
+{
+  "test": "custom-5.1.1/compliant",
+  "duration": .143513000,
+  "result": "pass",
+  "timestamp": "2025-05-23T16:03:51+05:30"
+},
+{
+  "test": "custom-5.1.1/noncompliant",
+  "duration": .142914000,
+  "result": "pass",
+  "timestamp": "2025-05-23T16:03:52+05:30"
+},
+{
+  "test": "custom-5.1.2/compliant",
+  "duration": .235903000,
+  "result": "pass",
+  "timestamp": "2025-05-23T16:03:52+05:30"
+},
+{
+  "test": "custom-5.1.2/noncompliant",
+  "duration": .242201000,
+  "result": "pass",
+  "timestamp": "2025-05-23T16:03:52+05:30"
+},
+{
+  "test": "custom-5.3.1/compliant",
+  "duration": .146228000,
+  "result": "pass",
+  "timestamp": "2025-05-23T16:03:53+05:30"
+},
+{
+  "test": "custom-5.3.1/noncompliant",
+  "duration": .143259000,
+  "result": "pass",
+  "timestamp": "2025-05-23T16:03:53+05:30"
+},
+{
+  "test": "custom-5.4.1/compliant",
+  "duration": .143249000,
+  "result": "pass",
+  "timestamp": "2025-05-23T16:03:53+05:30"
+},
+{
+  "test": "custom-5.4.1/noncompliant",
+  "duration": .143217000,
+  "result": "pass",
+  "timestamp": "2025-05-23T16:03:54+05:30"
+},
+{
+  "test": "custom-5.4.2/compliant",
+  "duration": .139545000,
+  "result": "pass",
+  "timestamp": "2025-05-23T16:03:54+05:30"
+},
+{
+  "test": "custom-5.4.2/noncompliant",
+  "duration": .143771000,
+  "result": "pass",
+  "timestamp": "2025-05-23T16:03:54+05:30"
+},
+{
+  "test": "custom-5.4.3/compliant",
+  "duration": .146520000,
+  "result": "pass",
+  "timestamp": "2025-05-23T16:03:54+05:30"
+},
+{
+  "test": "custom-5.4.3/noncompliant",
+  "duration": .146151000,
+  "result": "pass",
+  "timestamp": "2025-05-23T16:03:55+05:30"
+},
+{
+  "test": "custom-5.4.5/compliant",
+  "duration": .144244000,
+  "result": "pass",
+  "timestamp": "2025-05-23T16:03:55+05:30"
+},
+{
+  "test": "custom-5.4.5/noncompliant",
+  "duration": .143615000,
+  "result": "pass",
+  "timestamp": "2025-05-23T16:03:55+05:30"
+},
+{
+  "test": "custom-5.5.1/compliant",
+  "duration": .142129000,
+  "result": "pass",
+  "timestamp": "2025-05-23T16:03:55+05:30"
+},
+{
+  "test": "custom-5.5.1/noncompliant",
+  "duration": .145085000,
+  "result": "pass",
+  "timestamp": "2025-05-23T16:03:56+05:30"
+},
+]
