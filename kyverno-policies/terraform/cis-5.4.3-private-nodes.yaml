@@ -1,4 +1,3 @@
-# CIS 5.4.3 - Deploy private nodes
 apiVersion: json.kyverno.io/v1alpha1
 kind: ValidatingPolicy
 metadata:

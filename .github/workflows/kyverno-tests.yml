@@ -54,9 +54,11 @@ jobs:
 
       - name: Create directories and set permissions
         run: |
-          mkdir -p reports/compliance
+          chmod +x scripts/cleanup-old-reports.sh
           chmod +x scripts/test-all-policies.sh
           chmod +x scripts/test-terraform-cis-policies.sh
+          chmod +x scripts/generate-summary-report.sh
+          ./scripts/cleanup-old-reports.sh
 
       - name: Configure Terraform providers
         run: |
@@ -67,26 +69,48 @@ jobs:
 
       - name: Run test-all-policies.sh
         run: |
-          set +e
           ./scripts/test-all-policies.sh
-          echo "test-all-policies.sh exit code: $?"
-          set -e
 
       - name: Run test-terraform-cis-policies.sh
         run: |
-          set +e
           ./scripts/test-terraform-cis-policies.sh
-          echo "test-terraform-cis-policies.sh exit code: $?"
-          set -e
 
-      - name: Upload test reports
+      - name: Generate Executive Summary
+        if: always()
+        run: |
+          ./scripts/generate-summary-report.sh
+
+      - name: Upload Executive Summary
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: kyverno-test-reports
+          name: executive-summary
+          path: reports/executive-summary.md
+
+      - name: Upload Policy Test Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: policy-test-reports
           path: |
-            reports/**
-            reports/results-kyverno-tests.txt
-            reports/results-kyverno-summary.txt
-            reports/compliance/*.yaml
-            demo-kind-kyverno/reports/**
-            demo-kind-kyverno/reports/kyverno_scan_cluster_resources_report.yaml
+            reports/policy-tests/summary.txt
+            reports/policy-tests/detailed-results.txt
+
+      - name: Upload Terraform Compliance Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-compliance-reports
+          path: |
+            reports/terraform-compliance/compliant-plan-scan.yaml
+            reports/terraform-compliance/noncompliant-plan-scan.yaml
+
+      - name: Upload Integration Test Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-reports
+          path: |
+            demo-kind-kyverno/reports/integration-tests/policy-application.yaml
+            demo-kind-kyverno/reports/integration-tests/cluster-scan.yaml
+            demo-kind-kyverno/reports/resources.yaml

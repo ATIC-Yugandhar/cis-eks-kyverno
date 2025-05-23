@@ -56,7 +56,6 @@ append_resources_to_tmp() {
       echo "Warning (append_resources_to_tmp): Skipping malformed/empty/non-object JSON item for $resource_type_name. Item was: <<<${item_json_line}>>>" >&2
     fi
   done
-  # echo "Debug (append_resources_to_tmp): Processed $items_processed_count items for $resource_type_name." >&2
 }
 
 echo "Exporting all namespaced resources to temporary file..."

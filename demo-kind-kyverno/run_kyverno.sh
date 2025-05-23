@@ -10,17 +10,21 @@ RESOURCES_DIR="$SCRIPT_DIR/manifests"
 POD_RESOURCE_FILE="$RESOURCES_DIR/pod.yaml"
 CONFIGMAP_RESOURCE_FILE="$RESOURCES_DIR/configmap.yaml"
 
-APPLY_REPORT_DIR="$SCRIPT_DIR/reports"
-SAMPLE_POLICY_APPLY_REPORT_FILE="$APPLY_REPORT_DIR/kyverno_sample_policy_apply_report.txt"
-SINGLE_SPECIFIC_POLICY_APPLY_REPORT_FILE="$APPLY_REPORT_DIR/kyverno_single_specific_policy_apply_report.txt"
-FULL_POLICIES_APPLY_REPORT_FILE="$APPLY_REPORT_DIR/kyverno_full_policies_apply_report.yaml"
-FULL_POLICIES_APPLY_REPORT_FILE_STDOUT="$APPLY_REPORT_DIR/kyverno_full_policies_apply_stdout.txt"
-FULL_POLICIES_APPLY_REPORT_FILE_STDERR="$APPLY_REPORT_DIR/kyverno_full_policies_apply_stderr.txt"
+APPLY_REPORT_DIR="$SCRIPT_DIR/reports/integration-tests"
+SAMPLE_POLICY_APPLY_REPORT_FILE="$APPLY_REPORT_DIR/sample-policy-test.txt"
+SINGLE_SPECIFIC_POLICY_APPLY_REPORT_FILE="$APPLY_REPORT_DIR/single-policy-test.txt"
+FULL_POLICIES_APPLY_REPORT_FILE="$APPLY_REPORT_DIR/policy-application.yaml"
+FULL_POLICIES_APPLY_REPORT_FILE_STDOUT="$APPLY_REPORT_DIR/policy-application-stdout.txt"
+FULL_POLICIES_APPLY_REPORT_FILE_STDERR="$APPLY_REPORT_DIR/policy-application-stderr.txt"
 
 mkdir -p "$APPLY_REPORT_DIR"
 
 echo "Running Kyverno tests for all policies in kyverno-policies/"
 kyverno test kyverno-policies/
+if [ $? -ne 0 ]; then
+    echo "ERROR: Kyverno test failed!"
+    exit 1
+fi
 if [ ! -d "$POLICIES_DIR" ]; then echo "Error: Main Policies directory ($POLICIES_DIR) not found."; exit 1; fi
 
 SKIP_SINGLE_SPECIFIC_POLICY_TEST=true
@@ -50,6 +54,10 @@ if [ "$SKIP_SINGLE_SPECIFIC_POLICY_TEST" = false ]; then
   echo "against Pod resource ($POD_RESOURCE_FILE)..."
   echo "====================================================================="
   KYVERNO_EXPERIMENTAL=true kyverno apply "$SINGLE_SPECIFIC_POLICY_EXAMPLE" -r "$POD_RESOURCE_FILE" --audit-warn -v 2 > "$SINGLE_SPECIFIC_POLICY_APPLY_REPORT_FILE"
+  if [ $? -ne 0 ]; then
+    echo "ERROR: Single policy apply failed!"
+    exit 1
+  fi
   if [ -s "$SINGLE_SPECIFIC_POLICY_APPLY_REPORT_FILE" ]; then
     echo "SUCCESS: Single specific policy apply. Report:"
     cat "$SINGLE_SPECIFIC_POLICY_APPLY_REPORT_FILE"
@@ -153,10 +161,10 @@ echo "Attempting MAIN CLUSTER SCAN of all resources in reports/resources.yaml"
 echo "====================================================================="
 
 # Define paths for this scan section
-# APPLY_REPORT_DIR is already "$SCRIPT_DIR/reports"
-CLUSTER_RESOURCES_YAML="$APPLY_REPORT_DIR/resources.yaml"
-KYVERNO_CLUSTER_SCAN_REPORT_YAML="$APPLY_REPORT_DIR/kyverno_scan_cluster_resources_report.yaml"
-KYVERNO_SCAN_STDERR_FILE="$APPLY_REPORT_DIR/kyverno_scan_stderr.txt"
+# Note: resources.yaml is in parent reports dir, not integration-tests subdir
+CLUSTER_RESOURCES_YAML="$SCRIPT_DIR/reports/resources.yaml"
+KYVERNO_CLUSTER_SCAN_REPORT_YAML="$APPLY_REPORT_DIR/cluster-scan.yaml"
+KYVERNO_SCAN_STDERR_FILE="$APPLY_REPORT_DIR/cluster-scan-stderr.txt"
 
 # 1. Add Diagnostics Before Main Scan
 echo "Verifying content of $CLUSTER_RESOURCES_YAML before scan..."
@@ -206,8 +214,14 @@ fi
 set -e
 
 echo "Main cluster scan command finished with exit code: $SCAN_EXIT_CODE"
-# We will not exit here even if SCAN_EXIT_CODE is non-zero, as scan failures (policy violations) are expected.
-# The purpose is to generate a report.
+# Check for actual errors vs policy violations
+if [ $SCAN_EXIT_CODE -ne 0 ] && ! grep -q "policy validation failed" "$KYVERNO_SCAN_STDERR_FILE" 2>/dev/null; then
+    # If exit code is non-zero and it's not just policy violations, treat as error
+    if grep -q "error\|Error\|ERROR" "$KYVERNO_SCAN_STDERR_FILE" 2>/dev/null; then
+        echo "ERROR: Kyverno scan failed with errors!"
+        exit 1
+    fi
+fi
 
 # Immediately after this command, add:
 echo "Stderr from Kyverno main cluster scan (if any, saved to $KYVERNO_SCAN_STDERR_FILE):"
@@ -230,3 +244,6 @@ fi
 # End of main cluster scan section
 echo
 echo "Kyverno apply process finished."
+
+# Exit with success only if we got here without errors
+exit 0

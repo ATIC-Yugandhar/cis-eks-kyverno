@@ -1,10 +1,11 @@
 #!/bin/bash
 set -e
 
-RESULTS_FILE="reports/results-kyverno-tests.txt"
-SUMMARY_FILE="reports/results-kyverno-summary.txt"
+REPORT_DIR="reports/policy-tests"
+RESULTS_FILE="$REPORT_DIR/detailed-results.txt"
+SUMMARY_FILE="$REPORT_DIR/summary.txt"
 
-mkdir -p reports
+mkdir -p "$REPORT_DIR"
 rm -f "$RESULTS_FILE" "$SUMMARY_FILE"
 
 PASSED=0
@@ -50,3 +51,13 @@ echo "Passed: $PASSED"
 echo "Failed: $FAILED"
 echo "Errors: $ERRORS"
 echo -e "\nSee $RESULTS_FILE and $SUMMARY_FILE for full details."
+
+TIMESTAMP=$(date +"%Y-%m-%d_%H-%M-%S")
+echo -e "\nTest completed at: $TIMESTAMP" >> "$SUMMARY_FILE"
+
+if [ $FAILED -gt 0 ] || [ $ERRORS -gt 0 ]; then
+    echo -e "\nERROR: $((FAILED+ERRORS)) test(s) failed!"
+    exit 1
+fi
+
+exit 0

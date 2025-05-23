@@ -1,4 +1,3 @@
-# CIS 5.4.4 - Enable and configure Network Policy
 apiVersion: json.kyverno.io/v1alpha1
 kind: ValidatingPolicy
 metadata:
