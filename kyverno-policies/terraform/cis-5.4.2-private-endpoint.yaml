@@ -1,12 +1,1 @@
-apiVersion: json.kyverno.io/v1alpha1
-kind: ValidatingPolicy
-metadata:
-  name: cis-5-4-2-private-endpoint
-spec:
-  rules:
-    - name: eks-private-endpoint
-      assert:
-        all:
-          - message: "EKS cluster must have endpoint_public_access=false and endpoint_private_access=true."
-            check:
-              (length(planned_values.root_module.resources[?type=='aws_eks_cluster' && values.vpc_config && length(values.vpc_config[?endpoint_public_access==`false` && endpoint_private_access==`true`]) > `0`]) > `0`): true 
+../../policies/terraform/networking/cis-5.4.2-private-endpoint.yaml

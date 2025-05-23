@@ -1,0 +1,24 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: custom-3-1-4-kubelet-config-owner
+  annotations:
+    policies.kyverno.io/category: CIS 3.1.4
+    policies.kyverno.io/description: |
+      Checks for kubelet config file ownership in node annotations or ConfigMap if available.
+spec:
+  validationFailureAction: audit
+  background: true
+  rules:
+    - name: check-kubelet-config-owner
+      match:
+        any:
+        - resources:
+            kinds:
+              - Node
+      validate:
+        message: "kubelet config file should be owned by root:root."
+        pattern:
+          metadata:
+            annotations:
+              kubelet.config.owner: "root:root" 

@@ -1,0 +1,21 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: custom-5.3.1-compliant
+policies:
+  - ../../../../policies/kubernetes/pod-security/custom-5.3.1.yaml
+resources:
+  - terraform.json
+results:
+  - policy: cis-5.3.1-kms-secret-encryption-comprehensive
+    rule: validate-terraform-eks-encryption
+    resources:
+      - json.kyverno.io/v1alpha1
+    kind: json.kyverno.io/v1alpha1
+    result: pass
+  - policy: cis-5.3.1-kms-secret-encryption-comprehensive
+    rule: validate-kms-key-policy
+    resources:
+      - json.kyverno.io/v1alpha1
+    kind: json.kyverno.io/v1alpha1
+    result: pass 

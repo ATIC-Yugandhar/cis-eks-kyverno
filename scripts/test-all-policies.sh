@@ -72,7 +72,7 @@ while IFS= read -r testfile; do
     echo "$(($(cat "$TEMP_ERROR") + 1))" > "$TEMP_ERROR"
     echo "- ❌ \`$testfile\` - **ERROR**" >> "$SUMMARY_FILE"
   fi
-done < <(find tests -type f -name 'kyverno-test.yaml' | sort)
+done < <(find tests/kubernetes -type f -name 'kyverno-test.yaml' | sort)
 
 PASSED=$(cat "$TEMP_PASS")
 FAILED=$(cat "$TEMP_FAIL")

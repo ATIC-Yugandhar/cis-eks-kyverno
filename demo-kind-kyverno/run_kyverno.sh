@@ -3,8 +3,8 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
 
-POLICIES_DIR="$SCRIPT_DIR/../kyverno-policies"
-SINGLE_SPECIFIC_POLICY_EXAMPLE="$POLICIES_DIR/custom-5.1.1.yaml"
+POLICIES_DIR="$SCRIPT_DIR/../policies/kubernetes"
+SINGLE_SPECIFIC_POLICY_EXAMPLE="$POLICIES_DIR/pod-security/custom-5.1.1.yaml"
 
 RESOURCES_DIR="$SCRIPT_DIR/manifests"
 POD_RESOURCE_FILE="$RESOURCES_DIR/pod.yaml"
@@ -19,8 +19,8 @@ FULL_POLICIES_APPLY_REPORT_FILE_STDERR="$APPLY_REPORT_DIR/policy-application-std
 
 mkdir -p "$APPLY_REPORT_DIR"
 
-echo "Running Kyverno tests for all policies in kyverno-policies/"
-kyverno test kyverno-policies/
+echo "Running Kyverno tests for all policies in policies/kubernetes/"
+kyverno test policies/kubernetes/
 if [ $? -ne 0 ]; then
     echo "ERROR: Kyverno test failed!"
     exit 1

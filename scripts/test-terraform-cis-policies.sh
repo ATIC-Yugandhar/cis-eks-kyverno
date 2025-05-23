@@ -5,7 +5,7 @@ set -euo pipefail
 export KYVERNO_EXPERIMENTAL=true
 COMPLIANT_DIR="terraform/compliant"
 NONCOMPLIANT_DIR="terraform/noncompliant"
-POLICY_DIR="kyverno-policies/terraform"
+POLICY_DIR="policies/terraform"
 REPORT_DIR="reports/terraform-compliance"
 
 mkdir -p "$REPORT_DIR"

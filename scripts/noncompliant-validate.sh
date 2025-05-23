@@ -2,7 +2,7 @@
 set -euo pipefail
 
 NONCOMPLIANT_DIR="terraform/noncompliant"
-POLICY_DIR="kyverno-policies"
+POLICY_DIR="policies/kubernetes"
 REPORT_DIR="reports/compliance"
 TFPLAN_JSON="$NONCOMPLIANT_DIR/tfplan.json"
 KYVERNO_REPORT="$REPORT_DIR/kyverno-tfplan-noncompliant-report.yaml"

@@ -1,0 +1,28 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: custom-4-3-1-cni-supports-network-policies
+  annotations:
+    policies.kyverno.io/category: CIS 4.3.1
+    policies.kyverno.io/description: |
+      Checks for CNI plugin annotation or label indicating support for network policies in Namespace or ConfigMap if available.
+spec:
+  validationFailureAction: audit
+  background: true
+  rules:
+    - name: check-cni-supports-network-policies
+      match:
+        any:
+        - resources:
+            kinds:
+              - Namespace
+              - ConfigMap
+      validate:
+        message: "CNI plugin should support network policies (look for cni.network.kubernetes.io/supports-network-policies label or annotation)."
+        anyPattern:
+          - metadata:
+              annotations:
+                cni.network.kubernetes.io/supports-network-policies: "true"
+          - metadata:
+              labels:
+                cni.network.kubernetes.io/supports-network-policies: "true" 
