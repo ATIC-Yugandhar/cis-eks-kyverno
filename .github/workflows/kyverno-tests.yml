@@ -24,24 +24,6 @@ jobs:
           rm kyverno-cli.tar.gz
           kyverno version
           
-      - name: Install Kind
-        run: |
-          curl -Lo ./kind https://kind.sigs.k8s.io/dl/latest/kind-linux-amd64
-          chmod +x ./kind
-          sudo mv ./kind /usr/local/bin/kind
-          kind version
-
-      - name: Install yq
-        run: |
-          curl -Lo ./yq https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
-          chmod +x ./yq
-          sudo mv ./yq /usr/local/bin/yq
-          yq --version
-
-      - name: Create Kind cluster
-        run: |
-          chmod +x demo-kind-kyverno/create_cluster.sh
-          demo-kind-kyverno/create_cluster.sh
 
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
@@ -93,8 +75,8 @@ jobs:
         with:
           name: policy-test-reports
           path: |
-            reports/policy-tests/summary.txt
-            reports/policy-tests/detailed-results.txt
+            reports/policy-tests/summary.md
+            reports/policy-tests/detailed-results.md
 
       - name: Upload Terraform Compliance Reports
         if: always()
@@ -102,15 +84,6 @@ jobs:
         with:
           name: terraform-compliance-reports
           path: |
-            reports/terraform-compliance/compliant-plan-scan.yaml
-            reports/terraform-compliance/noncompliant-plan-scan.yaml
+            reports/terraform-compliance/compliant-plan-scan.md
+            reports/terraform-compliance/noncompliant-plan-scan.md
 
-      - name: Upload Integration Test Reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: integration-test-reports
-          path: |
-            demo-kind-kyverno/reports/integration-tests/policy-application.yaml
-            demo-kind-kyverno/reports/integration-tests/cluster-scan.yaml
-            demo-kind-kyverno/reports/resources.yaml

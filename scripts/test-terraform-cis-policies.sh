@@ -48,9 +48,14 @@ if [ ! -f "$COMPLIANT_DIR/tfplan.json" ]; then
     exit 1
 fi
 
-echo "# Kyverno Terraform Plan Compliance Report - Compliant Configuration" > "$REPORT_DIR/compliant-plan-scan.yaml"
-echo "# Generated on: $(date)" >> "$REPORT_DIR/compliant-plan-scan.yaml"
-echo "" >> "$REPORT_DIR/compliant-plan-scan.yaml"
+cat > "$REPORT_DIR/compliant-plan-scan.md" << EOF
+# Kyverno Terraform Plan Compliance Report - Compliant Configuration
+
+**Generated on**: $(date)
+
+## Test Results
+
+EOF
 
 POLICY_COUNT=0
 SCAN_ERRORS=0
@@ -58,24 +63,29 @@ SCAN_ERRORS=0
 for policy in "$POLICY_DIR"/*.yaml; do
   if [ -f "$policy" ]; then
     ((POLICY_COUNT++))
-    echo "[INFO] Scanning $(basename "$policy") against compliant tfplan.json" | tee -a "$REPORT_DIR/compliant-plan-scan.yaml"
+    echo "### Policy: \`$(basename "$policy")\`" >> "$REPORT_DIR/compliant-plan-scan.md"
+    echo "[INFO] Scanning $(basename "$policy") against compliant tfplan.json"
     
     set +e
-    kyverno json scan --policy "$policy" --payload "$COMPLIANT_DIR/tfplan.json" >> "$REPORT_DIR/compliant-plan-scan.yaml" 2>&1
+    SCAN_OUTPUT=$(kyverno json scan --policy "$policy" --payload "$COMPLIANT_DIR/tfplan.json" 2>&1)
+    echo "\n\`\`\`" >> "$REPORT_DIR/compliant-plan-scan.md"
+    echo "$SCAN_OUTPUT" >> "$REPORT_DIR/compliant-plan-scan.md"
+    echo "\`\`\`\n" >> "$REPORT_DIR/compliant-plan-scan.md"
     SCAN_EXIT_CODE=$?
     set -e
     
     if [ $SCAN_EXIT_CODE -ne 0 ]; then
       ((SCAN_ERRORS++))
-      echo "[WARN] Policy scan failed with exit code $SCAN_EXIT_CODE: $(basename "$policy")" | tee -a "$REPORT_DIR/compliant-plan-scan.yaml"
+      echo "❌ **WARNING**: Policy scan failed with exit code $SCAN_EXIT_CODE: $(basename "$policy")" >> "$REPORT_DIR/compliant-plan-scan.md"
+      echo "[WARN] Policy scan failed with exit code $SCAN_EXIT_CODE: $(basename "$policy")"
     fi
     
-    echo "" >> "$REPORT_DIR/compliant-plan-scan.yaml"
+    echo "---\n" >> "$REPORT_DIR/compliant-plan-scan.md"
   fi
 done
 
 echo "[INFO] Compliant plan scan completed. Policies scanned: $POLICY_COUNT, Errors: $SCAN_ERRORS"
-echo "[INFO] Results written to $REPORT_DIR/compliant-plan-scan.yaml"
+echo "[INFO] Results written to $REPORT_DIR/compliant-plan-scan.md"
 
 echo "[INFO] Initializing noncompliant Terraform configuration..."
 terraform -chdir="$NONCOMPLIANT_DIR" init -input=false -no-color
@@ -92,9 +102,14 @@ if [ ! -f "$NONCOMPLIANT_DIR/tfplan.json" ]; then
     exit 1
 fi
 
-echo "# Kyverno Terraform Plan Compliance Report - Noncompliant Configuration" > "$REPORT_DIR/noncompliant-plan-scan.yaml"
-echo "# Generated on: $(date)" >> "$REPORT_DIR/noncompliant-plan-scan.yaml"
-echo "" >> "$REPORT_DIR/noncompliant-plan-scan.yaml"
+cat > "$REPORT_DIR/noncompliant-plan-scan.md" << EOF
+# Kyverno Terraform Plan Compliance Report - Noncompliant Configuration
+
+**Generated on**: $(date)
+
+## Test Results
+
+EOF
 
 POLICY_COUNT_NC=0
 SCAN_ERRORS_NC=0
@@ -102,24 +117,29 @@ SCAN_ERRORS_NC=0
 for policy in "$POLICY_DIR"/*.yaml; do
   if [ -f "$policy" ]; then
     ((POLICY_COUNT_NC++))
-    echo "[INFO] Scanning $(basename "$policy") against noncompliant tfplan.json" | tee -a "$REPORT_DIR/noncompliant-plan-scan.yaml"
+    echo "### Policy: \`$(basename "$policy")\`" >> "$REPORT_DIR/noncompliant-plan-scan.md"
+    echo "[INFO] Scanning $(basename "$policy") against noncompliant tfplan.json"
     
     set +e
-    kyverno json scan --policy "$policy" --payload "$NONCOMPLIANT_DIR/tfplan.json" >> "$REPORT_DIR/noncompliant-plan-scan.yaml" 2>&1
+    SCAN_OUTPUT=$(kyverno json scan --policy "$policy" --payload "$NONCOMPLIANT_DIR/tfplan.json" 2>&1)
+    echo "\n\`\`\`" >> "$REPORT_DIR/noncompliant-plan-scan.md"
+    echo "$SCAN_OUTPUT" >> "$REPORT_DIR/noncompliant-plan-scan.md"
+    echo "\`\`\`\n" >> "$REPORT_DIR/noncompliant-plan-scan.md"
     SCAN_EXIT_CODE=$?
     set -e
     
     if [ $SCAN_EXIT_CODE -ne 0 ]; then
       ((SCAN_ERRORS_NC++))
-      echo "[WARN] Policy scan failed with exit code $SCAN_EXIT_CODE: $(basename "$policy")" | tee -a "$REPORT_DIR/noncompliant-plan-scan.yaml"
+      echo "❌ **WARNING**: Policy scan failed with exit code $SCAN_EXIT_CODE: $(basename "$policy")" >> "$REPORT_DIR/noncompliant-plan-scan.md"
+      echo "[WARN] Policy scan failed with exit code $SCAN_EXIT_CODE: $(basename "$policy")"
     fi
     
-    echo "" >> "$REPORT_DIR/noncompliant-plan-scan.yaml"
+    echo "---\n" >> "$REPORT_DIR/noncompliant-plan-scan.md"
   fi
 done
 
 echo "[INFO] Noncompliant plan scan completed. Policies scanned: $POLICY_COUNT_NC, Errors: $SCAN_ERRORS_NC"
-echo "[INFO] Results written to $REPORT_DIR/noncompliant-plan-scan.yaml"
+echo "[INFO] Results written to $REPORT_DIR/noncompliant-plan-scan.md"
 
 echo ""
 echo "=========================================="
