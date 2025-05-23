@@ -93,9 +93,9 @@ else
     echo "- ❌ No terraform compliance results found" >> "$SUMMARY_FILE"
 fi
 
-# Calculate completion rate
+# Calculate completion rate (using awk for better portability)
 if [ $TOTAL_REPORTS -gt 0 ]; then
-    COMPLETION_RATE=$(echo "scale=1; $COMPLETE_REPORTS * 100 / $TOTAL_REPORTS" | bc -l)
+    COMPLETION_RATE=$(awk "BEGIN {printf \"%.1f\", $COMPLETE_REPORTS * 100 / $TOTAL_REPORTS}")
 else
     COMPLETION_RATE="0.0"
 fi

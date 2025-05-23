@@ -73,7 +73,7 @@ calculate_stats() {
     local end_time=$3
     local result=$4
     
-    local duration=$(echo "$end_time - $start_time" | bc -l)
+    local duration=$(awk "BEGIN {printf \"%.3f\", $end_time - $start_time}")
     
     cat >> "$STATS_FILE" << EOF
 {
@@ -168,7 +168,8 @@ for testfile in "${TEST_FILES[@]}"; do
     
     echo "\n## 🧪 Test: \`$testfile\`" >> "$RESULTS_FILE"
     echo "**Started:** $(date '+%H:%M:%S')" >> "$RESULTS_FILE"
-    echo "**Progress:** ${CURRENT_TEST}/${TOTAL_TESTS} ($(echo "scale=1; $CURRENT_TEST * 100 / $TOTAL_TESTS" | bc -l)%)" >> "$RESULTS_FILE"
+    PROGRESS_PERCENT=$(awk "BEGIN {printf \"%.1f\", $CURRENT_TEST * 100 / $TOTAL_TESTS}")
+    echo "**Progress:** ${CURRENT_TEST}/${TOTAL_TESTS} (${PROGRESS_PERCENT}%)" >> "$RESULTS_FILE"
     
     # Run test with error handling
     set +e
@@ -178,14 +179,14 @@ for testfile in "${TEST_FILES[@]}"; do
     
     # Record end time and calculate duration
     TEST_END_TIME=$(date +%s.%N)
-    TEST_DURATION=$(echo "$TEST_END_TIME - $TEST_START_TIME" | bc -l)
+    TEST_DURATION=$(awk "BEGIN {printf \"%.3f\", $TEST_END_TIME - $TEST_START_TIME}")
     
     # Update fastest/slowest tracking
-    if (( $(echo "$TEST_DURATION < $FASTEST_TIME" | bc -l) )); then
+    if [ $(awk "BEGIN {print ($TEST_DURATION < $FASTEST_TIME) ? 1 : 0}") -eq 1 ]; then
         FASTEST_TIME=$TEST_DURATION
         FASTEST_TEST=$TEST_NAME
     fi
-    if (( $(echo "$TEST_DURATION > $SLOWEST_TIME" | bc -l) )); then
+    if [ $(awk "BEGIN {print ($TEST_DURATION > $SLOWEST_TIME) ? 1 : 0}") -eq 1 ]; then
         SLOWEST_TIME=$TEST_DURATION
         SLOWEST_TEST=$TEST_NAME
     fi
@@ -235,9 +236,9 @@ echo # New line after progress bar
 
 # Calculate final statistics
 TOTAL_END_TIME=$(date +%s.%N)
-TOTAL_DURATION=$(echo "$TOTAL_END_TIME - $TOTAL_START_TIME" | bc -l)
-SUCCESS_RATE=$(echo "scale=1; $PASSED * 100 / ($PASSED + $FAILED + $ERRORS)" | bc -l)
-AVG_TEST_TIME=$(echo "scale=3; $TOTAL_DURATION / $TOTAL_TESTS" | bc -l)
+TOTAL_DURATION=$(awk "BEGIN {printf \"%.3f\", $TOTAL_END_TIME - $TOTAL_START_TIME}")
+SUCCESS_RATE=$(awk "BEGIN {printf \"%.1f\", $PASSED * 100 / ($PASSED + $FAILED + $ERRORS)}")
+AVG_TEST_TIME=$(awk "BEGIN {printf \"%.3f\", $TOTAL_DURATION / $TOTAL_TESTS}")
 
 # Close stats JSON file
 sed -i "" '$ s/,$//' "$STATS_FILE" 2>/dev/null || true
@@ -280,8 +281,8 @@ for section in 2 3 4 5; do
     SECTION_TOTAL=$(find tests/kubernetes -name "custom-${section}.*" -type d | wc -l | tr -d ' ')
     SECTION_PASSED=$(grep -c "custom-${section}.*PASS" "$SUMMARY_FILE" || echo "0")
     if [ "$SECTION_TOTAL" -gt 0 ]; then
-        SECTION_RATE=$(echo "scale=1; $SECTION_PASSED * 100 / $SECTION_TOTAL" | bc -l)
-        SECTION_COVERAGE=$(echo "scale=1; $SECTION_TOTAL * 100 / 30" | bc -l)  # Assuming ~30 total CIS controls per section
+        SECTION_RATE=$(awk "BEGIN {printf \"%.1f\", $SECTION_PASSED * 100 / $SECTION_TOTAL}")
+        SECTION_COVERAGE=$(awk "BEGIN {printf \"%.1f\", $SECTION_TOTAL * 100 / 30}")  # Assuming ~30 total CIS controls per section
         echo "| **Section ${section}** | ${SECTION_PASSED} | ${SECTION_TOTAL} | ${SECTION_RATE}% | ${SECTION_COVERAGE}% |" >> "$SUMMARY_FILE"
     fi
 done
@@ -295,10 +296,14 @@ POD_SECURITY=$(find tests/kubernetes -path "*custom-5.*" -type d | wc -l | tr -d
 
 echo "| Policy Category | Test Count | Percentage |" >> "$SUMMARY_FILE"
 echo "|----------------|------------|------------|" >> "$SUMMARY_FILE"
-echo "| Control Plane | $CONTROL_PLANE | $(echo "scale=1; $CONTROL_PLANE * 100 / $TOTAL_TESTS" | bc -l)% |" >> "$SUMMARY_FILE"
-echo "| Worker Nodes | $WORKER_NODES | $(echo "scale=1; $WORKER_NODES * 100 / $TOTAL_TESTS" | bc -l)% |" >> "$SUMMARY_FILE"
-echo "| RBAC | $RBAC | $(echo "scale=1; $RBAC * 100 / $TOTAL_TESTS" | bc -l)% |" >> "$SUMMARY_FILE"
-echo "| Pod Security | $POD_SECURITY | $(echo "scale=1; $POD_SECURITY * 100 / $TOTAL_TESTS" | bc -l)% |" >> "$SUMMARY_FILE"
+CONTROL_PLANE_PCT=$(awk "BEGIN {printf \"%.1f\", $CONTROL_PLANE * 100 / $TOTAL_TESTS}")
+WORKER_NODES_PCT=$(awk "BEGIN {printf \"%.1f\", $WORKER_NODES * 100 / $TOTAL_TESTS}")
+RBAC_PCT=$(awk "BEGIN {printf \"%.1f\", $RBAC * 100 / $TOTAL_TESTS}")
+POD_SECURITY_PCT=$(awk "BEGIN {printf \"%.1f\", $POD_SECURITY * 100 / $TOTAL_TESTS}")
+echo "| Control Plane | $CONTROL_PLANE | ${CONTROL_PLANE_PCT}% |" >> "$SUMMARY_FILE"
+echo "| Worker Nodes | $WORKER_NODES | ${WORKER_NODES_PCT}% |" >> "$SUMMARY_FILE"
+echo "| RBAC | $RBAC | ${RBAC_PCT}% |" >> "$SUMMARY_FILE"
+echo "| Pod Security | $POD_SECURITY | ${POD_SECURITY_PCT}% |" >> "$SUMMARY_FILE"
 
 cat >> "$SUMMARY_FILE" << EOF
 

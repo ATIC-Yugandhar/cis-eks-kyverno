@@ -38,7 +38,7 @@ echo -e "${YELLOW}🔍 [90%] Running Kyverno policy validation...${NC}"
 START_TIME=$(date +%s.%N)
 kyverno apply "$POLICY_DIR"/*.yaml --resource "$TFPLAN_JSON" --output yaml > "$KYVERNO_REPORT"
 END_TIME=$(date +%s.%N)
-DURATION=$(echo "$END_TIME - $START_TIME" | bc -l)
+DURATION=$(awk "BEGIN {printf \"%.3f\", $END_TIME - $START_TIME}")
 
 # Generate summary report
 cat > "$SUMMARY_REPORT" << EOF

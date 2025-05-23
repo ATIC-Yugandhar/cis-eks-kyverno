@@ -1,6 +1,6 @@
 # 📋 Kyverno CIS EKS Compliance Executive Summary
 
-**Generated**: 2025-05-23 16:09:19
+**Generated**: 2025-05-23 16:16:30
 
 ## 🎯 Executive Overview
 
@@ -9,7 +9,7 @@
 | **Total Test Suites** | 2 |
 | **✅ Completed Suites** | 1 |
 | **Completion Rate** | 50.0% |
-| **Generation Time** | 2025-05-23 16:09:19 |
+| **Generation Time** | 2025-05-23 16:16:30 |
 
 ---
 

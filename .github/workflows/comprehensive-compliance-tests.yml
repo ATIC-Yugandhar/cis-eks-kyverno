@@ -1,0 +1,275 @@
+name: Comprehensive CIS EKS Compliance Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      run_kind_tests:
+        description: 'Run Kind cluster tests'
+        required: false
+        default: 'true'
+        type: boolean
+      run_terraform_tests:
+        description: 'Run Terraform compliance tests'
+        required: false
+        default: 'true'
+        type: boolean
+
+env:
+  KYVERNO_VERSION: "1.13.6"
+
+jobs:
+  unit-tests:
+    name: Unit Tests (Policy Validation)
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Kyverno CLI
+      run: |
+        curl -LO "https://github.com/kyverno/kyverno/releases/download/v${{ env.KYVERNO_VERSION }}/kyverno-cli_v${{ env.KYVERNO_VERSION }}_linux_x86_64.tar.gz"
+        tar -xzf kyverno-cli_v${{ env.KYVERNO_VERSION }}_linux_x86_64.tar.gz
+        sudo mv kyverno /usr/local/bin/
+        kyverno version
+        
+    - name: Run policy unit tests
+      run: |
+        chmod +x scripts/test-all-policies.sh
+        ./scripts/test-all-policies.sh
+        
+    - name: Upload unit test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: unit-test-results
+        path: |
+          reports/policy-tests/
+        retention-days: 30
+
+  terraform-tests:
+    name: Terraform Compliance Tests
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.run_terraform_tests != 'false' }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: "1.5.0"
+        
+    - name: Setup Kyverno CLI
+      run: |
+        curl -LO "https://github.com/kyverno/kyverno/releases/download/v${{ env.KYVERNO_VERSION }}/kyverno-cli_v${{ env.KYVERNO_VERSION }}_linux_x86_64.tar.gz"
+        tar -xzf kyverno-cli_v${{ env.KYVERNO_VERSION }}_linux_x86_64.tar.gz
+        sudo mv kyverno /usr/local/bin/
+        kyverno version
+        
+    - name: Run Terraform compliance tests
+      run: |
+        chmod +x scripts/test-terraform-cis-policies.sh
+        ./scripts/test-terraform-cis-policies.sh
+        
+    - name: Upload Terraform test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: terraform-test-results
+        path: |
+          reports/terraform-compliance/
+        retention-days: 30
+
+  kind-cluster-tests:
+    name: Kind Cluster Integration Tests
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.run_kind_tests != 'false' }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Docker
+      run: |
+        sudo systemctl start docker
+        sudo usermod -aG docker $USER
+        
+    - name: Setup Kind
+      run: |
+        # Install Kind
+        [ $(uname -m) = x86_64 ] && curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.20.0/kind-linux-amd64
+        chmod +x ./kind
+        sudo mv ./kind /usr/local/bin/kind
+        kind version
+        
+    - name: Setup kubectl
+      run: |
+        curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+        chmod +x kubectl
+        sudo mv kubectl /usr/local/bin/
+        kubectl version --client
+        
+    - name: Setup Kyverno CLI
+      run: |
+        curl -LO "https://github.com/kyverno/kyverno/releases/download/v${{ env.KYVERNO_VERSION }}/kyverno-cli_v${{ env.KYVERNO_VERSION }}_linux_x86_64.tar.gz"
+        tar -xzf kyverno-cli_v${{ env.KYVERNO_VERSION }}_linux_x86_64.tar.gz
+        sudo mv kyverno /usr/local/bin/
+        kyverno version
+        
+    - name: Setup yq
+      run: |
+        sudo wget https://github.com/mikefarah/yq/releases/download/v4.40.5/yq_linux_amd64 -O /usr/local/bin/yq
+        sudo chmod +x /usr/local/bin/yq
+        yq --version
+        
+    - name: Run Kind cluster tests
+      run: |
+        chmod +x scripts/kind-cluster-validate.sh
+        # Set environment variable to keep cluster for debugging on failure
+        export KEEP_CLUSTER=false
+        ./scripts/kind-cluster-validate.sh
+        
+    - name: Upload Kind cluster test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: kind-cluster-test-results
+        path: |
+          reports/kind-cluster/
+        retention-days: 30
+        
+    - name: Cleanup Kind cluster
+      if: always()
+      run: |
+        kind delete clusters --all || true
+
+  comprehensive-report:
+    name: Generate Comprehensive Report
+    runs-on: ubuntu-latest
+    needs: [unit-tests, terraform-tests, kind-cluster-tests]
+    if: always()
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Download all test results
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts/
+        
+    - name: Setup report environment
+      run: |
+        mkdir -p reports/comprehensive
+        
+        # Copy unit test results if available
+        if [ -d "artifacts/unit-test-results" ]; then
+          cp -r artifacts/unit-test-results/* reports/ 2>/dev/null || true
+        fi
+        
+        # Copy Terraform test results if available
+        if [ -d "artifacts/terraform-test-results" ]; then
+          cp -r artifacts/terraform-test-results/* reports/ 2>/dev/null || true
+        fi
+        
+        # Copy Kind cluster test results if available
+        if [ -d "artifacts/kind-cluster-test-results" ]; then
+          cp -r artifacts/kind-cluster-test-results/* reports/ 2>/dev/null || true
+        fi
+        
+    - name: Generate comprehensive summary
+      run: |
+        chmod +x scripts/generate-summary-report.sh
+        ./scripts/generate-summary-report.sh
+        
+    - name: Create final compliance report
+      run: |
+        # Create a combined summary
+        cat > reports/comprehensive/github-actions-summary.md << 'EOF'
+        # 🎯 GitHub Actions CIS EKS Compliance Test Results
+        
+        **Workflow**: ${{ github.workflow }}
+        **Run ID**: ${{ github.run_id }}
+        **Triggered by**: ${{ github.event_name }}
+        **Commit**: ${{ github.sha }}
+        **Branch**: ${{ github.ref_name }}
+        **Generated**: $(date)
+        
+        ## 📊 Test Results Summary
+        
+        | Test Suite | Status | Artifact |
+        |------------|--------|----------|
+        | Unit Tests | ${{ needs.unit-tests.result == 'success' && '✅ Passed' || '❌ Failed' }} | unit-test-results |
+        | Terraform Tests | ${{ needs.terraform-tests.result == 'success' && '✅ Passed' || (needs.terraform-tests.result == 'skipped' && '⏭️ Skipped' || '❌ Failed') }} | terraform-test-results |
+        | Kind Cluster Tests | ${{ needs.kind-cluster-tests.result == 'success' && '✅ Passed' || (needs.kind-cluster-tests.result == 'skipped' && '⏭️ Skipped' || '❌ Failed') }} | kind-cluster-test-results |
+        
+        ## 🔗 Links
+        
+        - **Workflow Run**: [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+        - **Commit**: [${{ github.sha }}](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
+        
+        ---
+        
+        *🤖 Generated by GitHub Actions CIS EKS Compliance Workflow*
+        EOF
+        
+    - name: Upload comprehensive report
+      uses: actions/upload-artifact@v4
+      with:
+        name: comprehensive-compliance-report
+        path: |
+          reports/
+        retention-days: 90
+        
+    - name: Generate job summary
+      run: |
+        echo "## 🎯 CIS EKS Compliance Test Results" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "| Test Suite | Status |" >> $GITHUB_STEP_SUMMARY
+        echo "|------------|--------|" >> $GITHUB_STEP_SUMMARY
+        echo "| Unit Tests | ${{ needs.unit-tests.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Terraform Tests | ${{ needs.terraform-tests.result == 'success' && '✅ Passed' || (needs.terraform-tests.result == 'skipped' && '⏭️ Skipped' || '❌ Failed') }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Kind Cluster Tests | ${{ needs.kind-cluster-tests.result == 'success' && '✅ Passed' || (needs.kind-cluster-tests.result == 'skipped' && '⏭️ Skipped' || '❌ Failed') }} |" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📁 Artifacts Generated" >> $GITHUB_STEP_SUMMARY
+        echo "- **comprehensive-compliance-report**: Complete test results and reports" >> $GITHUB_STEP_SUMMARY
+        
+        # Add detailed results if available
+        if [ -f "reports/executive-summary.md" ]; then
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📊 Executive Summary" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          head -20 reports/executive-summary.md >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+        fi
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+        
+    - name: Upload Trivy scan results
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
