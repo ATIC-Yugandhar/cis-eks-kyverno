@@ -15,7 +15,7 @@ jobs:
 
       - name: Install Kyverno CLI
         run: |
-          KYVERNO_VERSION="v1.11.1"
+          KYVERNO_VERSION="v1.13.6"
           echo "Installing Kyverno CLI version: ${KYVERNO_VERSION}"
           curl -L -o kyverno-cli.tar.gz "https://github.com/kyverno/kyverno/releases/download/${KYVERNO_VERSION}/kyverno-cli_${KYVERNO_VERSION}_linux_x86_64.tar.gz"
           tar -xvzf kyverno-cli.tar.gz

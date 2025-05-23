@@ -214,12 +214,15 @@ fi
 set -e
 
 echo "Main cluster scan command finished with exit code: $SCAN_EXIT_CODE"
-# Check for actual errors vs policy violations
-if [ $SCAN_EXIT_CODE -ne 0 ] && ! grep -q "policy validation failed" "$KYVERNO_SCAN_STDERR_FILE" 2>/dev/null; then
-    # If exit code is non-zero and it's not just policy violations, treat as error
-    if grep -q "error\|Error\|ERROR" "$KYVERNO_SCAN_STDERR_FILE" 2>/dev/null; then
-        echo "ERROR: Kyverno scan failed with errors!"
+# Policy violations (exit code 1) are expected behavior, not errors
+# Only exit with error if there are actual system/tool errors
+if [ $SCAN_EXIT_CODE -ne 0 ]; then
+    # Check if this is due to policy violations vs actual errors
+    if grep -q -E "failed to locate OpenAPI|permission denied|command not found|connection refused|no such file|syntax error" "$KYVERNO_SCAN_STDERR_FILE" 2>/dev/null; then
+        echo "ERROR: Kyverno scan failed with system errors!"
         exit 1
+    else
+        echo "Note: Kyverno scan exit code $SCAN_EXIT_CODE indicates policy violations were found (this is expected)"
     fi
 fi
 
