@@ -22,7 +22,6 @@ spec:
           data:
             logging: "?*audit?*"
 
-    # Rule 1: Validate AuditSink configuration
     - name: validate-auditsink
       match:
         any:
@@ -44,7 +43,6 @@ spec:
               stages:
                 - "ResponseComplete"
 
-    # Rule 2: Validate EKS audit logging through ConfigMap
     - name: validate-eks-audit-logging
       match:
         any:
@@ -61,7 +59,6 @@ spec:
           data:
             logging: "*audit*"
 
-    # Rule 3: Validate Terraform configuration (for json.kyverno.io/v1alpha1)
     - name: validate-terraform-audit-logging
       match:
         any:

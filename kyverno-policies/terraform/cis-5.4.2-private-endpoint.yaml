@@ -1,4 +1,3 @@
-# CIS 5.4.2 - Use private endpoint, disable public access
 apiVersion: json.kyverno.io/v1alpha1
 kind: ValidatingPolicy
 metadata:
