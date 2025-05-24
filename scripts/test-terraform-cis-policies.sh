@@ -102,7 +102,11 @@ done
 
 # Calculate final statistics for compliant scan
 SUCCESS_COUNT=$((POLICY_COUNT - SCAN_ERRORS))
-SUCCESS_RATE=$(awk "BEGIN {printf \"%.1f\", $SUCCESS_COUNT * 100 / $POLICY_COUNT}")
+if [ "$POLICY_COUNT" -eq 0 ]; then
+    SUCCESS_RATE="0.0"
+else
+    SUCCESS_RATE=$(awk "BEGIN {printf \"%.1f\", $SUCCESS_COUNT * 100 / $POLICY_COUNT}")
+fi
 
 # Update placeholders in report
 sed -i "" "s/TOTAL_PLACEHOLDER/$POLICY_COUNT/g" "$REPORT_DIR/compliant-plan-scan.md"
@@ -179,7 +183,11 @@ done
 
 # Calculate final statistics for noncompliant scan
 SUCCESS_COUNT_NC=$((POLICY_COUNT_NC - SCAN_ERRORS_NC))
-SUCCESS_RATE_NC=$(awk "BEGIN {printf \"%.1f\", $SUCCESS_COUNT_NC * 100 / $POLICY_COUNT_NC}")
+if [ "$POLICY_COUNT_NC" -eq 0 ]; then
+    SUCCESS_RATE_NC="0.0"
+else
+    SUCCESS_RATE_NC=$(awk "BEGIN {printf \"%.1f\", $SUCCESS_COUNT_NC * 100 / $POLICY_COUNT_NC}")
+fi
 
 # Update placeholders in report
 sed -i "" "s/TOTAL_NC_PLACEHOLDER/$POLICY_COUNT_NC/g" "$REPORT_DIR/noncompliant-plan-scan.md"
@@ -194,7 +202,11 @@ echo "[INFO] 📊 Results written to $REPORT_DIR/noncompliant-plan-scan.md"
 TOTAL_SCANS=$((POLICY_COUNT + POLICY_COUNT_NC))
 TOTAL_SUCCESS=$((SUCCESS_COUNT + SUCCESS_COUNT_NC))
 TOTAL_SCAN_ERRORS=$((SCAN_ERRORS + SCAN_ERRORS_NC))
-OVERALL_SUCCESS_RATE=$(awk "BEGIN {printf \"%.1f\", $TOTAL_SUCCESS * 100 / $TOTAL_SCANS}")
+if [ "$TOTAL_SCANS" -eq 0 ]; then
+    OVERALL_SUCCESS_RATE="0.0"
+else
+    OVERALL_SUCCESS_RATE=$(awk "BEGIN {printf \"%.1f\", $TOTAL_SUCCESS * 100 / $TOTAL_SCANS}")
+fi
 
 echo ""
 echo "=========================================="

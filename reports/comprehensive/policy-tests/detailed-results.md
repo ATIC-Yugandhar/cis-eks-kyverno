@@ -9,20 +9,20 @@
 | Metric | Value |
 |--------|-------|
 | **Total Tests** | 54 |
-| **✅ Passed** | 53 |
+| **✅ Passed** | 54 |
 | **❌ Failed** | 0 |
-| **⚠️ Errors** | 1 |
-| **Success Rate** | 98.1% |
-| **Total Duration** | 14.846s |
+| **⚠️ Errors** | 0 |
+| **Success Rate** | 100.0% |
+| **Total Duration** | 15.627s |
 
 ---
 
 ## 📋 Detailed Test Results
 
 \n## 🧪 Test: `tests/kubernetes/custom-2.1.1/compliant/kyverno-test.yaml`
-**Started:** 16:22:32
+**Started:** 22:40:16
 **Progress:** 1/54 (1.9%)
-\n**Duration:** 0.139s
+\n**Duration:** 0.151s
 \n```
 Loading test  ( tests/kubernetes/custom-2.1.1/compliant/kyverno-test.yaml ) ...
   Loading values/variables ...
@@ -43,9 +43,9 @@ Test Summary: 1 tests passed and 0 tests failed
 ```
 \n---\n
 \n## 🧪 Test: `tests/kubernetes/custom-2.1.1/noncompliant/kyverno-test.yaml`
-**Started:** 16:22:33
+**Started:** 22:40:17
 **Progress:** 2/54 (3.7%)
-\n**Duration:** 0.140s
+\n**Duration:** 0.157s
 \n```
 Loading test  ( tests/kubernetes/custom-2.1.1/noncompliant/kyverno-test.yaml ) ...
   Loading values/variables ...
@@ -66,9 +66,9 @@ Test Summary: 1 tests passed and 0 tests failed
 ```
 \n---\n
 \n## 🧪 Test: `tests/kubernetes/custom-2.1.2/compliant/kyverno-test.yaml`
-**Started:** 16:22:33
+**Started:** 22:40:17
 **Progress:** 3/54 (5.6%)
-\n**Duration:** 0.145s
+\n**Duration:** 0.154s
 \n```
 Loading test  ( tests/kubernetes/custom-2.1.2/compliant/kyverno-test.yaml ) ...
   Loading values/variables ...
@@ -89,9 +89,9 @@ Test Summary: 1 tests passed and 0 tests failed
 ```
 \n---\n
 \n## 🧪 Test: `tests/kubernetes/custom-2.1.2/noncompliant/kyverno-test.yaml`
-**Started:** 16:22:33
+**Started:** 22:40:17
 **Progress:** 4/54 (7.4%)
-\n**Duration:** 0.147s
+\n**Duration:** 0.153s
 \n```
 Loading test  ( tests/kubernetes/custom-2.1.2/noncompliant/kyverno-test.yaml ) ...
   Loading values/variables ...
@@ -112,9 +112,9 @@ Test Summary: 1 tests passed and 0 tests failed
 ```
 \n---\n
 \n## 🧪 Test: `tests/kubernetes/custom-3.1.1/compliant/kyverno-test.yaml`
-**Started:** 16:22:33
+**Started:** 22:40:17
 **Progress:** 5/54 (9.3%)
-\n**Duration:** 0.146s
+\n**Duration:** 0.156s
 \n```
 Loading test  ( tests/kubernetes/custom-3.1.1/compliant/kyverno-test.yaml ) ...
   Loading values/variables ...
@@ -135,9 +135,9 @@ Test Summary: 1 tests passed and 0 tests failed
 ```
 \n---\n
 \n## 🧪 Test: `tests/kubernetes/custom-3.1.1/noncompliant/kyverno-test.yaml`
-**Started:** 16:22:34
+**Started:** 22:40:18
 **Progress:** 6/54 (11.1%)
-\n**Duration:** 0.150s
+\n**Duration:** 0.155s
 \n```
 Loading test  ( tests/kubernetes/custom-3.1.1/noncompliant/kyverno-test.yaml ) ...
   Loading values/variables ...
@@ -158,9 +158,9 @@ Test Summary: 1 tests passed and 0 tests failed
 ```
 \n---\n
 \n## 🧪 Test: `tests/kubernetes/custom-3.1.2/compliant/kyverno-test.yaml`
-**Started:** 16:22:34
+**Started:** 22:40:18
 **Progress:** 7/54 (13.0%)
-\n**Duration:** 0.147s
+\n**Duration:** 0.155s
 \n```
 Loading test  ( tests/kubernetes/custom-3.1.2/compliant/kyverno-test.yaml ) ...
   Loading values/variables ...
@@ -181,9 +181,9 @@ Test Summary: 1 tests passed and 0 tests failed
 ```
 \n---\n
 \n## 🧪 Test: `tests/kubernetes/custom-3.1.2/noncompliant/kyverno-test.yaml`
-**Started:** 16:22:34
+**Started:** 22:40:18
 **Progress:** 8/54 (14.8%)
-\n**Duration:** 0.147s
+\n**Duration:** 0.156s
 \n```
 Loading test  ( tests/kubernetes/custom-3.1.2/noncompliant/kyverno-test.yaml ) ...
   Loading values/variables ...
@@ -204,9 +204,9 @@ Test Summary: 1 tests passed and 0 tests failed
 ```
 \n---\n
 \n## 🧪 Test: `tests/kubernetes/custom-3.1.3/compliant/kyverno-test.yaml`
-**Started:** 16:22:34
+**Started:** 22:40:19
 **Progress:** 9/54 (16.7%)
-\n**Duration:** 0.141s
+\n**Duration:** 0.155s
 \n```
 Loading test  ( tests/kubernetes/custom-3.1.3/compliant/kyverno-test.yaml ) ...
   Loading values/variables ...
@@ -227,9 +227,9 @@ Test Summary: 1 tests passed and 0 tests failed
 ```
 \n---\n
 \n## 🧪 Test: `tests/kubernetes/custom-3.1.3/noncompliant/kyverno-test.yaml`
-**Started:** 16:22:35
+**Started:** 22:40:19
 **Progress:** 10/54 (18.5%)
-\n**Duration:** 0.146s
+\n**Duration:** 0.156s
 \n```
 Loading test  ( tests/kubernetes/custom-3.1.3/noncompliant/kyverno-test.yaml ) ...
   Loading values/variables ...
@@ -250,9 +250,9 @@ Test Summary: 1 tests passed and 0 tests failed
 ```
 \n---\n
 \n## 🧪 Test: `tests/kubernetes/custom-3.1.4/compliant/kyverno-test.yaml`
-**Started:** 16:22:35
+**Started:** 22:40:19
 **Progress:** 11/54 (20.4%)
-\n**Duration:** 0.143s
+\n**Duration:** 0.157s
 \n```
 Loading test  ( tests/kubernetes/custom-3.1.4/compliant/kyverno-test.yaml ) ...
   Loading values/variables ...
@@ -273,9 +273,9 @@ Test Summary: 1 tests passed and 0 tests failed
 ```
 \n---\n
 \n## 🧪 Test: `tests/kubernetes/custom-3.1.4/noncompliant/kyverno-test.yaml`
-**Started:** 16:22:35
+**Started:** 22:40:19
 **Progress:** 12/54 (22.2%)
-\n**Duration:** 0.142s
+\n**Duration:** 0.156s
 \n```
 Loading test  ( tests/kubernetes/custom-3.1.4/noncompliant/kyverno-test.yaml ) ...
   Loading values/variables ...
@@ -296,9 +296,9 @@ Test Summary: 1 tests passed and 0 tests failed
 ```
 \n---\n
 \n## 🧪 Test: `tests/kubernetes/custom-3.2.1/compliant/kyverno-test.yaml`
-**Started:** 16:22:36
+**Started:** 22:40:20
 **Progress:** 13/54 (24.1%)
-\n**Duration:** 0.238s
+\n**Duration:** 0.269s
 \n```
 Loading test  ( tests/kubernetes/custom-3.2.1/compliant/kyverno-test.yaml ) ...
   Loading values/variables ...
@@ -320,9 +320,9 @@ Test Summary: 2 tests passed and 0 tests failed
 ```
 \n---\n
 \n## 🧪 Test: `tests/kubernetes/custom-3.2.1/noncompliant/kyverno-test.yaml`
-**Started:** 16:22:36
+**Started:** 22:40:20
 **Progress:** 14/54 (25.9%)
-\n**Duration:** 0.243s
+\n**Duration:** 0.264s
 \n```
 Loading test  ( tests/kubernetes/custom-3.2.1/noncompliant/kyverno-test.yaml ) ...
   Loading values/variables ...
@@ -344,9 +344,9 @@ Test Summary: 2 tests passed and 0 tests failed
 ```
 \n---\n
 \n## 🧪 Test: `tests/kubernetes/custom-3.2.3/compliant/kyverno-test.yaml`
-**Started:** 16:22:36
+**Started:** 22:40:21
 **Progress:** 15/54 (27.8%)
-\n**Duration:** 0.143s
+\n**Duration:** 0.154s
 \n```
 Loading test  ( tests/kubernetes/custom-3.2.3/compliant/kyverno-test.yaml ) ...
   Loading values/variables ...
@@ -367,9 +367,9 @@ Test Summary: 1 tests passed and 0 tests failed
 ```
 \n---\n
 \n## 🧪 Test: `tests/kubernetes/custom-3.2.3/noncompliant/kyverno-test.yaml`
-**Started:** 16:22:37
+**Started:** 22:40:21
 **Progress:** 16/54 (29.6%)
-\n**Duration:** 0.144s
+\n**Duration:** 0.154s
 \n```
 Loading test  ( tests/kubernetes/custom-3.2.3/noncompliant/kyverno-test.yaml ) ...
   Loading values/variables ...
@@ -390,9 +390,9 @@ Test Summary: 1 tests passed and 0 tests failed
 ```
 \n---\n
 \n## 🧪 Test: `tests/kubernetes/custom-3.2.4/compliant/kyverno-test.yaml`
-**Started:** 16:22:37
+**Started:** 22:40:21
 **Progress:** 17/54 (31.5%)
-\n**Duration:** 0.144s
+\n**Duration:** 0.155s
 \n```
 Loading test  ( tests/kubernetes/custom-3.2.4/compliant/kyverno-test.yaml ) ...
   Loading values/variables ...
@@ -413,9 +413,9 @@ Test Summary: 1 tests passed and 0 tests failed
 ```
 \n---\n
 \n## 🧪 Test: `tests/kubernetes/custom-3.2.4/noncompliant/kyverno-test.yaml`
-**Started:** 16:22:37
+**Started:** 22:40:21
 **Progress:** 18/54 (33.3%)
-\n**Duration:** 0.146s
+\n**Duration:** 0.153s
 \n```
 Loading test  ( tests/kubernetes/custom-3.2.4/noncompliant/kyverno-test.yaml ) ...
   Loading values/variables ...
@@ -436,9 +436,9 @@ Test Summary: 1 tests passed and 0 tests failed
 ```
 \n---\n
 \n## 🧪 Test: `tests/kubernetes/custom-3.2.5/compliant/kyverno-test.yaml`
-**Started:** 16:22:37
+**Started:** 22:40:22
 **Progress:** 19/54 (35.2%)
-\n**Duration:** 0.142s
+\n**Duration:** 0.159s
 \n```
 Loading test  ( tests/kubernetes/custom-3.2.5/compliant/kyverno-test.yaml ) ...
   Loading values/variables ...
@@ -459,9 +459,9 @@ Test Summary: 1 tests passed and 0 tests failed
 ```
 \n---\n
 \n## 🧪 Test: `tests/kubernetes/custom-3.2.5/noncompliant/kyverno-test.yaml`
-**Started:** 16:22:38
+**Started:** 22:40:22
 **Progress:** 20/54 (37.0%)
-\n**Duration:** 0.144s
+\n**Duration:** 0.151s
 \n```
 Loading test  ( tests/kubernetes/custom-3.2.5/noncompliant/kyverno-test.yaml ) ...
   Loading values/variables ...
@@ -482,9 +482,9 @@ Test Summary: 1 tests passed and 0 tests failed
 ```
 \n---\n
 \n## 🧪 Test: `tests/kubernetes/custom-3.2.6/compliant/kyverno-test.yaml`
-**Started:** 16:22:38
+**Started:** 22:40:22
 **Progress:** 21/54 (38.9%)
-\n**Duration:** 0.144s
+\n**Duration:** 0.153s
 \n```
 Loading test  ( tests/kubernetes/custom-3.2.6/compliant/kyverno-test.yaml ) ...
   Loading values/variables ...
@@ -505,9 +505,9 @@ Test Summary: 1 tests passed and 0 tests failed
 ```
 \n---\n
 \n## 🧪 Test: `tests/kubernetes/custom-3.2.6/noncompliant/kyverno-test.yaml`
-**Started:** 16:22:38
+**Started:** 22:40:22
 **Progress:** 22/54 (40.7%)
-\n**Duration:** 0.146s
+\n**Duration:** 0.155s
 \n```
 Loading test  ( tests/kubernetes/custom-3.2.6/noncompliant/kyverno-test.yaml ) ...
   Loading values/variables ...
@@ -517,23 +517,20 @@ Loading test  ( tests/kubernetes/custom-3.2.6/noncompliant/kyverno-test.yaml ) .
   Applying 1 policy to 1 resource with 0 exceptions ...
   Checking results ...
 
-│────│────────────────────────────────────────│─────────────────────────────────│───────────────────────────────────│────────│─────────────────────│
-│ [40;32mID[0m │ [40;32mPOLICY                                [0m │ [40;32mRULE                           [0m │ [40;32mRESOURCE                         [0m │ [40;32mRESULT[0m │ [40;32mREASON             [0m │
-│────│────────────────────────────────────────│─────────────────────────────────│───────────────────────────────────│────────│─────────────────────│
-│ 1  │ custom-3-2-6-make-iptables-util-chains │ check-make-iptables-util-chains │ v1/Node/default/noncompliant-node │ Fail   │ Want pass, got fail │
-│────│────────────────────────────────────────│─────────────────────────────────│───────────────────────────────────│────────│─────────────────────│
+│────│────────────────────────────────────────│─────────────────────────────────│───────────────────────────────────│────────│────────│
+│ [40;32mID[0m │ [40;32mPOLICY                                [0m │ [40;32mRULE                           [0m │ [40;32mRESOURCE                         [0m │ [40;32mRESULT[0m │ [40;32mREASON[0m │
+│────│────────────────────────────────────────│─────────────────────────────────│───────────────────────────────────│────────│────────│
+│ 1  │ custom-3-2-6-make-iptables-util-chains │ check-make-iptables-util-chains │ v1/Node/default/noncompliant-node │ Pass   │ Ok     │
+│────│────────────────────────────────────────│─────────────────────────────────│───────────────────────────────────│────────│────────│
 
 
-Test Summary: 0 tests passed and 1 tests failed
-
-Error: 1 tests failed
+Test Summary: 1 tests passed and 0 tests failed
 ```
-\n❌ **ERROR**: Test command failed with exit code 1
 \n---\n
 \n## 🧪 Test: `tests/kubernetes/custom-3.2.7/compliant/kyverno-test.yaml`
-**Started:** 16:22:38
+**Started:** 22:40:23
 **Progress:** 23/54 (42.6%)
-\n**Duration:** 0.143s
+\n**Duration:** 0.153s
 \n```
 Loading test  ( tests/kubernetes/custom-3.2.7/compliant/kyverno-test.yaml ) ...
   Loading values/variables ...
@@ -554,9 +551,9 @@ Test Summary: 1 tests passed and 0 tests failed
 ```
 \n---\n
 \n## 🧪 Test: `tests/kubernetes/custom-3.2.7/noncompliant/kyverno-test.yaml`
-**Started:** 16:22:39
+**Started:** 22:40:23
 **Progress:** 24/54 (44.4%)
-\n**Duration:** 0.142s
+\n**Duration:** 0.155s
 \n```
 Loading test  ( tests/kubernetes/custom-3.2.7/noncompliant/kyverno-test.yaml ) ...
   Loading values/variables ...
@@ -577,9 +574,9 @@ Test Summary: 1 tests passed and 0 tests failed
 ```
 \n---\n
 \n## 🧪 Test: `tests/kubernetes/custom-3.2.8/compliant/kyverno-test.yaml`
-**Started:** 16:22:39
+**Started:** 22:40:23
 **Progress:** 25/54 (46.3%)
-\n**Duration:** 0.139s
+\n**Duration:** 0.158s
 \n```
 Loading test  ( tests/kubernetes/custom-3.2.8/compliant/kyverno-test.yaml ) ...
   Loading values/variables ...
@@ -600,9 +597,9 @@ Test Summary: 1 tests passed and 0 tests failed
 ```
 \n---\n
 \n## 🧪 Test: `tests/kubernetes/custom-3.2.8/noncompliant/kyverno-test.yaml`
-**Started:** 16:22:39
+**Started:** 22:40:24
 **Progress:** 26/54 (48.1%)
-\n**Duration:** 0.145s
+\n**Duration:** 0.157s
 \n```
 Loading test  ( tests/kubernetes/custom-3.2.8/noncompliant/kyverno-test.yaml ) ...
   Loading values/variables ...
@@ -623,9 +620,9 @@ Test Summary: 1 tests passed and 0 tests failed
 ```
 \n---\n
 \n## 🧪 Test: `tests/kubernetes/custom-3.2.9/compliant/kyverno-test.yaml`
-**Started:** 16:22:39
+**Started:** 22:40:24
 **Progress:** 27/54 (50.0%)
-\n**Duration:** 0.138s
+\n**Duration:** 0.160s
 \n```
 Loading test  ( tests/kubernetes/custom-3.2.9/compliant/kyverno-test.yaml ) ...
   Loading values/variables ...
@@ -646,9 +643,9 @@ Test Summary: 1 tests passed and 0 tests failed
 ```
 \n---\n
 \n## 🧪 Test: `tests/kubernetes/custom-3.2.9/noncompliant/kyverno-test.yaml`
-**Started:** 16:22:40
+**Started:** 22:40:24
 **Progress:** 28/54 (51.9%)
-\n**Duration:** 0.143s
+\n**Duration:** 0.154s
 \n```
 Loading test  ( tests/kubernetes/custom-3.2.9/noncompliant/kyverno-test.yaml ) ...
   Loading values/variables ...
@@ -669,9 +666,9 @@ Test Summary: 1 tests passed and 0 tests failed
 ```
 \n---\n
 \n## 🧪 Test: `tests/kubernetes/custom-4.1.7/compliant/kyverno-test.yaml`
-**Started:** 16:22:40
+**Started:** 22:40:24
 **Progress:** 29/54 (53.7%)
-\n**Duration:** 0.147s
+\n**Duration:** 0.158s
 \n```
 Loading test  ( tests/kubernetes/custom-4.1.7/compliant/kyverno-test.yaml ) ...
   Loading values/variables ...
@@ -692,9 +689,9 @@ Test Summary: 1 tests passed and 0 tests failed
 ```
 \n---\n
 \n## 🧪 Test: `tests/kubernetes/custom-4.1.7/noncompliant/kyverno-test.yaml`
-**Started:** 16:22:40
+**Started:** 22:40:25
 **Progress:** 30/54 (55.6%)
-\n**Duration:** 0.144s
+\n**Duration:** 0.156s
 \n```
 Loading test  ( tests/kubernetes/custom-4.1.7/noncompliant/kyverno-test.yaml ) ...
   Loading values/variables ...
@@ -715,9 +712,9 @@ Test Summary: 1 tests passed and 0 tests failed
 ```
 \n---\n
 \n## 🧪 Test: `tests/kubernetes/custom-4.1.8/compliant/kyverno-test.yaml`
-**Started:** 16:22:41
+**Started:** 22:40:25
 **Progress:** 31/54 (57.4%)
-\n**Duration:** 0.146s
+\n**Duration:** 0.159s
 \n```
 Loading test  ( tests/kubernetes/custom-4.1.8/compliant/kyverno-test.yaml ) ...
   Loading values/variables ...
@@ -738,9 +735,9 @@ Test Summary: 1 tests passed and 0 tests failed
 ```
 \n---\n
 \n## 🧪 Test: `tests/kubernetes/custom-4.1.8/noncompliant/kyverno-test.yaml`
-**Started:** 16:22:41
+**Started:** 22:40:25
 **Progress:** 32/54 (59.3%)
-\n**Duration:** 0.149s
+\n**Duration:** 0.153s
 \n```
 Loading test  ( tests/kubernetes/custom-4.1.8/noncompliant/kyverno-test.yaml ) ...
   Loading values/variables ...
@@ -761,9 +758,9 @@ Test Summary: 1 tests passed and 0 tests failed
 ```
 \n---\n
 \n## 🧪 Test: `tests/kubernetes/custom-4.3.1/compliant/kyverno-test.yaml`
-**Started:** 16:22:41
+**Started:** 22:40:26
 **Progress:** 33/54 (61.1%)
-\n**Duration:** 0.144s
+\n**Duration:** 0.157s
 \n```
 Loading test  ( tests/kubernetes/custom-4.3.1/compliant/kyverno-test.yaml ) ...
   Loading values/variables ...
@@ -784,9 +781,9 @@ Test Summary: 1 tests passed and 0 tests failed
 ```
 \n---\n
 \n## 🧪 Test: `tests/kubernetes/custom-4.3.1/noncompliant/kyverno-test.yaml`
-**Started:** 16:22:41
+**Started:** 22:40:26
 **Progress:** 34/54 (63.0%)
-\n**Duration:** 0.145s
+\n**Duration:** 0.152s
 \n```
 Loading test  ( tests/kubernetes/custom-4.3.1/noncompliant/kyverno-test.yaml ) ...
   Loading values/variables ...
@@ -807,9 +804,9 @@ Test Summary: 1 tests passed and 0 tests failed
 ```
 \n---\n
 \n## 🧪 Test: `tests/kubernetes/custom-4.4.2/compliant/kyverno-test.yaml`
-**Started:** 16:22:42
+**Started:** 22:40:26
 **Progress:** 35/54 (64.8%)
-\n**Duration:** 0.142s
+\n**Duration:** 0.160s
 \n```
 Loading test  ( tests/kubernetes/custom-4.4.2/compliant/kyverno-test.yaml ) ...
   Loading values/variables ...
@@ -830,9 +827,9 @@ Test Summary: 1 tests passed and 0 tests failed
 ```
 \n---\n
 \n## 🧪 Test: `tests/kubernetes/custom-4.4.2/noncompliant/kyverno-test.yaml`
-**Started:** 16:22:42
+**Started:** 22:40:26
 **Progress:** 36/54 (66.7%)
-\n**Duration:** 0.146s
+\n**Duration:** 0.154s
 \n```
 Loading test  ( tests/kubernetes/custom-4.4.2/noncompliant/kyverno-test.yaml ) ...
   Loading values/variables ...
@@ -853,9 +850,9 @@ Test Summary: 1 tests passed and 0 tests failed
 ```
 \n---\n
 \n## 🧪 Test: `tests/kubernetes/custom-4.5.1/compliant/kyverno-test.yaml`
-**Started:** 16:22:42
+**Started:** 22:40:27
 **Progress:** 37/54 (68.5%)
-\n**Duration:** 0.145s
+\n**Duration:** 0.156s
 \n```
 Loading test  ( tests/kubernetes/custom-4.5.1/compliant/kyverno-test.yaml ) ...
   Loading values/variables ...
@@ -876,9 +873,9 @@ Test Summary: 1 tests passed and 0 tests failed
 ```
 \n---\n
 \n## 🧪 Test: `tests/kubernetes/custom-4.5.1/noncompliant/kyverno-test.yaml`
-**Started:** 16:22:42
+**Started:** 22:40:27
 **Progress:** 38/54 (70.4%)
-\n**Duration:** 0.141s
+\n**Duration:** 0.157s
 \n```
 Loading test  ( tests/kubernetes/custom-4.5.1/noncompliant/kyverno-test.yaml ) ...
   Loading values/variables ...
@@ -899,9 +896,9 @@ Test Summary: 1 tests passed and 0 tests failed
 ```
 \n---\n
 \n## 🧪 Test: `tests/kubernetes/custom-5.1.1/compliant/kyverno-test.yaml`
-**Started:** 16:22:43
+**Started:** 22:40:27
 **Progress:** 39/54 (72.2%)
-\n**Duration:** 0.146s
+\n**Duration:** 0.158s
 \n```
 Loading test  ( tests/kubernetes/custom-5.1.1/compliant/kyverno-test.yaml ) ...
   Loading values/variables ...
@@ -922,9 +919,9 @@ Test Summary: 1 tests passed and 0 tests failed
 ```
 \n---\n
 \n## 🧪 Test: `tests/kubernetes/custom-5.1.1/noncompliant/kyverno-test.yaml`
-**Started:** 16:22:43
+**Started:** 22:40:28
 **Progress:** 40/54 (74.1%)
-\n**Duration:** 0.146s
+\n**Duration:** 0.159s
 \n```
 Loading test  ( tests/kubernetes/custom-5.1.1/noncompliant/kyverno-test.yaml ) ...
   Loading values/variables ...
@@ -945,9 +942,9 @@ Test Summary: 1 tests passed and 0 tests failed
 ```
 \n---\n
 \n## 🧪 Test: `tests/kubernetes/custom-5.1.2/compliant/kyverno-test.yaml`
-**Started:** 16:22:43
+**Started:** 22:40:28
 **Progress:** 41/54 (75.9%)
-\n**Duration:** 0.242s
+\n**Duration:** 0.266s
 \n```
 Loading test  ( tests/kubernetes/custom-5.1.2/compliant/kyverno-test.yaml ) ...
   Loading values/variables ...
@@ -969,9 +966,9 @@ Test Summary: 2 tests passed and 0 tests failed
 ```
 \n---\n
 \n## 🧪 Test: `tests/kubernetes/custom-5.1.2/noncompliant/kyverno-test.yaml`
-**Started:** 16:22:44
+**Started:** 22:40:28
 **Progress:** 42/54 (77.8%)
-\n**Duration:** 0.240s
+\n**Duration:** 0.266s
 \n```
 Loading test  ( tests/kubernetes/custom-5.1.2/noncompliant/kyverno-test.yaml ) ...
   Loading values/variables ...
@@ -993,9 +990,9 @@ Test Summary: 2 tests passed and 0 tests failed
 ```
 \n---\n
 \n## 🧪 Test: `tests/kubernetes/custom-5.3.1/compliant/kyverno-test.yaml`
-**Started:** 16:22:44
+**Started:** 22:40:29
 **Progress:** 43/54 (79.6%)
-\n**Duration:** 0.143s
+\n**Duration:** 0.160s
 \n```
 Loading test  ( tests/kubernetes/custom-5.3.1/compliant/kyverno-test.yaml ) ...
   Loading values/variables ...
@@ -1017,9 +1014,9 @@ Test Summary: 2 tests passed and 0 tests failed
 ```
 \n---\n
 \n## 🧪 Test: `tests/kubernetes/custom-5.3.1/noncompliant/kyverno-test.yaml`
-**Started:** 16:22:44
+**Started:** 22:40:29
 **Progress:** 44/54 (81.5%)
-\n**Duration:** 0.146s
+\n**Duration:** 0.152s
 \n```
 Loading test  ( tests/kubernetes/custom-5.3.1/noncompliant/kyverno-test.yaml ) ...
   Loading values/variables ...
@@ -1041,9 +1038,9 @@ Test Summary: 2 tests passed and 0 tests failed
 ```
 \n---\n
 \n## 🧪 Test: `tests/kubernetes/custom-5.4.1/compliant/kyverno-test.yaml`
-**Started:** 16:22:44
+**Started:** 22:40:29
 **Progress:** 45/54 (83.3%)
-\n**Duration:** 0.144s
+\n**Duration:** 0.153s
 \n```
 Loading test  ( tests/kubernetes/custom-5.4.1/compliant/kyverno-test.yaml ) ...
   Loading values/variables ...
@@ -1064,9 +1061,9 @@ Test Summary: 1 tests passed and 0 tests failed
 ```
 \n---\n
 \n## 🧪 Test: `tests/kubernetes/custom-5.4.1/noncompliant/kyverno-test.yaml`
-**Started:** 16:22:45
+**Started:** 22:40:29
 **Progress:** 46/54 (85.2%)
-\n**Duration:** 0.144s
+\n**Duration:** 0.156s
 \n```
 Loading test  ( tests/kubernetes/custom-5.4.1/noncompliant/kyverno-test.yaml ) ...
   Loading values/variables ...
@@ -1087,9 +1084,9 @@ Test Summary: 1 tests passed and 0 tests failed
 ```
 \n---\n
 \n## 🧪 Test: `tests/kubernetes/custom-5.4.2/compliant/kyverno-test.yaml`
-**Started:** 16:22:45
+**Started:** 22:40:30
 **Progress:** 47/54 (87.0%)
-\n**Duration:** 0.146s
+\n**Duration:** 0.151s
 \n```
 Loading test  ( tests/kubernetes/custom-5.4.2/compliant/kyverno-test.yaml ) ...
   Loading values/variables ...
@@ -1110,9 +1107,9 @@ Test Summary: 1 tests passed and 0 tests failed
 ```
 \n---\n
 \n## 🧪 Test: `tests/kubernetes/custom-5.4.2/noncompliant/kyverno-test.yaml`
-**Started:** 16:22:45
+**Started:** 22:40:30
 **Progress:** 48/54 (88.9%)
-\n**Duration:** 0.142s
+\n**Duration:** 0.154s
 \n```
 Loading test  ( tests/kubernetes/custom-5.4.2/noncompliant/kyverno-test.yaml ) ...
   Loading values/variables ...
@@ -1133,9 +1130,9 @@ Test Summary: 1 tests passed and 0 tests failed
 ```
 \n---\n
 \n## 🧪 Test: `tests/kubernetes/custom-5.4.3/compliant/kyverno-test.yaml`
-**Started:** 16:22:46
+**Started:** 22:40:30
 **Progress:** 49/54 (90.7%)
-\n**Duration:** 0.144s
+\n**Duration:** 0.157s
 \n```
 Loading test  ( tests/kubernetes/custom-5.4.3/compliant/kyverno-test.yaml ) ...
   Loading values/variables ...
@@ -1156,9 +1153,9 @@ Test Summary: 1 tests passed and 0 tests failed
 ```
 \n---\n
 \n## 🧪 Test: `tests/kubernetes/custom-5.4.3/noncompliant/kyverno-test.yaml`
-**Started:** 16:22:46
+**Started:** 22:40:31
 **Progress:** 50/54 (92.6%)
-\n**Duration:** 0.143s
+\n**Duration:** 0.155s
 \n```
 Loading test  ( tests/kubernetes/custom-5.4.3/noncompliant/kyverno-test.yaml ) ...
   Loading values/variables ...
@@ -1179,9 +1176,9 @@ Test Summary: 1 tests passed and 0 tests failed
 ```
 \n---\n
 \n## 🧪 Test: `tests/kubernetes/custom-5.4.5/compliant/kyverno-test.yaml`
-**Started:** 16:22:46
+**Started:** 22:40:31
 **Progress:** 51/54 (94.4%)
-\n**Duration:** 0.145s
+\n**Duration:** 0.151s
 \n```
 Loading test  ( tests/kubernetes/custom-5.4.5/compliant/kyverno-test.yaml ) ...
   Loading values/variables ...
@@ -1202,9 +1199,9 @@ Test Summary: 1 tests passed and 0 tests failed
 ```
 \n---\n
 \n## 🧪 Test: `tests/kubernetes/custom-5.4.5/noncompliant/kyverno-test.yaml`
-**Started:** 16:22:46
+**Started:** 22:40:31
 **Progress:** 52/54 (96.3%)
-\n**Duration:** 0.143s
+\n**Duration:** 0.155s
 \n```
 Loading test  ( tests/kubernetes/custom-5.4.5/noncompliant/kyverno-test.yaml ) ...
   Loading values/variables ...
@@ -1225,9 +1222,9 @@ Test Summary: 1 tests passed and 0 tests failed
 ```
 \n---\n
 \n## 🧪 Test: `tests/kubernetes/custom-5.5.1/compliant/kyverno-test.yaml`
-**Started:** 16:22:47
+**Started:** 22:40:31
 **Progress:** 53/54 (98.1%)
-\n**Duration:** 0.145s
+\n**Duration:** 0.157s
 \n```
 Loading test  ( tests/kubernetes/custom-5.5.1/compliant/kyverno-test.yaml ) ...
   Loading values/variables ...
@@ -1248,9 +1245,9 @@ Test Summary: 1 tests passed and 0 tests failed
 ```
 \n---\n
 \n## 🧪 Test: `tests/kubernetes/custom-5.5.1/noncompliant/kyverno-test.yaml`
-**Started:** 16:22:47
+**Started:** 22:40:32
 **Progress:** 54/54 (100.0%)
-\n**Duration:** 0.145s
+\n**Duration:** 0.158s
 \n```
 Loading test  ( tests/kubernetes/custom-5.5.1/noncompliant/kyverno-test.yaml ) ...
   Loading values/variables ...

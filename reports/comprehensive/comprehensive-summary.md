@@ -1,30 +1,32 @@
 # 🧪 Comprehensive CIS EKS Compliance Test Summary
 
-**Generated**: Fri May 23 16:22:47 IST 2025
-**Total Duration**: 15.27s
+**Generated**: Fri May 23 22:41:22 IST 2025
+**Total Duration**: 66.06s
 **Test Suite Version**: Enhanced v2.0
 
 ## 🎯 Executive Overview
 
 | Metric | Value |
 |--------|-------|
-| **Total Test Suites** | 1 |
-| **✅ Passed** | 0 |
+| **Total Test Suites** | 3 |
+| **✅ Passed** | 2 |
 | **❌ Failed** | 1 |
-| **Success Rate** | 0.0% |
+| **Success Rate** | 66.7% |
 | **Overall Status** | 🔴 Some Tests Failed |
 
 ## 📋 Test Results Breakdown
 
-- ❌ Unit Tests - FAILED (15.26s)
+- ✅ Unit Tests - PASSED (15.75s)
+- ✅ Terraform Tests - PASSED (13.57s)
+- ❌ Kind Cluster Tests - FAILED (36.72s)
 
 ## 📊 Test Coverage Matrix
 
 | Test Type | Status | Coverage | Purpose |
 |-----------|--------|----------|---------|
 | Unit Tests | ✅ Executed | Kubernetes Policies | Individual policy validation |
-| Terraform Tests | ⏭️ Skipped | Infrastructure Policies | Terraform plan validation |
-| Kind Cluster Tests | ⏭️ Skipped | Live Cluster | End-to-end validation |
+| Terraform Tests | ✅ Executed | Infrastructure Policies | Terraform plan validation |
+| Kind Cluster Tests | ✅ Executed | Live Cluster | End-to-end validation |
 | Cluster Scan | ⏭️ Skipped | Production Cluster | Real environment scan |
 
 ## 📁 Generated Reports
@@ -35,13 +37,16 @@
 - **Execution Stats**: [policy-tests/execution-stats.json](policy-tests/execution-stats.json)
 
 ### 🏗️ Terraform Test Reports
-
+- **Compliant Scan**: [terraform-compliance/compliant-plan-scan.md](terraform-compliance/compliant-plan-scan.md)
+- **Non-compliant Scan**: [terraform-compliance/noncompliant-plan-scan.md](terraform-compliance/noncompliant-plan-scan.md)
 
 ### 🐳 Kind Cluster Test Reports
-
+- **Validation Summary**: [kind-cluster/validation-summary.md](kind-cluster/validation-summary.md)
+- **Cluster Scan**: [kind-cluster/cluster-scan-report.yaml](kind-cluster/cluster-scan-report.yaml)
+- **Manifest Tests**: [kind-cluster/manifest-test-report.yaml](kind-cluster/manifest-test-report.yaml)
 
 ### 🔍 Cluster Scan Reports
-
+- No cluster scan reports available
 
 ## 🔧 Recommendations
 

@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kyverno-cis-test
+  labels:
+    name: kyverno-cis-test
+    security.test/enabled: "true"

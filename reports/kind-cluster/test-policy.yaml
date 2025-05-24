@@ -1,0 +1,26 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: test-annotation-filtering
+  annotations:
+    policies.kyverno.io/title: Test Policy for Annotation Filtering
+    policies.kyverno.io/category: Test
+    policies.kyverno.io/description: Verify that Kyverno works correctly after CRD annotation filtering
+spec:
+  validationFailureAction: enforce
+  background: true
+  rules:
+  - name: require-labels
+    match:
+      any:
+      - resources:
+          kinds:
+          - Pod
+          namespaces:
+          - kyverno-cis-test
+    validate:
+      message: "Test policy is working correctly"
+      pattern:
+        metadata:
+          labels:
+            app: "?*"
