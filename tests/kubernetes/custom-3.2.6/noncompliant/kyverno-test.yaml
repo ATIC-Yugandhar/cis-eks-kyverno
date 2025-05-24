@@ -1,0 +1,15 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: custom-3.2.6-noncompliant
+policies:
+  - ../../../../policies/kubernetes/worker-nodes/custom-3.2.6.yaml
+resources:
+  - node.yaml
+results:
+  - policy: custom-3-2-6-make-iptables-util-chains
+    rule: check-make-iptables-util-chains
+    resources:
+      - noncompliant-node
+    kind: Node
+    result: fail

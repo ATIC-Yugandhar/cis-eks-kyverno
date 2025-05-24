@@ -1,0 +1,21 @@
+apiVersion: json.kyverno.io/v1alpha1
+kind: ValidatingPolicy
+metadata:
+  name: require-tags
+spec:
+  rules:
+    - name: require-environment-and-owner-tags
+      match:
+        any:
+          - (planned_values.root_module.resources[?provider_name=='aws'] | length(@) > `0`): true
+      assert:
+        all:
+          - message: "All AWS resources must have 'Environment' and 'Owner' tags."
+            check:
+              planned_values:
+                root_module:
+                  ~.resources:
+                    values:
+                      tags:
+                        (contains(keys(@), 'Environment')): true
+                        (contains(keys(@), 'Owner')): true 
