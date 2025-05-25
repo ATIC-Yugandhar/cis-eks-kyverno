@@ -27,7 +27,7 @@ STATS_FILE="$REPORT_DIR/execution-stats.json"
 mkdir -p "$REPORT_DIR"
 rm -f "$RESULTS_FILE" "$SUMMARY_FILE" "$STATS_FILE"
 
-TOTAL_START_TIME=$(date +%s.%N)
+TOTAL_START_TIME=$(date +%s.%N 2>/dev/null || date +%s)
 TOTAL_TESTS=0
 CURRENT_TEST=0
 PASSED=0
@@ -128,8 +128,23 @@ EOF
 }
 
 echo -e "${BLUE}${GEAR} Discovering test cases...${NC}"
+
+# Debug: Check if tests directory exists
+if [ ! -d "tests/kubernetes" ]; then
+    echo -e "${RED}${CROSS_MARK} ERROR: tests/kubernetes directory not found!${NC}"
+    echo -e "${YELLOW}Current directory: $(pwd)${NC}"
+    echo -e "${YELLOW}Contents: $(ls -la)${NC}"
+    exit 1
+fi
+
 TEST_FILES=($(find tests/kubernetes -type f -name 'kyverno-test.yaml' | sort))
 TOTAL_TESTS=${#TEST_FILES[@]}
+
+if [ $TOTAL_TESTS -eq 0 ]; then
+    echo -e "${RED}${CROSS_MARK} ERROR: No test files found!${NC}"
+    echo -e "${YELLOW}Please ensure test files exist in tests/kubernetes/**/${NC}"
+    exit 1
+fi
 
 print_header
 echo -e "${WHITE}${CHART} Found ${TOTAL_TESTS} test cases to execute${NC}"
@@ -149,7 +164,7 @@ for testfile in "${TEST_FILES[@]}"; do
     
     show_progress "$CURRENT_TEST" "$TOTAL_TESTS" "$TEST_NAME" "running"
     
-    TEST_START_TIME=$(date +%s.%N)
+    TEST_START_TIME=$(date +%s.%N 2>/dev/null || date +%s)
     
     echo "\n## 🧪 Test: \`$testfile\`" >> "$RESULTS_FILE"
     echo "**Started:** $(date '+%H:%M:%S')" >> "$RESULTS_FILE"
@@ -161,7 +176,7 @@ for testfile in "${TEST_FILES[@]}"; do
     TEST_EXIT_CODE=$?
     set -e
     
-    TEST_END_TIME=$(date +%s.%N)
+    TEST_END_TIME=$(date +%s.%N 2>/dev/null || date +%s)
     TEST_DURATION=$(awk "BEGIN {printf \"%.3f\", $TEST_END_TIME - $TEST_START_TIME}")
     
     if [ $(awk "BEGIN {print ($TEST_DURATION < $FASTEST_TIME) ? 1 : 0}") -eq 1 ]; then
@@ -213,7 +228,7 @@ done
 
 echo
 
-TOTAL_END_TIME=$(date +%s.%N)
+TOTAL_END_TIME=$(date +%s.%N 2>/dev/null || date +%s)
 TOTAL_DURATION=$(awk "BEGIN {printf \"%.3f\", $TOTAL_END_TIME - $TOTAL_START_TIME}")
 SUCCESS_RATE=$(awk "BEGIN {printf \"%.1f\", $PASSED * 100 / ($PASSED + $FAILED + $ERRORS)}")
 AVG_TEST_TIME=$(awk "BEGIN {printf \"%.3f\", $TOTAL_DURATION / $TOTAL_TESTS}")
