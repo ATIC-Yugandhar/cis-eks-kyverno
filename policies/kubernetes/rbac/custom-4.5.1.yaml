@@ -8,13 +8,13 @@ metadata:
       Validate that resources are not created in the "default" namespace, enforcing namespace-based resource boundaries.
 spec:
   validationFailureAction: enforce
-  background: false # Disable background scanning for this policy
+  background: false
   rules:
     - name: disallow-default-namespace
       match:
         resources:
           kinds:
-            - "*" # Apply to all resource kinds
+            - "*"
           namespaces:
             - default
       validate:

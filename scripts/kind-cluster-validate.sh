@@ -1,15 +1,13 @@
 #!/usr/bin/env bash
 set -e
 
-# Colors for output
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
 PURPLE='\033[0;35m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
-# Script configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 CLUSTER_NAME="cis-eks-kyverno-test"
@@ -17,7 +15,6 @@ REPORT_DIR="$PROJECT_ROOT/reports/kind-cluster"
 MANIFESTS_DIR="$PROJECT_ROOT/tests/kind-manifests"
 POLICIES_DIR="$PROJECT_ROOT/policies/kubernetes"
 
-# Create necessary directories
 mkdir -p "$REPORT_DIR" "$MANIFESTS_DIR"
 
 echo -e "${PURPLE}🚀 Starting Kind Cluster CIS EKS Compliance Validation${NC}"
@@ -27,7 +24,6 @@ echo -e "  📁 Report Directory: $REPORT_DIR"
 echo -e "  📋 Policies Directory: $POLICIES_DIR"
 echo
 
-# Check dependencies
 check_dependencies() {
     echo -e "${YELLOW}⚙️ [10%] Checking dependencies...${NC}"
     
@@ -78,7 +74,6 @@ check_dependencies() {
     echo -e "${GREEN}✅ All dependencies satisfied${NC}"
 }
 
-# Create kind cluster configuration
 create_cluster_config() {
     echo -e "${YELLOW}⚙️ [20%] Creating cluster configuration...${NC}"
     
@@ -106,11 +101,9 @@ EOF
     echo -e "${GREEN}✅ Cluster configuration created${NC}"
 }
 
-# Create test manifests
 create_test_manifests() {
     echo -e "${YELLOW}⚙️ [30%] Creating test manifests...${NC}"
     
-    # Create namespace
     cat > "$MANIFESTS_DIR/namespace.yaml" << EOF
 apiVersion: v1
 kind: Namespace
@@ -121,7 +114,6 @@ metadata:
     security.test/enabled: "true"
 EOF
     
-    # Create compliant pod
     cat > "$MANIFESTS_DIR/compliant-pod.yaml" << EOF
 apiVersion: v1
 kind: Pod
@@ -158,7 +150,6 @@ spec:
         cpu: "50m"
 EOF
     
-    # Create non-compliant pod for testing
     cat > "$MANIFESTS_DIR/noncompliant-pod.yaml" << EOF
 apiVersion: v1
 kind: Pod
@@ -179,7 +170,6 @@ spec:
     - containerPort: 80
 EOF
     
-    # Create service account
     cat > "$MANIFESTS_DIR/serviceaccount.yaml" << EOF
 apiVersion: v1
 kind: ServiceAccount
@@ -193,20 +183,16 @@ EOF
     echo -e "${GREEN}✅ Test manifests created${NC}"
 }
 
-# Create and configure cluster
 create_cluster() {
     echo -e "${YELLOW}⚙️ [40%] Creating Kind cluster...${NC}"
     
-    # Delete existing cluster if it exists
     if kind get clusters | grep -q "^$CLUSTER_NAME$"; then
         echo -e "${YELLOW}Deleting existing cluster $CLUSTER_NAME...${NC}"
         kind delete cluster --name "$CLUSTER_NAME"
     fi
     
-    # Create new cluster
     kind create cluster --config "$REPORT_DIR/kind-cluster-config.yaml" --name "$CLUSTER_NAME"
     
-    # Wait for cluster to be ready
     echo -e "${YELLOW}Waiting for cluster to be ready...${NC}"
     kubectl cluster-info --context "kind-$CLUSTER_NAME"
     kubectl wait --for=condition=Ready nodes --all --timeout=300s --context "kind-$CLUSTER_NAME"
@@ -214,18 +200,15 @@ create_cluster() {
     echo -e "${GREEN}✅ Kind cluster created and ready${NC}"
 }
 
-# Install Kyverno
 install_kyverno() {
     echo -e "${YELLOW}⚙️ [50%] Installing Kyverno...${NC}"
     
-    # Download and install Kyverno
     KYVERNO_VERSION="v1.11.1"
     curl -L "https://github.com/kyverno/kyverno/releases/download/$KYVERNO_VERSION/install.yaml" -o "$REPORT_DIR/kyverno-install-raw.yaml"
     
     # Filter out problematic annotations to avoid 262144 bytes limit
     echo -e "${YELLOW}Filtering CRD annotations to reduce size...${NC}"
     
-    # Get original file size for comparison
     ORIGINAL_SIZE=$(wc -c < "$REPORT_DIR/kyverno-install-raw.yaml")
     echo -e "${BLUE}  Original manifest size: $ORIGINAL_SIZE bytes${NC}"
     
@@ -239,7 +222,6 @@ install_kyverno() {
         ) // .
     ' "$REPORT_DIR/kyverno-install-raw.yaml" > "$REPORT_DIR/kyverno-install.yaml"
     
-    # Verify the filtering worked
     FILTERED_SIZE=$(wc -c < "$REPORT_DIR/kyverno-install.yaml")
     SIZE_REDUCTION=$((ORIGINAL_SIZE - FILTERED_SIZE))
     echo -e "${BLUE}  Filtered manifest size: $FILTERED_SIZE bytes${NC}"
@@ -248,15 +230,12 @@ install_kyverno() {
     # Check individual CRD sizes to ensure they're under the limit
     echo -e "${YELLOW}  Verifying CRD annotation sizes...${NC}"
     
-    # Extract and check clusterpolicies.kyverno.io CRD size
     CLUSTERPOLICIES_SIZE=$(yq eval 'select(.kind == "CustomResourceDefinition" and .metadata.name == "clusterpolicies.kyverno.io")' "$REPORT_DIR/kyverno-install.yaml" | wc -c)
     echo -e "${BLUE}    clusterpolicies.kyverno.io CRD size: $CLUSTERPOLICIES_SIZE bytes${NC}"
     
-    # Extract and check policies.kyverno.io CRD size
     POLICIES_SIZE=$(yq eval 'select(.kind == "CustomResourceDefinition" and .metadata.name == "policies.kyverno.io")' "$REPORT_DIR/kyverno-install.yaml" | wc -c)
     echo -e "${BLUE}    policies.kyverno.io CRD size: $POLICIES_SIZE bytes${NC}"
     
-    # Verify all CRDs are under the 262144 bytes limit
     CRD_LIMIT=262144
     if [ $CLUSTERPOLICIES_SIZE -lt $CRD_LIMIT ] && [ $POLICIES_SIZE -lt $CRD_LIMIT ]; then
         echo -e "${GREEN}  ✅ All CRDs are under the $CRD_LIMIT bytes limit${NC}"
@@ -286,7 +265,6 @@ install_kyverno() {
         echo -e "${GREEN}  Final filtered size: $FINAL_SIZE bytes${NC}"
     fi
     
-    # Apply Kyverno with error handling
     echo -e "${YELLOW}Applying Kyverno manifests...${NC}"
     set +e
     kubectl apply -f "$REPORT_DIR/kyverno-install.yaml" --context "kind-$CLUSTER_NAME" > "$REPORT_DIR/kyverno-apply.log" 2>&1
@@ -325,14 +303,12 @@ install_kyverno() {
         echo -e "${GREEN}✅ Kyverno manifests applied successfully${NC}"
     fi
     
-    # Wait for Kyverno to be ready
     echo -e "${YELLOW}Waiting for Kyverno to be ready...${NC}"
     kubectl wait --for=condition=Available deployment/kyverno-admission-controller -n kyverno --timeout=300s --context "kind-$CLUSTER_NAME"
     kubectl wait --for=condition=Available deployment/kyverno-background-controller -n kyverno --timeout=300s --context "kind-$CLUSTER_NAME"
     kubectl wait --for=condition=Available deployment/kyverno-cleanup-controller -n kyverno --timeout=300s --context "kind-$CLUSTER_NAME"
     kubectl wait --for=condition=Available deployment/kyverno-reports-controller -n kyverno --timeout=300s --context "kind-$CLUSTER_NAME"
     
-    # Wait for CRDs to be established
     kubectl wait --for condition=established --timeout=120s crd/clusterpolicies.kyverno.io --context "kind-$CLUSTER_NAME"
     
     # Verify Kyverno functionality after annotation filtering
@@ -393,16 +369,13 @@ EOF
     echo -e "${GREEN}✅ Kyverno installed and ready${NC}"
 }
 
-# Deploy test applications
 deploy_test_apps() {
     echo -e "${YELLOW}⚙️ [60%] Deploying test applications...${NC}"
     
-    # Apply manifests
     kubectl apply -f "$MANIFESTS_DIR/namespace.yaml" --context "kind-$CLUSTER_NAME"
     kubectl apply -f "$MANIFESTS_DIR/serviceaccount.yaml" --context "kind-$CLUSTER_NAME"
     kubectl apply -f "$MANIFESTS_DIR/compliant-pod.yaml" --context "kind-$CLUSTER_NAME"
     
-    # Try to apply non-compliant pod (should be blocked by policies)
     echo -e "${YELLOW}Testing policy enforcement with non-compliant pod...${NC}"
     set +e
     kubectl apply -f "$MANIFESTS_DIR/noncompliant-pod.yaml" --context "kind-$CLUSTER_NAME" > "$REPORT_DIR/noncompliant-pod-test.log" 2>&1
@@ -418,11 +391,9 @@ deploy_test_apps() {
     echo -e "${GREEN}✅ Test applications deployed${NC}"
 }
 
-# Extract cluster resources
 extract_cluster_resources() {
     echo -e "${YELLOW}⚙️ [70%] Extracting cluster resources...${NC}"
     
-    # Define resource types to extract
     NAMESPACED_RESOURCES=(
         pods services deployments statefulsets daemonsets jobs cronjobs
         configmaps secrets ingresses networkpolicies persistentvolumeclaims
@@ -438,14 +409,12 @@ extract_cluster_resources() {
     )
     
     RESOURCES_YAML="$REPORT_DIR/cluster-resources.yaml"
-    > "$RESOURCES_YAML"  # Clear file
+    > "$RESOURCES_YAML"
     
     FIRST_DOC=true
     
-    # Extract resources more efficiently
     echo "Extracting cluster resources (this may take a moment)..."
     
-    # Extract all resources in one go using kubectl directly
     for resource_type in "${NAMESPACED_RESOURCES[@]}"; do
         echo -n "."
         kubectl get "$resource_type" --all-namespaces -o yaml --context "kind-$CLUSTER_NAME" 2>/dev/null | \
@@ -458,22 +427,19 @@ extract_cluster_resources() {
             yq eval 'select(.items != null) | .items[] | split_doc' - >> "$RESOURCES_YAML" 2>/dev/null || true
     done
     
-    echo ""  # New line after dots
+    echo ""
     
     echo -e "${GREEN}✅ Cluster resources extracted to $RESOURCES_YAML${NC}"
 }
 
-# Run Kyverno validation
 run_kyverno_validation() {
     echo -e "${YELLOW}⚙️ [80%] Running Kyverno policy validation...${NC}"
     
     START_TIME=$(date +%s.%N)
     
-    # Count total policies
     TOTAL_POLICIES=$(find "$POLICIES_DIR" -name "*.yaml" -type f | wc -l | tr -d ' ')
     echo -e "${BLUE}📊 Found $TOTAL_POLICIES policies to validate${NC}"
     
-    # Run policy validation against cluster resources
     CLUSTER_SCAN_REPORT="$REPORT_DIR/cluster-scan-report.yaml"
     CLUSTER_SCAN_STDERR="$REPORT_DIR/cluster-scan-stderr.log"
     
@@ -485,7 +451,6 @@ run_kyverno_validation() {
     SCAN_EXIT_CODE=$?
     set -e
     
-    # Run manifest tests
     echo -e "${YELLOW}Running manifest tests...${NC}"
     MANIFEST_TEST_REPORT="$REPORT_DIR/manifest-test-report.yaml"
     KYVERNO_EXPERIMENTAL=true kyverno apply "$POLICIES_DIR" --resource "$MANIFESTS_DIR" \
@@ -495,7 +460,6 @@ run_kyverno_validation() {
     END_TIME=$(date +%s.%N)
     DURATION=$(awk "BEGIN {printf \"%.3f\", $END_TIME - $START_TIME}")
     
-    # Generate validation summary
     cat > "$REPORT_DIR/validation-summary.md" << EOF
 # 🔍 Kind Cluster CIS EKS Compliance Validation Summary
 
@@ -565,7 +529,6 @@ EOF
     echo -e "${GREEN}✅ Kyverno validation completed in ${DURATION}s${NC}"
 }
 
-# Cleanup cluster
 cleanup_cluster() {
     echo -e "${YELLOW}⚙️ [90%] Cleaning up cluster...${NC}"
     
@@ -578,11 +541,9 @@ cleanup_cluster() {
     fi
 }
 
-# Generate final report
 generate_final_report() {
     echo -e "${YELLOW}⚙️ [95%] Generating final report...${NC}"
     
-    # Count violations and passes
     VIOLATIONS=0
     PASSES=0
     
@@ -622,9 +583,7 @@ generate_final_report() {
     fi
 }
 
-# Main execution
 main() {
-    # Trap cleanup on exit
     trap cleanup_cluster EXIT
     
     check_dependencies
@@ -638,7 +597,6 @@ main() {
     generate_final_report
 }
 
-# Check if script is being sourced or executed
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     main "$@"
 fi

@@ -15,7 +15,6 @@ metadata:
       3. KMS key policy validation
 spec:
   rules:
-    # Rule 1: Validate Terraform EKS cluster configuration
     - name: validate-terraform-eks-encryption
       match:
         any:
@@ -35,7 +34,6 @@ spec:
                       resources:
                         - "secrets"
 
-    # Rule 2: Validate KMS key policy
     - name: validate-kms-key-policy
       match:
         any:
@@ -51,7 +49,6 @@ spec:
                 after:
                   policy: "?*\"kms:Encrypt\"?*\"kms:Decrypt\"?*"
 
-    # Rule 3: Validate runtime secret encryption
     - name: validate-secret-encryption
       match:
         any:
@@ -65,7 +62,6 @@ spec:
             annotations:
               kubernetes.io/encryption-provider: "aws-kms"
 
-    # Rule 4: Validate encryption provider configuration
     - name: validate-encryption-provider
       match:
         any:
@@ -82,7 +78,6 @@ spec:
           data:
             encryption-provider.yaml: "?*kms?*"
 
-    # Rule 5: Check for KMS annotation or label in Secret or Namespace
     - name: check-encrypt-secrets-kms
       match:
         any:

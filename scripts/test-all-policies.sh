@@ -1,7 +1,6 @@
 #!/bin/bash
 set -e
 
-# Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -9,9 +8,8 @@ BLUE='\033[0;34m'
 PURPLE='\033[0;35m'
 CYAN='\033[0;36m'
 WHITE='\033[1;37m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
-# Icons and symbols
 CHECK_MARK="✅"
 CROSS_MARK="❌"
 WARNING="⚠️"
@@ -29,7 +27,6 @@ STATS_FILE="$REPORT_DIR/execution-stats.json"
 mkdir -p "$REPORT_DIR"
 rm -f "$RESULTS_FILE" "$SUMMARY_FILE" "$STATS_FILE"
 
-# Performance tracking variables
 TOTAL_START_TIME=$(date +%s.%N)
 TOTAL_TESTS=0
 CURRENT_TEST=0
@@ -37,7 +34,6 @@ PASSED=0
 FAILED=0
 ERRORS=0
 
-# Progress bar function
 show_progress() {
     local current=$1
     local total=$2
@@ -48,12 +44,10 @@ show_progress() {
     local filled=$((percentage / 2))
     local empty=$((50 - filled))
     
-    # Create progress bar
     local bar=""
     for ((i=0; i<filled; i++)); do bar+="█"; done
     for ((i=0; i<empty; i++)); do bar+="░"; done
     
-    # Status icon
     local icon=""
     case $status in
         "running") icon="${GEAR}" ;;
@@ -66,7 +60,6 @@ show_progress() {
            "$percentage" "$test_name"
 }
 
-# Calculate test statistics
 calculate_stats() {
     local test_name=$1
     local start_time=$2
@@ -85,7 +78,6 @@ calculate_stats() {
 EOF
 }
 
-# Header with system info
 print_header() {
     echo
     echo -e "${PURPLE}╔══════════════════════════════════════════════════════════════════════════════╗${NC}"
@@ -100,7 +92,6 @@ print_header() {
     echo
 }
 
-# Initialize markdown files with enhanced headers
 init_reports() {
     cat > "$RESULTS_FILE" << 'EOF'
 # 🧪 Kyverno Policy Test Results
@@ -133,11 +124,9 @@ EOF
 
 EOF
 
-    # Initialize stats file
     echo "[" > "$STATS_FILE"
 }
 
-# Count total tests
 echo -e "${BLUE}${GEAR} Discovering test cases...${NC}"
 TEST_FILES=($(find tests/kubernetes -type f -name 'kyverno-test.yaml' | sort))
 TOTAL_TESTS=${#TEST_FILES[@]}
@@ -148,22 +137,18 @@ echo
 
 init_reports
 
-# Performance counters
 FASTEST_TEST=""
 SLOWEST_TEST=""
 FASTEST_TIME=999999
 SLOWEST_TIME=0
 
-# Main test execution loop
 for testfile in "${TEST_FILES[@]}"; do
     ((CURRENT_TEST++))
     
-    # Extract test name for display
     TEST_NAME=$(echo "$testfile" | sed 's|tests/kubernetes/||' | sed 's|/[^/]*$||')
     
     show_progress "$CURRENT_TEST" "$TOTAL_TESTS" "$TEST_NAME" "running"
     
-    # Record start time
     TEST_START_TIME=$(date +%s.%N)
     
     echo "\n## 🧪 Test: \`$testfile\`" >> "$RESULTS_FILE"
@@ -171,17 +156,14 @@ for testfile in "${TEST_FILES[@]}"; do
     PROGRESS_PERCENT=$(awk "BEGIN {printf \"%.1f\", $CURRENT_TEST * 100 / $TOTAL_TESTS}")
     echo "**Progress:** ${CURRENT_TEST}/${TOTAL_TESTS} (${PROGRESS_PERCENT}%)" >> "$RESULTS_FILE"
     
-    # Run test with error handling
     set +e
     TEST_OUT=$(kyverno test "$(dirname "$testfile")" 2>&1)
     TEST_EXIT_CODE=$?
     set -e
     
-    # Record end time and calculate duration
     TEST_END_TIME=$(date +%s.%N)
     TEST_DURATION=$(awk "BEGIN {printf \"%.3f\", $TEST_END_TIME - $TEST_START_TIME}")
     
-    # Update fastest/slowest tracking
     if [ $(awk "BEGIN {print ($TEST_DURATION < $FASTEST_TIME) ? 1 : 0}") -eq 1 ]; then
         FASTEST_TIME=$TEST_DURATION
         FASTEST_TEST=$TEST_NAME
@@ -191,13 +173,11 @@ for testfile in "${TEST_FILES[@]}"; do
         SLOWEST_TEST=$TEST_NAME
     fi
     
-    # Format output for Markdown
     echo "\n**Duration:** ${TEST_DURATION}s" >> "$RESULTS_FILE"
     echo "\n\`\`\`" >> "$RESULTS_FILE"
     echo "$TEST_OUT" >> "$RESULTS_FILE"
     echo "\`\`\`" >> "$RESULTS_FILE"
     
-    # Determine test result and update counters
     if [ $TEST_EXIT_CODE -ne 0 ]; then
         show_progress "$CURRENT_TEST" "$TOTAL_TESTS" "$TEST_NAME" "error"
         echo "\n❌ **ERROR**: Test command failed with exit code $TEST_EXIT_CODE" >> "$RESULTS_FILE"
@@ -228,19 +208,16 @@ for testfile in "${TEST_FILES[@]}"; do
     
     echo "\n---\n" >> "$RESULTS_FILE"
     
-    # Brief pause for visual effect
     sleep 0.1
 done
 
-echo # New line after progress bar
+echo
 
-# Calculate final statistics
 TOTAL_END_TIME=$(date +%s.%N)
 TOTAL_DURATION=$(awk "BEGIN {printf \"%.3f\", $TOTAL_END_TIME - $TOTAL_START_TIME}")
 SUCCESS_RATE=$(awk "BEGIN {printf \"%.1f\", $PASSED * 100 / ($PASSED + $FAILED + $ERRORS)}")
 AVG_TEST_TIME=$(awk "BEGIN {printf \"%.3f\", $TOTAL_DURATION / $TOTAL_TESTS}")
 
-# Close stats JSON file
 if [[ "$OSTYPE" == "darwin"* ]]; then
     sed -i "" '$ s/,$//' "$STATS_FILE" 2>/dev/null || true
 else
@@ -250,7 +227,6 @@ echo "]" >> "$STATS_FILE"
 
 TIMESTAMP=$(date +"%Y-%m-%d %H:%M:%S")
 
-# Enhanced summary with performance metrics
 cat >> "$SUMMARY_FILE" << EOF
 
 ## 📊 Test Statistics
@@ -276,7 +252,6 @@ cat >> "$SUMMARY_FILE" << EOF
 
 EOF
 
-# Calculate compliance by CIS section with enhanced metrics
 echo "\n### 📊 CIS Section Compliance Breakdown\n" >> "$SUMMARY_FILE"
 echo "| Section | Passed | Total | Success Rate | Coverage |" >> "$SUMMARY_FILE"
 echo "|---------|--------|-------|--------------|----------|" >> "$SUMMARY_FILE"
@@ -286,12 +261,11 @@ for section in 2 3 4 5; do
     SECTION_PASSED=$(grep -c "custom-${section}.*PASS" "$SUMMARY_FILE" || echo "0")
     if [ "$SECTION_TOTAL" -gt 0 ]; then
         SECTION_RATE=$(awk "BEGIN {printf \"%.1f\", $SECTION_PASSED * 100 / $SECTION_TOTAL}")
-        SECTION_COVERAGE=$(awk "BEGIN {printf \"%.1f\", $SECTION_TOTAL * 100 / 30}")  # Assuming ~30 total CIS controls per section
+        SECTION_COVERAGE=$(awk "BEGIN {printf \"%.1f\", $SECTION_TOTAL * 100 / 30}")
         echo "| **Section ${section}** | ${SECTION_PASSED} | ${SECTION_TOTAL} | ${SECTION_RATE}% | ${SECTION_COVERAGE}% |" >> "$SUMMARY_FILE"
     fi
 done
 
-# Calculate overall policy type distribution
 echo "\n### 🏷️ Policy Type Distribution\n" >> "$SUMMARY_FILE"
 CONTROL_PLANE=$(find tests/kubernetes -path "*custom-2.*" -type d | wc -l | tr -d ' ')
 WORKER_NODES=$(find tests/kubernetes -path "*custom-3.*" -type d | wc -l | tr -d ' ')
@@ -323,7 +297,6 @@ cat >> "$SUMMARY_FILE" << EOF
 *🤖 Generated by Enhanced Kyverno CIS EKS Compliance Test Suite*
 EOF
 
-# Update placeholders in detailed results
 if [[ "$OSTYPE" == "darwin"* ]]; then
     sed -i "" "s/TOTAL_PLACEHOLDER/$TOTAL_TESTS/g" "$RESULTS_FILE"
     sed -i "" "s/PASSED_PLACEHOLDER/$PASSED/g" "$RESULTS_FILE"
@@ -340,7 +313,6 @@ else
     sed -i "s/DURATION_PLACEHOLDER/${TOTAL_DURATION}s/g" "$RESULTS_FILE"
 fi
 
-# Final results display
 echo
 echo -e "${PURPLE}╔══════════════════════════════════════════════════════════════════════════════╗${NC}"
 echo -e "${PURPLE}║${NC}                           ${CHART} ${WHITE}FINAL RESULTS${NC} ${CHART}                             ${PURPLE}║${NC}"

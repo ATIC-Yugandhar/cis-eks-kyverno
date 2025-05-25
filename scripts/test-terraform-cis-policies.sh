@@ -1,7 +1,6 @@
 #!/bin/bash
 set -euo pipefail
 
-# Enable Kyverno experimental features for Terraform plan scanning
 export KYVERNO_EXPERIMENTAL=true
 COMPLIANT_DIR="terraform/compliant"
 NONCOMPLIANT_DIR="terraform/noncompliant"
@@ -48,7 +47,6 @@ if [ ! -f "$COMPLIANT_DIR/tfplan.json" ]; then
     exit 1
 fi
 
-# Count total policies first for progress tracking
 TOTAL_POLICIES=$(find "$POLICY_DIR" -name "*.yaml" -type f | wc -l | tr -d ' ')
 
 cat > "$REPORT_DIR/compliant-plan-scan.md" << EOF
@@ -100,7 +98,6 @@ for policy in $(find "$POLICY_DIR" -name "*.yaml" -type f); do
   fi
 done
 
-# Calculate final statistics for compliant scan
 SUCCESS_COUNT=$((POLICY_COUNT - SCAN_ERRORS))
 if [ "$POLICY_COUNT" -eq 0 ]; then
     SUCCESS_RATE="0.0"
@@ -108,7 +105,6 @@ else
     SUCCESS_RATE=$(awk "BEGIN {printf \"%.1f\", $SUCCESS_COUNT * 100 / $POLICY_COUNT}")
 fi
 
-# Update placeholders in report
 sed -i "" "s/TOTAL_PLACEHOLDER/$POLICY_COUNT/g" "$REPORT_DIR/compliant-plan-scan.md"
 sed -i "" "s/SUCCESS_PLACEHOLDER/$SUCCESS_COUNT/g" "$REPORT_DIR/compliant-plan-scan.md"
 sed -i "" "s/ERRORS_PLACEHOLDER/$SCAN_ERRORS/g" "$REPORT_DIR/compliant-plan-scan.md"
@@ -181,7 +177,6 @@ for policy in $(find "$POLICY_DIR" -name "*.yaml" -type f); do
   fi
 done
 
-# Calculate final statistics for noncompliant scan
 SUCCESS_COUNT_NC=$((POLICY_COUNT_NC - SCAN_ERRORS_NC))
 if [ "$POLICY_COUNT_NC" -eq 0 ]; then
     SUCCESS_RATE_NC="0.0"
@@ -189,7 +184,6 @@ else
     SUCCESS_RATE_NC=$(awk "BEGIN {printf \"%.1f\", $SUCCESS_COUNT_NC * 100 / $POLICY_COUNT_NC}")
 fi
 
-# Update placeholders in report
 sed -i "" "s/TOTAL_NC_PLACEHOLDER/$POLICY_COUNT_NC/g" "$REPORT_DIR/noncompliant-plan-scan.md"
 sed -i "" "s/SUCCESS_NC_PLACEHOLDER/$SUCCESS_COUNT_NC/g" "$REPORT_DIR/noncompliant-plan-scan.md"
 sed -i "" "s/ERRORS_NC_PLACEHOLDER/$SCAN_ERRORS_NC/g" "$REPORT_DIR/noncompliant-plan-scan.md"
@@ -198,7 +192,6 @@ sed -i "" "s/SUCCESS_RATE_NC_PLACEHOLDER/${SUCCESS_RATE_NC}%/g" "$REPORT_DIR/non
 echo "[INFO] ✅ Noncompliant plan scan completed: $SUCCESS_COUNT_NC/$POLICY_COUNT_NC policies passed (${SUCCESS_RATE_NC}%)"
 echo "[INFO] 📊 Results written to $REPORT_DIR/noncompliant-plan-scan.md"
 
-# Calculate overall statistics
 TOTAL_SCANS=$((POLICY_COUNT + POLICY_COUNT_NC))
 TOTAL_SUCCESS=$((SUCCESS_COUNT + SUCCESS_COUNT_NC))
 TOTAL_SCAN_ERRORS=$((SCAN_ERRORS + SCAN_ERRORS_NC))

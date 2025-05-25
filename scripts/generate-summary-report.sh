@@ -1,12 +1,11 @@
 #!/bin/bash
 set -e
 
-# Colors for output
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 YELLOW='\033[1;33m'
 PURPLE='\033[0;35m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
 REPORT_DIR="reports"
 SUMMARY_FILE="$REPORT_DIR/executive-summary.md"
@@ -14,7 +13,6 @@ TIMESTAMP=$(date +"%Y-%m-%d %H:%M:%S")
 
 echo -e "${PURPLE}📈 Generating Executive Summary Report...${NC}"
 
-# Initialize statistics
 TOTAL_REPORTS=0
 COMPLETE_REPORTS=0
 
@@ -44,7 +42,6 @@ if [ -f "$REPORT_DIR/policy-tests/summary.md" ]; then
     ((COMPLETE_REPORTS++))
     echo -e "${GREEN}✅ Policy tests found${NC}"
     
-    # Extract detailed statistics
     if grep -q "Test Statistics" "$REPORT_DIR/policy-tests/summary.md"; then
         echo "" >> "$SUMMARY_FILE"
         grep -A 10 "Test Statistics" "$REPORT_DIR/policy-tests/summary.md" | head -n 11 >> "$SUMMARY_FILE"
@@ -52,7 +49,6 @@ if [ -f "$REPORT_DIR/policy-tests/summary.md" ]; then
         echo "- ❌ No detailed policy test statistics available" >> "$SUMMARY_FILE"
     fi
     
-    # Extract performance metrics if available
     if grep -q "Performance Metrics" "$REPORT_DIR/policy-tests/summary.md"; then
         echo "\n#### ⚡ Performance Metrics" >> "$SUMMARY_FILE"
         grep -A 5 "Performance Metrics" "$REPORT_DIR/policy-tests/summary.md" | tail -n +2 >> "$SUMMARY_FILE"
@@ -72,7 +68,6 @@ if [ -f "$REPORT_DIR/terraform-compliance/compliant-plan-scan.md" ] && [ -f "$RE
     ((COMPLETE_REPORTS++))
     echo -e "${GREEN}✅ Terraform compliance tests found${NC}"
     
-    # Extract statistics from both scans
     COMPLIANT_SUCCESS=$(grep -o "Success Rate.*%" "$REPORT_DIR/terraform-compliance/compliant-plan-scan.md" 2>/dev/null || echo "N/A")
     NONCOMPLIANT_SUCCESS=$(grep -o "Success Rate.*%" "$REPORT_DIR/terraform-compliance/noncompliant-plan-scan.md" 2>/dev/null || echo "N/A")
     
@@ -85,7 +80,6 @@ if [ -f "$REPORT_DIR/terraform-compliance/compliant-plan-scan.md" ] && [ -f "$RE
 
 TERRAFORM_EOF
     
-    # Count violations in non-compliant scan
     VIOLATIONS=$(grep -c "fail" "$REPORT_DIR/terraform-compliance/noncompliant-plan-scan.md" 2>/dev/null || echo "0")
     echo "- 🔴 Policy violations detected in non-compliant config: **$VIOLATIONS**" >> "$SUMMARY_FILE"
 else
@@ -93,21 +87,17 @@ else
     echo "- ❌ No terraform compliance results found" >> "$SUMMARY_FILE"
 fi
 
-# Calculate completion rate (using awk for better portability)
 if [ $TOTAL_REPORTS -gt 0 ]; then
     COMPLETION_RATE=$(awk "BEGIN {printf \"%.1f\", $COMPLETE_REPORTS * 100 / $TOTAL_REPORTS}")
 else
     COMPLETION_RATE="0.0"
 fi
 
-# Update placeholders in summary
 if [[ "$OSTYPE" == "darwin"* ]]; then
-    # macOS
     sed -i "" "s/TOTAL_SUITES_PLACEHOLDER/$TOTAL_REPORTS/g" "$SUMMARY_FILE"
     sed -i "" "s/COMPLETED_SUITES_PLACEHOLDER/$COMPLETE_REPORTS/g" "$SUMMARY_FILE"
     sed -i "" "s/COMPLETION_RATE_PLACEHOLDER/${COMPLETION_RATE}%/g" "$SUMMARY_FILE"
 else
-    # Linux
     sed -i "s/TOTAL_SUITES_PLACEHOLDER/$TOTAL_REPORTS/g" "$SUMMARY_FILE"
     sed -i "s/COMPLETED_SUITES_PLACEHOLDER/$COMPLETE_REPORTS/g" "$SUMMARY_FILE"
     sed -i "s/COMPLETION_RATE_PLACEHOLDER/${COMPLETION_RATE}%/g" "$SUMMARY_FILE"

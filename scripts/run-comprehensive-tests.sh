@@ -1,21 +1,18 @@
 #!/usr/bin/env bash
 set -e
 
-# Colors for output
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
 PURPLE='\033[0;35m'
 WHITE='\033[1;37m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
-# Script configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 REPORT_DIR="$PROJECT_ROOT/reports/comprehensive"
 
-# Test configuration
 RUN_UNIT_TESTS="${RUN_UNIT_TESTS:-true}"
 RUN_TERRAFORM_TESTS="${RUN_TERRAFORM_TESTS:-true}"
 RUN_KIND_CLUSTER_TESTS="${RUN_KIND_CLUSTER_TESTS:-true}"
@@ -36,7 +33,6 @@ echo -e "  🔍 Cluster Scan: $([ "$RUN_CLUSTER_SCAN" = "true" ] && echo "${GREE
 echo -e "  📁 Report Directory: $REPORT_DIR"
 echo
 
-# Initialize tracking variables
 TOTAL_TESTS=0
 PASSED_TESTS=0
 FAILED_TESTS=0
@@ -44,7 +40,6 @@ TEST_RESULTS=()
 
 START_TIME=$(date +%s.%N)
 
-# Helper function to track test results
 track_test_result() {
     local test_name="$1"
     local exit_code="$2"
@@ -63,7 +58,6 @@ track_test_result() {
     fi
 }
 
-# Run unit tests (policy tests)
 run_unit_tests() {
     if [ "$RUN_UNIT_TESTS" != "true" ]; then
         echo -e "${YELLOW}⏭️ Skipping unit tests${NC}"
@@ -86,7 +80,6 @@ run_unit_tests() {
     
     track_test_result "Unit Tests" $exit_code $duration
     
-    # Copy results to comprehensive report
     if [ -d "$PROJECT_ROOT/reports/policy-tests" ]; then
         cp -r "$PROJECT_ROOT/reports/policy-tests" "$REPORT_DIR/"
     fi
@@ -94,7 +87,6 @@ run_unit_tests() {
     echo
 }
 
-# Run Terraform compliance tests
 run_terraform_tests() {
     if [ "$RUN_TERRAFORM_TESTS" != "true" ]; then
         echo -e "${YELLOW}⏭️ Skipping Terraform tests${NC}"
@@ -117,7 +109,6 @@ run_terraform_tests() {
     
     track_test_result "Terraform Tests" $exit_code $duration
     
-    # Copy results to comprehensive report
     if [ -d "$PROJECT_ROOT/reports/terraform-compliance" ]; then
         cp -r "$PROJECT_ROOT/reports/terraform-compliance" "$REPORT_DIR/"
     fi
@@ -125,7 +116,6 @@ run_terraform_tests() {
     echo
 }
 
-# Run Kind cluster tests
 run_kind_cluster_tests() {
     if [ "$RUN_KIND_CLUSTER_TESTS" != "true" ]; then
         echo -e "${YELLOW}⏭️ Skipping Kind cluster tests${NC}"
@@ -148,7 +138,6 @@ run_kind_cluster_tests() {
     
     track_test_result "Kind Cluster Tests" $exit_code $duration
     
-    # Copy results to comprehensive report
     if [ -d "$PROJECT_ROOT/reports/kind-cluster" ]; then
         cp -r "$PROJECT_ROOT/reports/kind-cluster" "$REPORT_DIR/"
     fi
@@ -156,7 +145,6 @@ run_kind_cluster_tests() {
     echo
 }
 
-# Run cluster scan (if cluster context provided)
 run_cluster_scan() {
     if [ "$RUN_CLUSTER_SCAN" != "true" ]; then
         echo -e "${YELLOW}⏭️ Skipping cluster scan${NC}"
@@ -184,7 +172,6 @@ run_cluster_scan() {
     
     track_test_result "Cluster Scan" $exit_code $duration
     
-    # Copy results to comprehensive report
     if [ -d "$PROJECT_ROOT/reports/cluster-scan" ]; then
         cp -r "$PROJECT_ROOT/reports/cluster-scan" "$REPORT_DIR/"
     fi
@@ -192,7 +179,6 @@ run_cluster_scan() {
     echo
 }
 
-# Generate comprehensive summary
 generate_comprehensive_summary() {
     echo -e "${PURPLE}📊 Generating Comprehensive Test Summary${NC}"
     echo "=================================================================="
@@ -222,7 +208,6 @@ generate_comprehensive_summary() {
 
 EOF
     
-    # Add individual test results
     for result in "${TEST_RESULTS[@]}"; do
         echo "- $result" >> "$REPORT_DIR/comprehensive-summary.md"
     done
@@ -341,7 +326,6 @@ EOF
     echo -e "${GREEN}✅ Comprehensive summary generated${NC}"
 }
 
-# Generate final report
 generate_final_report() {
     local success_rate=$(awk "BEGIN {printf \"%.1f\", $PASSED_TESTS * 100 / $TOTAL_TESTS}")
     local total_duration=$(awk "BEGIN {printf \"%.2f\", $(date +%s.%N) - $START_TIME}")
@@ -372,7 +356,6 @@ generate_final_report() {
     fi
 }
 
-# Show help
 show_help() {
     cat << EOF
 Usage: $0 [OPTIONS]
@@ -406,25 +389,21 @@ Options:
 EOF
 }
 
-# Main execution
 main() {
     if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
         show_help
         exit 0
     fi
     
-    # Run test suites
     run_unit_tests
     run_terraform_tests
     run_kind_cluster_tests
     run_cluster_scan
     
-    # Generate comprehensive reports
     generate_comprehensive_summary
     generate_final_report
 }
 
-# Check if script is being sourced or executed
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     main "$@"
 fi

@@ -101,7 +101,6 @@ if grep -q "policy validation error" "$FULL_POLICIES_APPLY_REPORT_FILE_STDERR"; 
     TEMP_INDIVIDUAL_POLICY_APPLY_STDERR_LOOP="${APPLY_REPORT_DIR}/temp_individual_policy_apply_stderr_loop.txt"
     TEMP_INDIVIDUAL_POLICY_APPLY_REPORT="${APPLY_REPORT_DIR}/temp_individual_policy_apply_report.yaml"
             
-    # Loop through each policy file
     find "$POLICIES_DIR" -type f -name "*.yaml" -print0 | while IFS= read -r -d $'\0' policy_file; do
         echo "---------------------------------------------------------------------"
         echo "Attempting to apply single policy: $policy_file"
@@ -141,7 +140,7 @@ if grep -q "policy validation error" "$FULL_POLICIES_APPLY_REPORT_FILE_STDERR"; 
     echo "Individual policy check loop completed."
     echo "The 'policy validation error' detected in the full set apply was not pinpointed to a single policy by the individual checks, or it's a more complex issue."
     echo "Review the initial full apply stderr: $FULL_POLICIES_APPLY_REPORT_FILE_STDERR"
-    exit 1 # Exit because a validation error was detected in the full set and not resolved/pinpointed by the loop.
+    exit 1
 else
     echo "SUCCESS: Full policy set applied to sample manifests without 'policy validation error' in stderr."
     echo "Exit code from kyverno apply command was: $APPLY_CMD_EXIT_CODE (non-zero is OK if due to enforcement)."
@@ -151,52 +150,42 @@ else
     cat "$FULL_POLICIES_APPLY_REPORT_FILE_STDOUT"
     echo "Structured Report from full apply (for info, saved to $FULL_POLICIES_APPLY_REPORT_FILE):"
     cat "$FULL_POLICIES_APPLY_REPORT_FILE"
-    # Policies are considered valid for syntax. Proceed with the rest of the script.
 fi
 
-# Main cluster scan based on user request
 echo
 echo "====================================================================="
 echo "Attempting MAIN CLUSTER SCAN of all resources in reports/resources.yaml"
 echo "====================================================================="
 
-# Define paths for this scan section
-# Note: resources.yaml is in parent reports dir, not integration-tests subdir
 CLUSTER_RESOURCES_YAML="$SCRIPT_DIR/reports/resources.yaml"
 KYVERNO_CLUSTER_SCAN_REPORT_YAML="$APPLY_REPORT_DIR/cluster-scan.yaml"
 KYVERNO_SCAN_STDERR_FILE="$APPLY_REPORT_DIR/cluster-scan-stderr.txt"
 
-# 1. Add Diagnostics Before Main Scan
 echo "Verifying content of $CLUSTER_RESOURCES_YAML before scan..."
 if [ -s "$CLUSTER_RESOURCES_YAML" ]; then
     echo "$CLUSTER_RESOURCES_YAML is not empty. First 10 lines:"
     head -n 10 "$CLUSTER_RESOURCES_YAML"
 else
     echo "ERROR: $CLUSTER_RESOURCES_YAML is empty or does not exist!"
-    # Consider adding 'exit 1' if this file is critical for the scan to proceed
 fi
 echo
 
-echo "Verifying policy directory: $POLICIES_DIR" # POLICIES_DIR is "$SCRIPT_DIR/../kyverno-policies"
+echo "Verifying policy directory: $POLICIES_DIR"
 ls -l "$POLICIES_DIR/"
 echo
 
-# 2. Main Scan Command (modified to avoid OpenAPI schema issues)
 echo "Running main Kyverno cluster scan using workaround approach..."
 # Note: Direct scanning of full cluster snapshots fails due to missing OpenAPI schemas
 # Using alternative approach: extract individual resources and validate separately
 set +e
 
-# First, try the direct approach and capture any schema-related errors
 echo "Attempting direct cluster scan (may fail due to OpenAPI schema limitations)..."
 KYVERNO_EXPERIMENTAL=true kyverno apply -v=3 "$POLICIES_DIR" --resource "$CLUSTER_RESOURCES_YAML" > "$KYVERNO_CLUSTER_SCAN_REPORT_YAML" 2> "$KYVERNO_SCAN_STDERR_FILE"
 SCAN_EXIT_CODE=$?
 
-# Check if it failed due to OpenAPI schema issues
 if grep -q "failed to locate OpenAPI spec" "$KYVERNO_SCAN_STDERR_FILE" 2>/dev/null; then
     echo "Direct scan failed due to OpenAPI schema limitations. Using workaround..."
     
-    # Create a simplified report indicating the limitation
     cat > "$KYVERNO_CLUSTER_SCAN_REPORT_YAML" << EOF
 # Kyverno Cluster Scan Report
 # Note: Direct cluster scanning failed due to OpenAPI schema limitations
@@ -206,7 +195,7 @@ if grep -q "failed to locate OpenAPI spec" "$KYVERNO_SCAN_STDERR_FILE" 2>/dev/nu
 # See kyverno_full_policies_apply_report.yaml for policy validation results
 EOF
     echo "Created workaround report due to OpenAPI schema limitation"
-    SCAN_EXIT_CODE=0  # Set to success since this is a known limitation
+    SCAN_EXIT_CODE=0
 else
     echo "Direct scan completed (exit code: $SCAN_EXIT_CODE)"
 fi
@@ -217,7 +206,6 @@ echo "Main cluster scan command finished with exit code: $SCAN_EXIT_CODE"
 # Policy violations (exit code 1) are expected behavior, not errors
 # Only exit with error if there are actual system/tool errors
 if [ $SCAN_EXIT_CODE -ne 0 ]; then
-    # Check if this is due to policy violations vs actual errors
     if grep -q -E "failed to locate OpenAPI|permission denied|command not found|connection refused|no such file|syntax error" "$KYVERNO_SCAN_STDERR_FILE" 2>/dev/null; then
         echo "ERROR: Kyverno scan failed with system errors!"
         exit 1
@@ -226,7 +214,6 @@ if [ $SCAN_EXIT_CODE -ne 0 ]; then
     fi
 fi
 
-# Immediately after this command, add:
 echo "Stderr from Kyverno main cluster scan (if any, saved to $KYVERNO_SCAN_STDERR_FILE):"
 if [ -f "$KYVERNO_SCAN_STDERR_FILE" ]; then
     cat "$KYVERNO_SCAN_STDERR_FILE"
@@ -238,15 +225,13 @@ echo
 echo "Checking if $KYVERNO_CLUSTER_SCAN_REPORT_YAML was created and is not empty:"
 if [ -s "$KYVERNO_CLUSTER_SCAN_REPORT_YAML" ]; then
     echo "$KYVERNO_CLUSTER_SCAN_REPORT_YAML was created and is not empty. First 10 lines:"
-    head -n 10 "$KYVERNO_CLUSTER_SCAN_REPORT_YAML" # Show first 10 lines instead of full cat for potentially large reports
+    head -n 10 "$KYVERNO_CLUSTER_SCAN_REPORT_YAML"
 else
     echo "WARNING: $KYVERNO_CLUSTER_SCAN_REPORT_YAML is empty or was not created."
     echo "Attempting to run Kyverno apply again with verbose output directly to console for debugging:"
     KYVERNO_EXPERIMENTAL=true kyverno apply -v=4 "$POLICIES_DIR" --resource "$CLUSTER_RESOURCES_YAML"
 fi
-# End of main cluster scan section
 echo
 echo "Kyverno apply process finished."
 
-# Exit with success only if we got here without errors
 exit 0

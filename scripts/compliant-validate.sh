@@ -1,11 +1,10 @@
 #!/bin/bash
 set -euo pipefail
 
-# Colors for output
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
 COMPLIANT_DIR="terraform/compliant"
 POLICY_DIR="policies/kubernetes"
@@ -16,7 +15,6 @@ SUMMARY_REPORT="$REPORT_DIR/compliant-summary.md"
 
 mkdir -p "$REPORT_DIR"
 
-# Count total policies for progress tracking
 TOTAL_POLICIES=$(find "$POLICY_DIR" -name "*.yaml" -type f | wc -l | tr -d ' ')
 echo -e "${BLUE}📊 Found $TOTAL_POLICIES policies to validate${NC}"
 
@@ -40,7 +38,6 @@ kyverno apply "$POLICY_DIR"/*.yaml --resource "$TFPLAN_JSON" --output yaml > "$K
 END_TIME=$(date +%s.%N)
 DURATION=$(awk "BEGIN {printf \"%.3f\", $END_TIME - $START_TIME}")
 
-# Generate summary report
 cat > "$SUMMARY_REPORT" << EOF
 # 📊 Compliant Configuration Validation Summary
 

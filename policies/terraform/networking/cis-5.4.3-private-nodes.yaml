@@ -7,6 +7,6 @@ spec:
     - name: eks-nodegroup-private-subnets
       assert:
         all:
-          - message: "EKS node groups must be deployed in private subnets."
+          - message: "EKS node groups must be deployed in private subnets. Found node groups using public subnets."
             check:
-              (length(planned_values.root_module.resources[?type=='aws_eks_node_group' && (values.subnet_ids==null || (values.subnet_ids && length(values.subnet_ids) > `0`))]) > `0`): true 
+              (length(configuration.root_module.resources[?type=='aws_eks_node_group' && contains(expressions.subnet_ids.references[*], 'aws_subnet.public')]) == `0`): true 

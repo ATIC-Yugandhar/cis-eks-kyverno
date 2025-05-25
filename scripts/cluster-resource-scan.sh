@@ -1,21 +1,18 @@
 #!/usr/bin/env bash
 set -e
 
-# Colors for output
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
 PURPLE='\033[0;35m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
-# Script configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 REPORT_DIR="$PROJECT_ROOT/reports/cluster-scan"
 POLICIES_DIR="$PROJECT_ROOT/policies/kubernetes"
 
-# Parse command line arguments
 CLUSTER_CONTEXT="${1:-$(kubectl config current-context)}"
 NAMESPACE="${2:-all}"
 
@@ -29,7 +26,6 @@ echo -e "  📁 Report Directory: $REPORT_DIR"
 echo -e "  📋 Policies Directory: $POLICIES_DIR"
 echo
 
-# Check dependencies
 check_dependencies() {
     echo -e "${YELLOW}⚙️ [10%] Checking dependencies...${NC}"
     
@@ -57,7 +53,6 @@ check_dependencies() {
         export PATH="$INSTALL_DIR:$PATH"
     fi
     
-    # Test cluster connectivity
     if ! kubectl cluster-info --context "$CLUSTER_CONTEXT" &> /dev/null; then
         echo -e "${RED}❌ Cannot connect to cluster context: $CLUSTER_CONTEXT${NC}"
         exit 1
@@ -66,11 +61,9 @@ check_dependencies() {
     echo -e "${GREEN}✅ All dependencies satisfied${NC}"
 }
 
-# Extract cluster resources
 extract_cluster_resources() {
     echo -e "${YELLOW}⚙️ [30%] Extracting cluster resources...${NC}"
     
-    # Define resource types to extract based on CIS EKS controls
     NAMESPACED_RESOURCES=(
         pods services deployments statefulsets daemonsets
         configmaps secrets serviceaccounts
@@ -91,7 +84,6 @@ extract_cluster_resources() {
     RESOURCES_YAML="$REPORT_DIR/cluster-resources.yaml"
     RESOURCES_JSON="$REPORT_DIR/cluster-resources.json"
     
-    # Clear files
     > "$RESOURCES_YAML"
     echo "[]" > "$RESOURCES_JSON"
     
@@ -99,7 +91,6 @@ extract_cluster_resources() {
     TOTAL_RESOURCE_TYPES=$((${#NAMESPACED_RESOURCES[@]} + ${#NON_NAMESPACED_RESOURCES[@]}))
     CURRENT_TYPE=0
     
-    # Extract namespaced resources
     for resource_type in "${NAMESPACED_RESOURCES[@]}"; do
         ((CURRENT_TYPE++))
         PROGRESS=$(awk "BEGIN {printf \"%.1f\", $CURRENT_TYPE * 100 / $TOTAL_RESOURCE_TYPES}")
@@ -111,7 +102,6 @@ extract_cluster_resources() {
             KUBE_OUTPUT=$(kubectl get "$resource_type" -n "$NAMESPACE" -o json --context "$CLUSTER_CONTEXT" 2>/dev/null || echo '{"items":[]}')
         fi
         
-        # Add items to JSON array
         ITEM_COUNT=$(echo "$KUBE_OUTPUT" | jq '.items | length')
         if [ "$ITEM_COUNT" -gt 0 ]; then
             echo "$KUBE_OUTPUT" | jq '.items[]' >> "$RESOURCES_JSON.tmp"
@@ -119,7 +109,6 @@ extract_cluster_resources() {
         fi
     done
     
-    # Extract non-namespaced resources
     for resource_type in "${NON_NAMESPACED_RESOURCES[@]}"; do
         ((CURRENT_TYPE++))
         PROGRESS=$(awk "BEGIN {printf \"%.1f\", $CURRENT_TYPE * 100 / $TOTAL_RESOURCE_TYPES}")
@@ -127,7 +116,6 @@ extract_cluster_resources() {
         
         KUBE_OUTPUT=$(kubectl get "$resource_type" -o json --context "$CLUSTER_CONTEXT" 2>/dev/null || echo '{"items":[]}')
         
-        # Add items to JSON array
         ITEM_COUNT=$(echo "$KUBE_OUTPUT" | jq '.items | length')
         if [ "$ITEM_COUNT" -gt 0 ]; then
             echo "$KUBE_OUTPUT" | jq '.items[]' >> "$RESOURCES_JSON.tmp"
@@ -135,12 +123,10 @@ extract_cluster_resources() {
         fi
     done
     
-    # Consolidate JSON and convert to YAML
     if [ -f "$RESOURCES_JSON.tmp" ]; then
         jq -s '.' "$RESOURCES_JSON.tmp" > "$RESOURCES_JSON"
         rm "$RESOURCES_JSON.tmp"
         
-        # Convert to YAML stream
         jq -r '.[]' "$RESOURCES_JSON" | while IFS= read -r item; do
             if [ -n "$item" ] && [ "$item" != "null" ]; then
                 echo "---"
@@ -155,13 +141,11 @@ extract_cluster_resources() {
     echo -e "${GREEN}✅ Extracted $EXTRACTED_COUNT resources from cluster${NC}"
 }
 
-# Run policy validation
 run_policy_validation() {
     echo -e "${YELLOW}⚙️ [60%] Running CIS policy validation...${NC}"
     
     START_TIME=$(date +%s.%N)
     
-    # Count policies
     TOTAL_POLICIES=$(find "$POLICIES_DIR" -name "*.yaml" -type f | wc -l | tr -d ' ')
     echo -e "${BLUE}📊 Validating $TOTAL_POLICIES policies against cluster resources${NC}"
     
@@ -180,7 +164,6 @@ run_policy_validation() {
     END_TIME=$(date +%s.%N)
     DURATION=$(awk "BEGIN {printf \"%.3f\", $END_TIME - $START_TIME}")
     
-    # Parse results
     VIOLATIONS=0
     PASSES=0
     WARNINGS=0
@@ -200,7 +183,6 @@ run_policy_validation() {
     echo -e "${GREEN}✅ Policy validation completed in ${DURATION}s${NC}"
     echo -e "${BLUE}📊 Results: $PASSES passed, $VIOLATIONS failed, $WARNINGS warnings${NC}"
     
-    # Store results for summary
     echo "$VIOLATIONS" > "$REPORT_DIR/.violations_count"
     echo "$PASSES" > "$REPORT_DIR/.passes_count"
     echo "$WARNINGS" > "$REPORT_DIR/.warnings_count"
@@ -208,11 +190,9 @@ run_policy_validation() {
     echo "$DURATION" > "$REPORT_DIR/.duration"
 }
 
-# Generate compliance summary
 generate_compliance_summary() {
     echo -e "${YELLOW}⚙️ [80%] Generating compliance summary...${NC}"
     
-    # Read results
     VIOLATIONS=$(cat "$REPORT_DIR/.violations_count" 2>/dev/null || echo "0")
     PASSES=$(cat "$REPORT_DIR/.passes_count" 2>/dev/null || echo "0")
     WARNINGS=$(cat "$REPORT_DIR/.warnings_count" 2>/dev/null || echo "0")
@@ -220,7 +200,6 @@ generate_compliance_summary() {
     DURATION=$(cat "$REPORT_DIR/.duration" 2>/dev/null || echo "0.0")
     TOTAL_CHECKS=$((VIOLATIONS + PASSES + WARNINGS))
     
-    # Categorize violations by CIS section
     SECTION_2_VIOLATIONS=0
     SECTION_3_VIOLATIONS=0
     SECTION_4_VIOLATIONS=0
@@ -287,7 +266,6 @@ EOF
     echo -e "${GREEN}✅ Compliance summary generated${NC}"
 }
 
-# Generate final report
 generate_final_report() {
     echo -e "${YELLOW}⚙️ [90%] Generating final report...${NC}"
     
@@ -310,7 +288,6 @@ generate_final_report() {
     echo -e "  ${CYAN}📊 Detailed:${NC} $REPORT_DIR/policy-scan-report.yaml"
     echo
     
-    # Cleanup temp files
     rm -f "$REPORT_DIR/.violations_count" "$REPORT_DIR/.passes_count" "$REPORT_DIR/.warnings_count" \\
           "$REPORT_DIR/.success_rate" "$REPORT_DIR/.duration"
     
@@ -323,7 +300,6 @@ generate_final_report() {
     fi
 }
 
-# Help function
 show_help() {
     cat << EOF
 Usage: $0 [CLUSTER_CONTEXT] [NAMESPACE]
@@ -346,7 +322,6 @@ Examples:
 EOF
 }
 
-# Main execution
 main() {
     if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
         show_help
@@ -360,7 +335,6 @@ main() {
     generate_final_report
 }
 
-# Check if script is being sourced or executed
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     main "$@"
 fi
