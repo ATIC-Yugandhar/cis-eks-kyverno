@@ -44,8 +44,11 @@ jobs:
       id: unit-tests-run
       continue-on-error: true
       run: |
-        chmod +x scripts/test-all-policies.sh
-        ./scripts/test-all-policies.sh
+        # Use CI-friendly script for better error handling
+        chmod +x scripts/test-all-policies-ci.sh
+        ./scripts/test-all-policies-ci.sh || EXIT_CODE=$?
+        echo "exit_code=${EXIT_CODE:-0}" >> $GITHUB_OUTPUT
+        exit ${EXIT_CODE:-0}
         
     - name: Capture test status
       if: always()
