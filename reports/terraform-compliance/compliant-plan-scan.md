@@ -1,16 +1,75 @@
 # 📊 Kyverno Terraform Plan Compliance Report - Compliant Configuration
 
-**Generated on**: Fri May 23 22:40:41 IST 2025
+**Generated on**: Sat May 24 13:38:07 IST 2025
 **Total Policies**: 6
 
 ## 🎯 Executive Summary
 
 | Metric | Value |
 |--------|-------|
-| **Total Policies** | 0 |
-| **✅ Successful Scans** | 0 |
+| **Total Policies** | 6 |
+| **✅ Successful Scans** | 6 |
 | **❌ Failed Scans** | 0 |
-| **Success Rate** | 0.0% |
+| **Success Rate** | 100.0% |
 
 ## 📋 Detailed Test Results
 
+### Policy: `cis-5.3.1-encrypt-secrets-kms.yaml` (1/6 - 16%)
+\n```
+Loading policies ...
+Loading payload ...
+Pre processing ...
+Running ( evaluating 1 resource against 1 policy ) ...
+- cis-5-3-1-encrypt-secrets-kms / eks-secrets-encryption /  PASSED
+Done
+```\n
+---\n
+### Policy: `cis-5.4.2-private-endpoint.yaml` (2/6 - 33%)
+\n```
+Loading policies ...
+Loading payload ...
+Pre processing ...
+Running ( evaluating 1 resource against 1 policy ) ...
+- cis-5-4-2-private-endpoint / eks-private-endpoint /  PASSED
+Done
+```\n
+---\n
+### Policy: `cis-5.4.4-network-policy.yaml` (3/6 - 50%)
+\n```
+Loading policies ...
+Loading payload ...
+Pre processing ...
+Running ( evaluating 1 resource against 1 policy ) ...
+- cis-5-4-4-network-policy / require-network-policy /  PASSED
+Done
+```\n
+---\n
+### Policy: `cis-5.4.3-private-nodes.yaml` (4/6 - 66%)
+\n```
+Loading policies ...
+Loading payload ...
+Pre processing ...
+Running ( evaluating 1 resource against 1 policy ) ...
+- cis-5-4-3-private-nodes / eks-nodegroup-private-subnets /  PASSED
+Done
+```\n
+---\n
+### Policy: `require-tags.yaml` (5/6 - 83%)
+\n```
+Loading policies ...
+Loading payload ...
+Pre processing ...
+Running ( evaluating 1 resource against 1 policy ) ...
+Done
+```\n
+---\n
+### Policy: `cis-2.1.1-enable-audit-logs.yaml` (6/6 - 100%)
+\n```
+Loading policies ...
+Loading payload ...
+Pre processing ...
+Running ( evaluating 1 resource against 1 policy ) ...
+- cis-2-1-1-enable-audit-logs / eks-audit-logging /  PASSED
+Done
+```\n
+---\n

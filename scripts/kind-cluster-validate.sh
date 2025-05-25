@@ -479,8 +479,8 @@ run_kyverno_validation() {
     
     set +e
     echo -e "${YELLOW}Running cluster resource scan...${NC}"
-    KYVERNO_EXPERIMENTAL=true kyverno apply "$POLICIES_DIR" --resource "$REPORT_DIR/cluster-resources.yaml" \\
-        --output "$CLUSTER_SCAN_REPORT" --context "kind-$CLUSTER_NAME" \\
+    KYVERNO_EXPERIMENTAL=true kyverno apply "$POLICIES_DIR" --resource "$REPORT_DIR/cluster-resources.yaml" \
+        --output "$CLUSTER_SCAN_REPORT" --context "kind-$CLUSTER_NAME" \
         > "$REPORT_DIR/cluster-scan-stdout.log" 2> "$CLUSTER_SCAN_STDERR"
     SCAN_EXIT_CODE=$?
     set -e
@@ -488,8 +488,8 @@ run_kyverno_validation() {
     # Run manifest tests
     echo -e "${YELLOW}Running manifest tests...${NC}"
     MANIFEST_TEST_REPORT="$REPORT_DIR/manifest-test-report.yaml"
-    KYVERNO_EXPERIMENTAL=true kyverno apply "$POLICIES_DIR" --resource "$MANIFESTS_DIR" \\
-        --output "$MANIFEST_TEST_REPORT" --context "kind-$CLUSTER_NAME" \\
+    KYVERNO_EXPERIMENTAL=true kyverno apply "$POLICIES_DIR" --resource "$MANIFESTS_DIR" \
+        --output "$MANIFEST_TEST_REPORT" --context "kind-$CLUSTER_NAME" \
         > "$REPORT_DIR/manifest-test-stdout.log" 2> "$REPORT_DIR/manifest-test-stderr.log"
     
     END_TIME=$(date +%s.%N)

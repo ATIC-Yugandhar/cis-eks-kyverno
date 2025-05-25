@@ -25,7 +25,7 @@ if [ ! -d "$POLICY_DIR" ]; then
     exit 1
 fi
 
-POLICY_FILES_COUNT=$(find "$POLICY_DIR" -name "*.yaml" -type f | wc -l)
+POLICY_FILES_COUNT=$(find "$POLICY_DIR" -name "*.yaml" -type f | wc -l | tr -d ' ')
 if [ "$POLICY_FILES_COUNT" -eq 0 ]; then
     echo "[ERROR] No policy files found in $POLICY_DIR"
     exit 1
@@ -74,7 +74,7 @@ POLICY_COUNT=0
 SCAN_ERRORS=0
 CURRENT_POLICY=0
 
-for policy in "$POLICY_DIR"/*.yaml; do
+for policy in $(find "$POLICY_DIR" -name "*.yaml" -type f); do
   if [ -f "$policy" ]; then
     ((POLICY_COUNT++))
     ((CURRENT_POLICY++))
@@ -155,7 +155,7 @@ POLICY_COUNT_NC=0
 SCAN_ERRORS_NC=0
 CURRENT_POLICY_NC=0
 
-for policy in "$POLICY_DIR"/*.yaml; do
+for policy in $(find "$POLICY_DIR" -name "*.yaml" -type f); do
   if [ -f "$policy" ]; then
     ((POLICY_COUNT_NC++))
     ((CURRENT_POLICY_NC++))
