@@ -241,7 +241,11 @@ SUCCESS_RATE=$(awk "BEGIN {printf \"%.1f\", $PASSED * 100 / ($PASSED + $FAILED +
 AVG_TEST_TIME=$(awk "BEGIN {printf \"%.3f\", $TOTAL_DURATION / $TOTAL_TESTS}")
 
 # Close stats JSON file
-sed -i "" '$ s/,$//' "$STATS_FILE" 2>/dev/null || true
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    sed -i "" '$ s/,$//' "$STATS_FILE" 2>/dev/null || true
+else
+    sed -i '$ s/,$//' "$STATS_FILE" 2>/dev/null || true
+fi
 echo "]" >> "$STATS_FILE"
 
 TIMESTAMP=$(date +"%Y-%m-%d %H:%M:%S")
@@ -320,12 +324,21 @@ cat >> "$SUMMARY_FILE" << EOF
 EOF
 
 # Update placeholders in detailed results
-sed -i "" "s/TOTAL_PLACEHOLDER/$TOTAL_TESTS/g" "$RESULTS_FILE"
-sed -i "" "s/PASSED_PLACEHOLDER/$PASSED/g" "$RESULTS_FILE"
-sed -i "" "s/FAILED_PLACEHOLDER/$FAILED/g" "$RESULTS_FILE"
-sed -i "" "s/ERRORS_PLACEHOLDER/$ERRORS/g" "$RESULTS_FILE"
-sed -i "" "s/SUCCESS_RATE_PLACEHOLDER/${SUCCESS_RATE}%/g" "$RESULTS_FILE"
-sed -i "" "s/DURATION_PLACEHOLDER/${TOTAL_DURATION}s/g" "$RESULTS_FILE"
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    sed -i "" "s/TOTAL_PLACEHOLDER/$TOTAL_TESTS/g" "$RESULTS_FILE"
+    sed -i "" "s/PASSED_PLACEHOLDER/$PASSED/g" "$RESULTS_FILE"
+    sed -i "" "s/FAILED_PLACEHOLDER/$FAILED/g" "$RESULTS_FILE"
+    sed -i "" "s/ERRORS_PLACEHOLDER/$ERRORS/g" "$RESULTS_FILE"
+    sed -i "" "s/SUCCESS_RATE_PLACEHOLDER/${SUCCESS_RATE}%/g" "$RESULTS_FILE"
+    sed -i "" "s/DURATION_PLACEHOLDER/${TOTAL_DURATION}s/g" "$RESULTS_FILE"
+else
+    sed -i "s/TOTAL_PLACEHOLDER/$TOTAL_TESTS/g" "$RESULTS_FILE"
+    sed -i "s/PASSED_PLACEHOLDER/$PASSED/g" "$RESULTS_FILE"
+    sed -i "s/FAILED_PLACEHOLDER/$FAILED/g" "$RESULTS_FILE"
+    sed -i "s/ERRORS_PLACEHOLDER/$ERRORS/g" "$RESULTS_FILE"
+    sed -i "s/SUCCESS_RATE_PLACEHOLDER/${SUCCESS_RATE}%/g" "$RESULTS_FILE"
+    sed -i "s/DURATION_PLACEHOLDER/${TOTAL_DURATION}s/g" "$RESULTS_FILE"
+fi
 
 # Final results display
 echo

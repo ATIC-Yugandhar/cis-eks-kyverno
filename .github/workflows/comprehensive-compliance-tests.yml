@@ -46,7 +46,6 @@ jobs:
       run: |
         chmod +x scripts/test-all-policies.sh
         ./scripts/test-all-policies.sh
-        echo "exit_code=$?" >> $GITHUB_OUTPUT
         
     - name: Capture test status
       if: always()
@@ -92,7 +91,6 @@ jobs:
       run: |
         chmod +x scripts/test-terraform-cis-policies.sh
         ./scripts/test-terraform-cis-policies.sh
-        echo "exit_code=$?" >> $GITHUB_OUTPUT
         
     - name: Capture test status
       if: always()
@@ -161,7 +159,6 @@ jobs:
         # Set environment variable to keep cluster for debugging on failure
         export KEEP_CLUSTER=false
         ./scripts/kind-cluster-validate.sh
-        echo "exit_code=$?" >> $GITHUB_OUTPUT
         
     - name: Capture test status
       if: always()
@@ -219,6 +216,11 @@ jobs:
           cp -r artifacts/kind-cluster-test-results/* reports/ 2>/dev/null || true
         fi
         
+        # List what we have for debugging
+        echo "=== Reports directory structure ==="
+        find reports -type f -name "*.md" -o -name "*.txt" | sort
+        echo "==================================="
+        
     - name: Generate comprehensive summary
       continue-on-error: true
       run: |
@@ -251,33 +253,40 @@ jobs:
         - **Workflow Run**: [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
         - **Commit**: [${{ github.sha }}](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
         
-        ## 📋 Test Exit Codes
+        ## 📋 Test Results Details
         
         EOF
         
-        # Include test status files if they exist
-        echo "| Test Suite | Exit Code | Details |" >> reports/comprehensive/github-actions-summary.md
-        echo "|------------|-----------|---------|" >> reports/comprehensive/github-actions-summary.md
-        
-        if [ -f "reports/policy-tests/test-status.txt" ]; then
-          EXIT_CODE=$(grep "Exit Code:" reports/policy-tests/test-status.txt | cut -d: -f2 | tr -d ' ')
-          echo "| Unit Tests | ${EXIT_CODE:-N/A} | [View Status](../policy-tests/test-status.txt) |" >> reports/comprehensive/github-actions-summary.md
-        else
-          echo "| Unit Tests | N/A | No status file found |" >> reports/comprehensive/github-actions-summary.md
+        # Add unit test results if available
+        if [ -f "reports/policy-tests/summary.md" ]; then
+          echo "### Unit Tests (Policy Validation)" >> reports/comprehensive/github-actions-summary.md
+          echo "" >> reports/comprehensive/github-actions-summary.md
+          # Extract test statistics
+          sed -n '/Test Statistics/,/Performance Metrics/p' reports/policy-tests/summary.md | grep -E "^\|" >> reports/comprehensive/github-actions-summary.md || true
+          echo "" >> reports/comprehensive/github-actions-summary.md
         fi
         
-        if [ -f "reports/terraform-compliance/test-status.txt" ]; then
-          EXIT_CODE=$(grep "Exit Code:" reports/terraform-compliance/test-status.txt | cut -d: -f2 | tr -d ' ')
-          echo "| Terraform Tests | ${EXIT_CODE:-N/A} | [View Status](../terraform-compliance/test-status.txt) |" >> reports/comprehensive/github-actions-summary.md
-        else
-          echo "| Terraform Tests | N/A | No status file found |" >> reports/comprehensive/github-actions-summary.md
+        # Add terraform test results if available
+        if [ -f "reports/terraform-compliance/compliant-plan-scan.md" ]; then
+          echo "### Terraform Compliance Tests" >> reports/comprehensive/github-actions-summary.md
+          echo "" >> reports/comprehensive/github-actions-summary.md
+          echo "#### Compliant Configuration" >> reports/comprehensive/github-actions-summary.md
+          sed -n '/Executive Summary/,/Detailed Test Results/p' reports/terraform-compliance/compliant-plan-scan.md | grep -E "^\|" >> reports/comprehensive/github-actions-summary.md || true
+          echo "" >> reports/comprehensive/github-actions-summary.md
         fi
         
-        if [ -f "reports/kind-cluster/test-status.txt" ]; then
-          EXIT_CODE=$(grep "Exit Code:" reports/kind-cluster/test-status.txt | cut -d: -f2 | tr -d ' ')
-          echo "| Kind Tests | ${EXIT_CODE:-N/A} | [View Status](../kind-cluster/test-status.txt) |" >> reports/comprehensive/github-actions-summary.md
-        else
-          echo "| Kind Tests | N/A | No status file found |" >> reports/comprehensive/github-actions-summary.md
+        if [ -f "reports/terraform-compliance/noncompliant-plan-scan.md" ]; then
+          echo "#### Non-Compliant Configuration" >> reports/comprehensive/github-actions-summary.md
+          sed -n '/Executive Summary/,/Detailed Test Results/p' reports/terraform-compliance/noncompliant-plan-scan.md | grep -E "^\|" >> reports/comprehensive/github-actions-summary.md || true
+          echo "" >> reports/comprehensive/github-actions-summary.md
+        fi
+        
+        # Add Kind cluster results if available
+        if [ -f "reports/kind-cluster/validation-summary.md" ]; then
+          echo "### Kind Cluster Integration Tests" >> reports/comprehensive/github-actions-summary.md
+          echo "" >> reports/comprehensive/github-actions-summary.md
+          sed -n '/Validation Statistics/,/Kyverno CRD/p' reports/kind-cluster/validation-summary.md | grep -E "^\|" >> reports/comprehensive/github-actions-summary.md || true
+          echo "" >> reports/comprehensive/github-actions-summary.md
         fi
         
         cat >> reports/comprehensive/github-actions-summary.md << 'EOF'
@@ -325,14 +334,39 @@ jobs:
         # Check for test summary files
         if [ -f "reports/policy-tests/summary.md" ]; then
           echo "#### Unit Tests Summary" >> $GITHUB_STEP_SUMMARY
-          grep -E "Total Tests|Passed|Failed|Errors|Success Rate" reports/policy-tests/summary.md | head -5 >> $GITHUB_STEP_SUMMARY || echo "No summary available" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          # Extract the test statistics table
+          sed -n '/Test Statistics/,/^$/p' reports/policy-tests/summary.md | grep -E "^\|" | head -10 >> $GITHUB_STEP_SUMMARY || echo "No statistics found" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "#### Unit Tests Summary" >> $GITHUB_STEP_SUMMARY
+          echo "Summary file not found" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        if [ -f "reports/terraform-compliance/compliant-plan-scan.md" ]; then
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### Terraform Compliance Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          # Extract executive summary
+          sed -n '/Executive Summary/,/^$/p' reports/terraform-compliance/compliant-plan-scan.md | grep -E "^\|" | head -10 >> $GITHUB_STEP_SUMMARY || echo "No summary found" >> $GITHUB_STEP_SUMMARY
         fi
         
         if [ -f "reports/kind-cluster/validation-summary.md" ]; then
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "#### Kind Cluster Tests Summary" >> $GITHUB_STEP_SUMMARY
-          grep -E "Total Policies|Policy Violations|Scan Status" reports/kind-cluster/validation-summary.md | head -5 >> $GITHUB_STEP_SUMMARY || echo "No summary available" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          # Extract validation statistics
+          sed -n '/Validation Statistics/,/^$/p' reports/kind-cluster/validation-summary.md | grep -E "^\|" | head -10 >> $GITHUB_STEP_SUMMARY || echo "No statistics found" >> $GITHUB_STEP_SUMMARY
         fi
+        
+        # Add links to full reports
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📄 Full Reports" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "Download the **comprehensive-compliance-report** artifact for:" >> $GITHUB_STEP_SUMMARY
+        echo "- Detailed test results" >> $GITHUB_STEP_SUMMARY
+        echo "- Policy validation outcomes" >> $GITHUB_STEP_SUMMARY
+        echo "- Terraform compliance analysis" >> $GITHUB_STEP_SUMMARY
+        echo "- Kind cluster validation results" >> $GITHUB_STEP_SUMMARY
 
   security-scan:
     name: Security Scan
