@@ -44,9 +44,14 @@ jobs:
       id: unit-tests-run
       continue-on-error: true
       run: |
-        # Use CI-friendly script for better error handling
-        chmod +x scripts/test-all-policies-ci.sh
-        ./scripts/test-all-policies-ci.sh || EXIT_CODE=$?
+        # Use CI-friendly script if available, otherwise use original
+        if [ -f scripts/test-all-policies-ci.sh ]; then
+          chmod +x scripts/test-all-policies-ci.sh
+          ./scripts/test-all-policies-ci.sh || EXIT_CODE=$?
+        else
+          chmod +x scripts/test-all-policies.sh
+          ./scripts/test-all-policies.sh || EXIT_CODE=$?
+        fi
         echo "exit_code=${EXIT_CODE:-0}" >> $GITHUB_OUTPUT
         exit ${EXIT_CODE:-0}
         
