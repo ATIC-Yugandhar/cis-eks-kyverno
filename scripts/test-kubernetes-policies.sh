@@ -123,6 +123,20 @@ echo -e "${GREEN}${CHECK_MARK} Using Kyverno version: $(kyverno version 2>&1 | g
 
 # Find test files
 echo -e "${BLUE}${ROCKET} Discovering test files...${NC}"
+
+# Debug: Show where we're looking
+echo -e "${BLUE}Looking for tests in: $PROJECT_ROOT/tests/kubernetes${NC}"
+
+# Ensure tests directory exists
+if [ ! -d "$PROJECT_ROOT/tests/kubernetes" ]; then
+    echo -e "${RED}${CROSS_MARK} Error: Tests directory not found: $PROJECT_ROOT/tests/kubernetes${NC}"
+    echo -e "${YELLOW}Current directory: $(pwd)${NC}"
+    echo -e "${YELLOW}Project root: $PROJECT_ROOT${NC}"
+    echo -e "${YELLOW}Directory contents:${NC}"
+    ls -la "$PROJECT_ROOT/" || true
+    exit 1
+fi
+
 if [[ -n "$FILTER_PATTERN" ]]; then
     TEST_FILES=($(find "$PROJECT_ROOT/tests/kubernetes" -type f -name 'kyverno-test.yaml' | grep "$FILTER_PATTERN" | sort))
 else
@@ -133,6 +147,8 @@ TOTAL_TESTS=${#TEST_FILES[@]}
 
 if [ "$TOTAL_TESTS" -eq 0 ]; then
     echo -e "${YELLOW}${WARNING} No test files found${NC}"
+    echo -e "${YELLOW}Debug: Contents of tests/kubernetes:${NC}"
+    ls -la "$PROJECT_ROOT/tests/kubernetes/" || true
     exit 0
 fi
 
@@ -154,7 +170,20 @@ echo "" >> "$SUMMARY_FILE"
 # Main test loop
 echo -e "\n${BLUE}${ROCKET} Running tests...${NC}\n"
 
+# Debug: Check if wrapper exists
+if [ -f "$SCRIPT_DIR/kyverno-test-wrapper.sh" ]; then
+    echo -e "${GREEN}✅ Found test wrapper at: $SCRIPT_DIR/kyverno-test-wrapper.sh${NC}"
+else
+    echo -e "${YELLOW}⚠️  Test wrapper not found, using direct kyverno test${NC}"
+fi
+
 for testfile in "${TEST_FILES[@]}"; do
+    # Error handling for array access
+    if [ -z "$testfile" ]; then
+        echo -e "${RED}❌ Error: Empty test file path${NC}"
+        continue
+    fi
+    
     ((CURRENT_TEST++))
     TEST_NAME=$(echo "$testfile" | sed 's|.*/tests/kubernetes/||' | sed 's|/kyverno-test.yaml$||')
     
@@ -170,11 +199,24 @@ for testfile in "${TEST_FILES[@]}"; do
     
     # Temporarily disable exit on error for test execution
     set +e
+    
+    # Get test directory
+    TEST_DIR=$(dirname "$testfile")
+    
+    # Ensure test directory exists
+    if [ ! -d "$TEST_DIR" ]; then
+        echo -e "${RED}❌ Error: Test directory not found: $TEST_DIR${NC}"
+        ((FAILED++))
+        echo "- ❌ \`$TEST_NAME\` - **FAIL** - Directory not found" >> "$SUMMARY_FILE"
+        continue
+    fi
+    
+    # Run test
     if [ -f "$SCRIPT_DIR/kyverno-test-wrapper.sh" ]; then
-        TEST_OUT=$("$SCRIPT_DIR/kyverno-test-wrapper.sh" "$(dirname "$testfile")" 2>&1)
+        TEST_OUT=$("$SCRIPT_DIR/kyverno-test-wrapper.sh" "$TEST_DIR" 2>&1)
         TEST_EXIT=$?
     else
-        TEST_OUT=$(kyverno test "$(dirname "$testfile")" 2>&1)
+        TEST_OUT=$(kyverno test "$TEST_DIR" 2>&1)
         TEST_EXIT=$?
     fi
     set -e
