@@ -44,14 +44,9 @@ jobs:
       id: unit-tests-run
       continue-on-error: true
       run: |
-        # Use CI-friendly script if available, otherwise use original
-        if [ -f scripts/test-all-policies-ci.sh ]; then
-          chmod +x scripts/test-all-policies-ci.sh
-          ./scripts/test-all-policies-ci.sh || EXIT_CODE=$?
-        else
-          chmod +x scripts/test-all-policies.sh
-          ./scripts/test-all-policies.sh || EXIT_CODE=$?
-        fi
+        # Run Kubernetes policy tests in CI mode
+        chmod +x scripts/test-kubernetes-policies.sh
+        ./scripts/test-kubernetes-policies.sh --ci || EXIT_CODE=$?
         echo "exit_code=${EXIT_CODE:-0}" >> $GITHUB_OUTPUT
         exit ${EXIT_CODE:-0}
         
@@ -97,8 +92,8 @@ jobs:
       id: terraform-tests-run
       continue-on-error: true
       run: |
-        chmod +x scripts/test-terraform-cis-policies.sh
-        ./scripts/test-terraform-cis-policies.sh
+        chmod +x scripts/test-terraform-policies.sh
+        ./scripts/test-terraform-policies.sh
         
     - name: Capture test status
       if: always()
@@ -163,10 +158,10 @@ jobs:
       id: kind-tests-run
       continue-on-error: true
       run: |
-        chmod +x scripts/kind-cluster-validate.sh
+        chmod +x scripts/test-kind-cluster.sh
         # Set environment variable to keep cluster for debugging on failure
         export KEEP_CLUSTER=false
-        ./scripts/kind-cluster-validate.sh
+        ./scripts/test-kind-cluster.sh
         
     - name: Capture test status
       if: always()

@@ -28,13 +28,13 @@ git clone https://github.com/ATIC-Yugandhar/cis-eks-kyverno.git
 cd cis-eks-kyverno
 
 # Run all policy tests
-./tools/scripts/testing/test-all-policies.sh
+./scripts/test-kubernetes-policies.sh
 
 # Run Terraform compliance tests  
-./tools/scripts/testing/test-terraform-cis-policies.sh
+./scripts/test-terraform-policies.sh
 
 # Generate executive summary
-./tools/scripts/reporting/generate-summary-report.sh
+./scripts/generate-summary-report.sh
 ```
 
 ## 📁 Repository Structure
@@ -125,13 +125,16 @@ See [docs/policies/mapping.md](docs/policies/mapping.md) for detailed coverage a
 ### Test Execution
 ```bash
 # Test all policies (unit tests)
-./tools/scripts/testing/test-all-policies.sh
+./scripts/test-kubernetes-policies.sh
 
 # Test Terraform compliance (integration tests)  
-./tools/scripts/testing/test-terraform-cis-policies.sh
+./scripts/test-terraform-policies.sh
+
+# Run all tests comprehensively
+./scripts/test-all.sh
 
 # Generate comprehensive reports
-./tools/scripts/reporting/generate-summary-report.sh
+./scripts/generate-summary-report.sh
 ```
 
 ## 📊 Professional Reporting
