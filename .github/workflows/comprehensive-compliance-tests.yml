@@ -56,9 +56,9 @@ jobs:
         echo "Number of test files: $(find tests/kubernetes -name 'kyverno-test.yaml' 2>/dev/null | wc -l || echo 0)"
         echo "============================="
         
-        # Run Kubernetes policy tests in CI mode with explicit error handling
+        # Run comprehensive test script
         EXIT_CODE=0
-        ./scripts/test-kubernetes-policies.sh --ci || EXIT_CODE=$?
+        ./scripts/test-all-policies.sh || EXIT_CODE=$?
         
         echo "Test script exit code: $EXIT_CODE"
         echo "exit_code=$EXIT_CODE" >> $GITHUB_OUTPUT
