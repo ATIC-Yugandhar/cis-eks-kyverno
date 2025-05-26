@@ -2,7 +2,8 @@
 
 # Comprehensive test script that runs all policies and generates reports
 
-set -e
+# Don't exit on error - we want to run all tests
+set +e
 
 # Directories
 POLICIES_DIR="policies"
@@ -12,12 +13,17 @@ REPORTS_DIR="reports/policy-tests"
 # Create reports directory
 mkdir -p "$REPORTS_DIR"
 
-# Initialize counters
-TOTAL_POLICIES=0
-TOTAL_TESTS=0
-PASSED=0
-FAILED=0
-SKIPPED=0
+# Debug info
+echo "Script started at $(date)"
+echo "Working directory: $(pwd)"
+echo "Kyverno version: $(kyverno version 2>/dev/null || echo 'NOT FOUND')"
+
+# Initialize counters - use arithmetic context to ensure they're numbers
+declare -i TOTAL_POLICIES=0
+declare -i TOTAL_TESTS=0
+declare -i PASSED=0
+declare -i FAILED=0
+declare -i SKIPPED=0
 
 # Results files
 SUMMARY_FILE="$REPORTS_DIR/summary.md"
@@ -76,7 +82,7 @@ for category_dir in "$POLICIES_DIR/kubernetes"/*; do
                             if kyverno apply "$policy" --resource "$TESTS_DIR/kubernetes/$policy_name/compliant" >/dev/null 2>&1; then
                                 echo -n "[✓] "
                                 echo "- ✅ $policy_name - compliant: PASS" >> "$DETAILED_FILE"
-                                ((PASSED++))
+                                PASSED=$((PASSED + 1))
                             else
                                 echo -n "[✗] "
                                 echo "- ❌ $policy_name - compliant: FAIL" >> "$DETAILED_FILE"
