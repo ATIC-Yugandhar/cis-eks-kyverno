@@ -168,6 +168,8 @@ for testfile in "${TEST_FILES[@]}"; do
     # Run test using wrapper if available
     TEST_START=$(date +%s.%N 2>/dev/null || date +%s)
     
+    # Temporarily disable exit on error for test execution
+    set +e
     if [ -f "$SCRIPT_DIR/kyverno-test-wrapper.sh" ]; then
         TEST_OUT=$("$SCRIPT_DIR/kyverno-test-wrapper.sh" "$(dirname "$testfile")" 2>&1)
         TEST_EXIT=$?
@@ -175,6 +177,7 @@ for testfile in "${TEST_FILES[@]}"; do
         TEST_OUT=$(kyverno test "$(dirname "$testfile")" 2>&1)
         TEST_EXIT=$?
     fi
+    set -e
     
     TEST_END=$(date +%s.%N 2>/dev/null || date +%s)
     TEST_DURATION=$(awk "BEGIN {printf \"%.3f\", $TEST_END - $TEST_START}")
@@ -186,22 +189,46 @@ for testfile in "${TEST_FILES[@]}"; do
     echo '```' >> "$RESULTS_FILE"
     echo "" >> "$RESULTS_FILE"
     
-    # Update counters and summary
-    if [ $TEST_EXIT -eq 0 ]; then
-        ((PASSED++))
-        echo "- ✅ \`$TEST_NAME\` - **PASS** (${TEST_DURATION}s)" >> "$SUMMARY_FILE"
-        if [[ "$CI_MODE" == "true" ]]; then
-            echo "  ✓ PASSED"
+    # Determine expected result based on test type
+    # For noncompliant tests, exit code 1 means success (properly detected violation)
+    # For compliant tests, exit code 0 means success
+    if echo "$testfile" | grep -q "noncompliant"; then
+        # Noncompliant test - should fail (exit code 1)
+        if [ $TEST_EXIT -ne 0 ]; then
+            ((PASSED++))
+            echo "- ✅ \`$TEST_NAME\` - **PASS** (${TEST_DURATION}s)" >> "$SUMMARY_FILE"
+            if [[ "$CI_MODE" == "true" ]]; then
+                echo "  ✓ PASSED"
+            else
+                show_progress "$CURRENT_TEST" "$TOTAL_TESTS" "$TEST_NAME" "passed"
+            fi
         else
-            show_progress "$CURRENT_TEST" "$TOTAL_TESTS" "$TEST_NAME" "passed"
+            ((FAILED++))
+            echo "- ❌ \`$TEST_NAME\` - **FAIL** (${TEST_DURATION}s) - Expected to detect violation but passed" >> "$SUMMARY_FILE"
+            if [[ "$CI_MODE" == "true" ]]; then
+                echo "  ✗ FAILED - Should have detected violation"
+            else
+                show_progress "$CURRENT_TEST" "$TOTAL_TESTS" "$TEST_NAME" "failed"
+            fi
         fi
     else
-        ((FAILED++))
-        echo "- ❌ \`$TEST_NAME\` - **FAIL** (${TEST_DURATION}s)" >> "$SUMMARY_FILE"
-        if [[ "$CI_MODE" == "true" ]]; then
-            echo "  ✗ FAILED"
+        # Compliant test - should pass (exit code 0)
+        if [ $TEST_EXIT -eq 0 ]; then
+            ((PASSED++))
+            echo "- ✅ \`$TEST_NAME\` - **PASS** (${TEST_DURATION}s)" >> "$SUMMARY_FILE"
+            if [[ "$CI_MODE" == "true" ]]; then
+                echo "  ✓ PASSED"
+            else
+                show_progress "$CURRENT_TEST" "$TOTAL_TESTS" "$TEST_NAME" "passed"
+            fi
         else
-            show_progress "$CURRENT_TEST" "$TOTAL_TESTS" "$TEST_NAME" "failed"
+            ((FAILED++))
+            echo "- ❌ \`$TEST_NAME\` - **FAIL** (${TEST_DURATION}s)" >> "$SUMMARY_FILE"
+            if [[ "$CI_MODE" == "true" ]]; then
+                echo "  ✗ FAILED"
+            else
+                show_progress "$CURRENT_TEST" "$TOTAL_TESTS" "$TEST_NAME" "failed"
+            fi
         fi
     fi
 done
