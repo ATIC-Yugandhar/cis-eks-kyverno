@@ -44,7 +44,14 @@ if [ -f "$REPORT_DIR/policy-tests/summary.md" ]; then
     
     if grep -q "Test Statistics" "$REPORT_DIR/policy-tests/summary.md"; then
         echo "" >> "$SUMMARY_FILE"
-        grep -A 10 "Test Statistics" "$REPORT_DIR/policy-tests/summary.md" | head -n 11 >> "$SUMMARY_FILE"
+        # Extract Test Statistics table
+        sed -n '/## Test Statistics/,/## Performance Metrics/p' "$REPORT_DIR/policy-tests/summary.md" | grep -E "^\|" >> "$SUMMARY_FILE"
+        echo "" >> "$SUMMARY_FILE"
+        
+        echo "#### ⚡ Performance Metrics" >> "$SUMMARY_FILE"
+        echo "" >> "$SUMMARY_FILE"
+        # Extract Performance Metrics table
+        sed -n '/## Performance Metrics/,/## Kubernetes Policies/p' "$REPORT_DIR/policy-tests/summary.md" | grep -E "^\|" >> "$SUMMARY_FILE"
     else
         echo "- ❌ No detailed policy test statistics available" >> "$SUMMARY_FILE"
     fi

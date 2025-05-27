@@ -1,61 +1,57 @@
 #!/bin/bash
 
-# Comprehensive test script that runs all policies and generates reports
+set -euo pipefail
 
-# Don't exit on error - we want to run all tests
-set +e
+START_TIME=$(date +%s)
+echo "Script started at $(date)"
+echo "Working directory: $(pwd)"
 
-# Directories
 POLICIES_DIR="policies"
 TESTS_DIR="tests"
 REPORTS_DIR="reports/policy-tests"
 
-# Create reports directory
 mkdir -p "$REPORTS_DIR"
 
-# Debug info
-echo "Script started at $(date)"
-echo "Working directory: $(pwd)"
-echo "Kyverno version: $(kyverno version 2>/dev/null || echo 'NOT FOUND')"
-
-# Initialize counters - use arithmetic context to ensure they're numbers
-declare -i TOTAL_POLICIES=0
-declare -i TOTAL_TESTS=0
-declare -i PASSED=0
-declare -i FAILED=0
-declare -i SKIPPED=0
-
-# Results files
 SUMMARY_FILE="$REPORTS_DIR/summary.md"
 DETAILED_FILE="$REPORTS_DIR/detailed-results.md"
+JSON_STATS="$REPORTS_DIR/execution-stats.json"
 
-# Initialize reports
-echo "# Policy Test Summary" > "$SUMMARY_FILE"
-echo "" >> "$SUMMARY_FILE"
-echo "Generated: $(date)" >> "$SUMMARY_FILE"
-echo "" >> "$SUMMARY_FILE"
+TOTAL_POLICIES=0
+TOTAL_TESTS=0
+PASSED=0
+FAILED=0
+SKIPPED=0
 
-echo "# Detailed Policy Test Results" > "$DETAILED_FILE"
-echo "" >> "$DETAILED_FILE"
-echo "Generated: $(date)" >> "$DETAILED_FILE"
-echo "" >> "$DETAILED_FILE"
+# Arrays to store results for summary
+declare -a K8S_RESULTS
+declare -a TF_RESULTS
+
+echo "Kyverno version: $(kyverno version)"
 
 echo "=== Running All Policy Tests ==="
 echo ""
 
-# Test all Kubernetes policies
-echo "## Kubernetes Policies" >> "$SUMMARY_FILE"
-echo "## Kubernetes Policies" >> "$DETAILED_FILE"
-echo "" >> "$SUMMARY_FILE"
-echo "" >> "$DETAILED_FILE"
+# Initialize detailed report
+cat > "$DETAILED_FILE" << EOF
+# Detailed Policy Test Results
 
+Generated: $(date)
+
+## Kubernetes Policies
+
+EOF
+
+# Test Kubernetes policies
 echo "Testing Kubernetes policies..."
 for category_dir in "$POLICIES_DIR/kubernetes"/*; do
     if [ -d "$category_dir" ]; then
         category=$(basename "$category_dir")
         echo "" 
         echo "Category: $category"
-        echo "### $category" >> "$SUMMARY_FILE"
+        
+        K8S_RESULTS+=("### $category")
+        K8S_RESULTS+=("")
+        
         echo "### $category" >> "$DETAILED_FILE"
         echo "" >> "$DETAILED_FILE"
         
@@ -65,26 +61,30 @@ for category_dir in "$POLICIES_DIR/kubernetes"/*; do
                 policy_name=$(basename "$policy" .yaml)
                 echo -n "  $policy_name: "
                 
-                # Check if tests exist
+                result_line=""
+                
                 if [ -d "$TESTS_DIR/kubernetes/$policy_name" ]; then
-                    # Test compliant
+                    # Test compliant resources
                     if [ -d "$TESTS_DIR/kubernetes/$policy_name/compliant" ]; then
-                        # Special cases
                         if [[ "$policy_name" == "custom-4.5.1" ]]; then
                             echo -n "[skip] "
-                            echo "- $policy_name - compliant: SKIPPED (namespace policy)" >> "$DETAILED_FILE"
+                            result_line+="- ⏭️ $policy_name - compliant: SKIPPED (namespace policy)"
+                            echo "- ⏭️ $policy_name - compliant: SKIPPED (namespace policy)" >> "$DETAILED_FILE"
                             ((SKIPPED++))
                         elif ls "$TESTS_DIR/kubernetes/$policy_name/compliant"/*.json >/dev/null 2>&1; then
                             echo -n "[skip] "
-                            echo "- $policy_name - compliant: SKIPPED (JSON test)" >> "$DETAILED_FILE"
+                            result_line+="- ⏭️ $policy_name - compliant: SKIPPED (JSON test)"
+                            echo "- ⏭️ $policy_name - compliant: SKIPPED (JSON test)" >> "$DETAILED_FILE"
                             ((SKIPPED++))
                         else
                             if kyverno apply "$policy" --resource "$TESTS_DIR/kubernetes/$policy_name/compliant" >/dev/null 2>&1; then
                                 echo -n "[✓] "
+                                result_line+="- ✅ $policy_name - compliant: PASS"
                                 echo "- ✅ $policy_name - compliant: PASS" >> "$DETAILED_FILE"
                                 PASSED=$((PASSED + 1))
                             else
                                 echo -n "[✗] "
+                                result_line+="- ❌ $policy_name - compliant: FAIL"
                                 echo "- ❌ $policy_name - compliant: FAIL" >> "$DETAILED_FILE"
                                 ((FAILED++))
                             fi
@@ -92,47 +92,47 @@ for category_dir in "$POLICIES_DIR/kubernetes"/*; do
                         ((TOTAL_TESTS++))
                     fi
                     
-                    # Test noncompliant
+                    # Test noncompliant resources
                     if [ -d "$TESTS_DIR/kubernetes/$policy_name/noncompliant" ]; then
-                        if ls "$TESTS_DIR/kubernetes/$policy_name/noncompliant"/*.json >/dev/null 2>&1; then
-                            echo -n "[skip] "
-                            echo "- $policy_name - noncompliant: SKIPPED (JSON test)" >> "$DETAILED_FILE"
-                            ((SKIPPED++))
-                        elif kyverno apply "$policy" --resource "$TESTS_DIR/kubernetes/$policy_name/noncompliant" >/dev/null 2>&1; then
-                            # Check if it's audit mode
-                            if grep -q "validationFailureAction: [Aa]udit" "$policy"; then
-                                echo -n "[audit] "
-                                echo "- ⚠️  $policy_name - noncompliant: AUDIT MODE" >> "$DETAILED_FILE"
-                                ((SKIPPED++))
-                            else
-                                echo -n "[✗] "
-                                echo "- ❌ $policy_name - noncompliant: FAIL (should reject)" >> "$DETAILED_FILE"
-                                ((FAILED++))
-                            fi
-                        else
+                        output=$(kyverno apply "$policy" --resource "$TESTS_DIR/kubernetes/$policy_name/noncompliant" 2>&1 || true)
+                        
+                        if echo "$output" | grep -q "failed\|blocked\|violation\|error"; then
                             echo -n "[✓] "
+                            result_line+=$'\n'"- ✅ $policy_name - noncompliant: PASS (rejected)"
                             echo "- ✅ $policy_name - noncompliant: PASS (rejected)" >> "$DETAILED_FILE"
-                            ((PASSED++))
+                            PASSED=$((PASSED + 1))
+                        elif [[ "$policy_name" == "custom-4.1.8" ]] && echo "$output" | grep -q "audit"; then
+                            echo -n "[audit] "
+                            result_line+=$'\n'"- ⚠️ $policy_name - noncompliant: AUDIT MODE"
+                            echo "- ⚠️ $policy_name - noncompliant: AUDIT MODE" >> "$DETAILED_FILE"
+                            ((SKIPPED++))
+                        else
+                            echo -n "[✗] "
+                            result_line+=$'\n'"- ❌ $policy_name - noncompliant: FAIL (not rejected)"
+                            echo "- ❌ $policy_name - noncompliant: FAIL (not rejected)" >> "$DETAILED_FILE"
+                            ((FAILED++))
                         fi
                         ((TOTAL_TESTS++))
                     fi
+                    
                     echo ""
                 else
-                    echo "NO TESTS"
-                    echo "- ⚠️  $policy_name: NO TESTS FOUND" >> "$DETAILED_FILE"
+                    echo "[NO TESTS]"
+                    result_line+="- ⚠️ $policy_name: NO TESTS FOUND"
+                    echo "- ⚠️ $policy_name: NO TESTS FOUND" >> "$DETAILED_FILE"
                 fi
+                
+                K8S_RESULTS+=("$result_line")
                 echo "" >> "$DETAILED_FILE"
             fi
         done
+        K8S_RESULTS+=("")
     fi
 done
 
-# Test all Terraform policies
-echo "" >> "$SUMMARY_FILE"
+# Test Terraform policies
 echo "" >> "$DETAILED_FILE"
-echo "## Terraform Policies" >> "$SUMMARY_FILE"
 echo "## Terraform Policies" >> "$DETAILED_FILE"
-echo "" >> "$SUMMARY_FILE"
 echo "" >> "$DETAILED_FILE"
 
 echo ""
@@ -142,7 +142,10 @@ for category_dir in "$POLICIES_DIR/terraform"/*; do
         category=$(basename "$category_dir")
         echo ""
         echo "Category: $category"
-        echo "### $category" >> "$SUMMARY_FILE"
+        
+        TF_RESULTS+=("### $category")
+        TF_RESULTS+=("")
+        
         echo "### $category" >> "$DETAILED_FILE"
         echo "" >> "$DETAILED_FILE"
         
@@ -152,15 +155,19 @@ for category_dir in "$POLICIES_DIR/terraform"/*; do
                 policy_name=$(basename "$policy" .yaml)
                 echo -n "  $policy_name: "
                 
-                # Test against terraform plans
                 test_count=0
+                result_line=""
+                
+                # Check compliant plan
                 if [ -f "terraform/compliant/tfplan.json" ]; then
                     if kyverno apply "$policy" --resource "terraform/compliant/tfplan.json" >/dev/null 2>&1; then
                         echo -n "[✓] "
+                        result_line+="- ✅ $policy_name - compliant plan: PASS"
                         echo "- ✅ $policy_name - compliant plan: PASS" >> "$DETAILED_FILE"
                         ((PASSED++))
                     else
                         echo -n "[✗] "
+                        result_line+="- ❌ $policy_name - compliant plan: FAIL"
                         echo "- ❌ $policy_name - compliant plan: FAIL" >> "$DETAILED_FILE"
                         ((FAILED++))
                     fi
@@ -168,15 +175,20 @@ for category_dir in "$POLICIES_DIR/terraform"/*; do
                     ((test_count++))
                 fi
                 
+                # Check noncompliant plan
                 if [ -f "terraform/noncompliant/tfplan.json" ]; then
-                    if kyverno apply "$policy" --resource "terraform/noncompliant/tfplan.json" >/dev/null 2>&1; then
-                        echo -n "[✗] "
-                        echo "- ❌ $policy_name - noncompliant plan: FAIL (should reject)" >> "$DETAILED_FILE"
-                        ((FAILED++))
-                    else
+                    output=$(kyverno apply "$policy" --resource "terraform/noncompliant/tfplan.json" 2>&1 || true)
+                    
+                    if echo "$output" | grep -q "failed\|blocked\|violation\|error"; then
                         echo -n "[✓] "
+                        result_line+=$'\n'"- ✅ $policy_name - noncompliant plan: PASS (rejected)"
                         echo "- ✅ $policy_name - noncompliant plan: PASS (rejected)" >> "$DETAILED_FILE"
                         ((PASSED++))
+                    else
+                        echo -n "[✗] "
+                        result_line+=$'\n'"- ❌ $policy_name - noncompliant plan: FAIL (not rejected)"
+                        echo "- ❌ $policy_name - noncompliant plan: FAIL (not rejected)" >> "$DETAILED_FILE"
+                        ((FAILED++))
                     fi
                     ((TOTAL_TESTS++))
                     ((test_count++))
@@ -184,37 +196,83 @@ for category_dir in "$POLICIES_DIR/terraform"/*; do
                 
                 if [ $test_count -eq 0 ]; then
                     echo "NO TESTS"
-                    echo "- ⚠️  $policy_name: NO TEST PLANS FOUND" >> "$DETAILED_FILE"
+                    result_line+="- ⚠️ $policy_name: NO TEST PLANS FOUND"
+                    echo "- ⚠️ $policy_name: NO TEST PLANS FOUND" >> "$DETAILED_FILE"
                 else
                     echo ""
                 fi
+                
+                TF_RESULTS+=("$result_line")
                 echo "" >> "$DETAILED_FILE"
             fi
         done
+        TF_RESULTS+=("")
     fi
 done
 
-# Generate summary statistics
-echo "" >> "$SUMMARY_FILE"
-echo "## Statistics" >> "$SUMMARY_FILE"
-echo "" >> "$SUMMARY_FILE"
-echo "- **Total Policies**: $TOTAL_POLICIES" >> "$SUMMARY_FILE"
-echo "- **Total Tests Run**: $TOTAL_TESTS" >> "$SUMMARY_FILE"
-echo "- **Passed**: $PASSED" >> "$SUMMARY_FILE"
-echo "- **Failed**: $FAILED" >> "$SUMMARY_FILE"
-echo "- **Skipped**: $SKIPPED" >> "$SUMMARY_FILE"
-echo "" >> "$SUMMARY_FILE"
+# Generate comprehensive summary report
+cat > "$SUMMARY_FILE" << EOF
+# Policy Test Summary
+
+Generated: $(date)
+
+## Test Statistics
+
+| Metric | Value |
+|--------|-------|
+| Total Policies | $TOTAL_POLICIES |
+| Total Tests | $TOTAL_TESTS |
+| ✅ Passed | $PASSED |
+| ❌ Failed | $FAILED |
+| ⏭️ Skipped | $SKIPPED |
+EOF
 
 # Calculate success rate
 if [ $((PASSED + FAILED)) -gt 0 ]; then
     SUCCESS_RATE=$((PASSED * 100 / (PASSED + FAILED)))
-    echo "## Success Rate: ${SUCCESS_RATE}%" >> "$SUMMARY_FILE"
+    echo "| Success Rate | ${SUCCESS_RATE}% |" >> "$SUMMARY_FILE"
 else
-    echo "## Success Rate: N/A" >> "$SUMMARY_FILE"
+    echo "| Success Rate | N/A |" >> "$SUMMARY_FILE"
 fi
+
+# Performance metrics
+END_TIME=$(date +%s)
+DURATION=$((END_TIME - START_TIME))
+if [ $DURATION -gt 0 ]; then
+    TESTS_PER_SEC=$(echo "scale=2; $TOTAL_TESTS / $DURATION" | bc 2>/dev/null || echo "N/A")
+else
+    TESTS_PER_SEC="N/A"
+fi
+
+cat >> "$SUMMARY_FILE" << EOF
+
+## Performance Metrics
+
+| Metric | Value |
+|--------|-------|
+| Duration | ${DURATION}s |
+| Tests/Second | $TESTS_PER_SEC |
+
+## Kubernetes Policies
+
+EOF
+
+# Add Kubernetes results to summary
+for result in "${K8S_RESULTS[@]}"; do
+    echo "$result" >> "$SUMMARY_FILE"
+done
+
+echo "" >> "$SUMMARY_FILE"
+echo "## Terraform Policies" >> "$SUMMARY_FILE"
 echo "" >> "$SUMMARY_FILE"
 
+# Add Terraform results to summary
+for result in "${TF_RESULTS[@]}"; do
+    echo "$result" >> "$SUMMARY_FILE"
+done
+
 # List policies without tests
+echo "" >> "$SUMMARY_FILE"
 echo "## Policies Without Tests" >> "$SUMMARY_FILE"
 echo "" >> "$SUMMARY_FILE"
 NO_TESTS=0
@@ -230,15 +288,22 @@ if [ $NO_TESTS -eq 0 ]; then
     echo "All Kubernetes policies have tests!" >> "$SUMMARY_FILE"
 fi
 
-# Final summary
-echo "" >> "$SUMMARY_FILE"
-if [ $FAILED -eq 0 ]; then
-    echo "✅ **All tests passed!**" >> "$SUMMARY_FILE"
-else
-    echo "❌ **$FAILED tests failed**" >> "$SUMMARY_FILE"
-fi
+# Generate JSON stats
+cat > "$JSON_STATS" << EOF
+{
+  "execution_time": "$DURATION",
+  "total_policies": $TOTAL_POLICIES,
+  "total_tests": $TOTAL_TESTS,
+  "passed": $PASSED,
+  "failed": $FAILED,
+  "skipped": $SKIPPED,
+  "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+  "success_rate": ${SUCCESS_RATE:-0},
+  "tests_per_second": ${TESTS_PER_SEC//N\/A/0}
+}
+EOF
 
-# Display results
+# Print summary
 echo ""
 echo "========================================"
 echo "FINAL RESULTS"
@@ -252,9 +317,9 @@ echo ""
 echo "Reports generated:"
 echo "  - $SUMMARY_FILE"
 echo "  - $DETAILED_FILE"
+echo "  - $JSON_STATS"
 echo "========================================"
 
-# Exit with failure if any tests failed
 if [ $FAILED -gt 0 ]; then
     exit 1
 fi

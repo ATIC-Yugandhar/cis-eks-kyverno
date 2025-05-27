@@ -104,7 +104,54 @@ EOF
     # Capture cluster state
     echo "Capturing cluster state..."
     kubectl get all -A > "$REPORTS_DIR/cluster-resources.yaml"
-    kubectl get policies -A > "$REPORTS_DIR/policies.yaml"
+    kubectl get clusterpolicies -o yaml > "$REPORTS_DIR/policies.yaml" 2>/dev/null || echo "No policies found" > "$REPORTS_DIR/policies.yaml"
+    
+    # Generate validation summary
+    POLICY_COUNT=$(kubectl get clusterpolicies --no-headers 2>/dev/null | wc -l || echo 0)
+    VALIDATION_COUNT=$(find "$REPORTS_DIR" -name "kyverno-*-results.txt" -exec grep -l "pass:\|fail:" {} \; | wc -l || echo 0)
+    
+    cat > "$REPORTS_DIR/validation-summary.md" << EOF
+# Kind Cluster Validation Summary
+
+**Generated**: $(date)
+**Mode**: Full cluster validation
+**Cluster**: $CLUSTER_NAME
+
+## Validation Statistics
+
+| Metric | Value |
+|--------|-------|
+| Policies Applied | $POLICY_COUNT |
+| Categories Tested | $VALIDATION_COUNT |
+| Test Manifests | $(find tests/kind-manifests -name "*.yaml" | wc -l) |
+| Cluster Status | Active |
+
+## Policy Application Results
+
+EOF
+    
+    # Add validation results summary
+    for result_file in "$REPORTS_DIR"/kyverno-*-results.txt; do
+        if [ -f "$result_file" ]; then
+            category=$(basename "$result_file" | sed 's/kyverno-\(.*\)-results.txt/\1/')
+            echo "### $category" >> "$REPORTS_DIR/validation-summary.md"
+            echo "" >> "$REPORTS_DIR/validation-summary.md"
+            
+            # Extract pass/fail counts
+            if grep -q "pass:\|fail:" "$result_file"; then
+                tail -1 "$result_file" >> "$REPORTS_DIR/validation-summary.md"
+            else
+                echo "No validation results found" >> "$REPORTS_DIR/validation-summary.md"
+            fi
+            echo "" >> "$REPORTS_DIR/validation-summary.md"
+        fi
+    done
+    
+    echo "## Cluster Resources" >> "$REPORTS_DIR/validation-summary.md"
+    echo "" >> "$REPORTS_DIR/validation-summary.md"
+    echo "- Kyverno pods: $(kubectl get pods -n kyverno --no-headers | wc -l)" >> "$REPORTS_DIR/validation-summary.md"
+    echo "- Total policies: $POLICY_COUNT" >> "$REPORTS_DIR/validation-summary.md"
+    echo "- Test manifests validated: $(find tests/kind-manifests -name "*.yaml" | wc -l)" >> "$REPORTS_DIR/validation-summary.md"
     
     # Cleanup
     if [ "${KEEP_CLUSTER:-false}" = "false" ]; then
