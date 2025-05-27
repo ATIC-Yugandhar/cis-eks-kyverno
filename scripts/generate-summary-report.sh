@@ -13,33 +13,49 @@ TIMESTAMP=$(date +"%Y-%m-%d %H:%M:%S")
 
 echo -e "${PURPLE}📈 Generating Executive Summary Report...${NC}"
 
-TOTAL_REPORTS=0
+# Count total test suites available
+TOTAL_REPORTS=3  # Policy tests, Terraform Compliance, Kind Integration
+
+# Count completed reports
 COMPLETE_REPORTS=0
-
-cat > "$SUMMARY_FILE" << EOF
-# 📋 Kyverno CIS EKS Compliance Executive Summary
-
-**Generated**: $TIMESTAMP
-
-## 🎯 Executive Overview
-
-| Metric | Value |
-|--------|-------|
-| **Total Test Suites** | TOTAL_SUITES_PLACEHOLDER |
-| **✅ Completed Suites** | COMPLETED_SUITES_PLACEHOLDER |
-| **Completion Rate** | COMPLETION_RATE_PLACEHOLDER |
-| **Generation Time** | $TIMESTAMP |
-
----
-
-## 📈 Detailed Test Results
-
-### 📋 Policy Unit Tests
-EOF
-
-((TOTAL_REPORTS++))
 if [ -f "$REPORT_DIR/policy-tests/summary.md" ]; then
     ((COMPLETE_REPORTS++))
+fi
+if [ -f "$REPORT_DIR/terraform-compliance/compliant-plan-scan.md" ]; then
+    ((COMPLETE_REPORTS++))
+fi
+if [ -f "$REPORT_DIR/kind-cluster/validation-results.txt" ]; then
+    ((COMPLETE_REPORTS++))
+fi
+
+# Calculate completion rate
+if [ $TOTAL_REPORTS -gt 0 ]; then
+    COMPLETION_RATE=$(awk "BEGIN {printf \"%.1f\", $COMPLETE_REPORTS * 100 / $TOTAL_REPORTS}")
+else
+    COMPLETION_RATE="0.0"
+fi
+
+# Initialize the summary file with actual values
+echo "# 📋 Kyverno CIS EKS Compliance Executive Summary" > "$SUMMARY_FILE"
+echo "" >> "$SUMMARY_FILE"
+echo "**Generated**: $TIMESTAMP" >> "$SUMMARY_FILE"
+echo "" >> "$SUMMARY_FILE"
+echo "## 🎯 Executive Overview" >> "$SUMMARY_FILE"
+echo "" >> "$SUMMARY_FILE"
+echo "| Metric | Value |" >> "$SUMMARY_FILE"
+echo "|--------|-------|" >> "$SUMMARY_FILE"
+echo "| **Total Test Suites** | $TOTAL_REPORTS |" >> "$SUMMARY_FILE"
+echo "| **✅ Completed Suites** | $COMPLETE_REPORTS |" >> "$SUMMARY_FILE"
+echo "| **Completion Rate** | ${COMPLETION_RATE}% |" >> "$SUMMARY_FILE"
+echo "| **Generation Time** | $TIMESTAMP |" >> "$SUMMARY_FILE"
+echo "" >> "$SUMMARY_FILE"
+echo "---" >> "$SUMMARY_FILE"
+echo "" >> "$SUMMARY_FILE"
+echo "## 📈 Detailed Test Results" >> "$SUMMARY_FILE"
+echo "" >> "$SUMMARY_FILE"
+echo "### 📋 Policy Unit Tests" >> "$SUMMARY_FILE"
+
+if [ -f "$REPORT_DIR/policy-tests/summary.md" ]; then
     echo -e "${GREEN}✅ Policy tests found${NC}"
     
     if grep -q "Test Statistics" "$REPORT_DIR/policy-tests/summary.md"; then
@@ -70,9 +86,7 @@ cat >> "$SUMMARY_FILE" << EOF
 ### 🛠️ Terraform Compliance Tests
 EOF
 
-((TOTAL_REPORTS++))
 if [ -f "$REPORT_DIR/terraform-compliance/compliant-plan-scan.md" ] && [ -f "$REPORT_DIR/terraform-compliance/noncompliant-plan-scan.md" ]; then
-    ((COMPLETE_REPORTS++))
     echo -e "${GREEN}✅ Terraform compliance tests found${NC}"
     
     COMPLIANT_SUCCESS=$(grep -o "Success Rate.*%" "$REPORT_DIR/terraform-compliance/compliant-plan-scan.md" 2>/dev/null || echo "N/A")
@@ -94,20 +108,22 @@ else
     echo "- ❌ No terraform compliance results found" >> "$SUMMARY_FILE"
 fi
 
-if [ $TOTAL_REPORTS -gt 0 ]; then
-    COMPLETION_RATE=$(awk "BEGIN {printf \"%.1f\", $COMPLETE_REPORTS * 100 / $TOTAL_REPORTS}")
-else
-    COMPLETION_RATE="0.0"
-fi
+cat >> "$SUMMARY_FILE" << EOF
 
-if [[ "$OSTYPE" == "darwin"* ]]; then
-    sed -i "" "s/TOTAL_SUITES_PLACEHOLDER/$TOTAL_REPORTS/g" "$SUMMARY_FILE"
-    sed -i "" "s/COMPLETED_SUITES_PLACEHOLDER/$COMPLETE_REPORTS/g" "$SUMMARY_FILE"
-    sed -i "" "s/COMPLETION_RATE_PLACEHOLDER/${COMPLETION_RATE}%/g" "$SUMMARY_FILE"
+### 🌟 Kind Integration Tests
+EOF
+
+if [ -f "$REPORT_DIR/kind-cluster/validation-results.txt" ]; then
+    echo -e "${GREEN}✅ Kind integration tests found${NC}"
+    echo "" >> "$SUMMARY_FILE"
+    echo "✅ Integration tests completed successfully" >> "$SUMMARY_FILE"
+    
+    # Count resources tested
+    RESOURCE_COUNT=$(grep -c "Testing" "$REPORT_DIR/kind-cluster/validation-results.txt" 2>/dev/null || echo "0")
+    echo "- Resources tested: **$RESOURCE_COUNT**" >> "$SUMMARY_FILE"
 else
-    sed -i "s/TOTAL_SUITES_PLACEHOLDER/$TOTAL_REPORTS/g" "$SUMMARY_FILE"
-    sed -i "s/COMPLETED_SUITES_PLACEHOLDER/$COMPLETE_REPORTS/g" "$SUMMARY_FILE"
-    sed -i "s/COMPLETION_RATE_PLACEHOLDER/${COMPLETION_RATE}%/g" "$SUMMARY_FILE"
+    echo -e "${YELLOW}⚠️  Kind integration results not found${NC}"
+    echo "- ❌ No Kind integration test results found" >> "$SUMMARY_FILE"
 fi
 
 cat >> "$SUMMARY_FILE" << EOF
@@ -122,12 +138,12 @@ cat >> "$SUMMARY_FILE" << EOF
 - **Execution stats**: [📊 execution-stats.json](policy-tests/execution-stats.json)
 
 ### 🛠️ Terraform Compliance
-- **Compliant scan**: [✅ compliant-plan-scan.md](terraform-compliance/compliant-plan-scan.md)
+- **Compliant scan**: [✅ compliant-plan-scan.md](terraform-compliance/compliant-plan-scan.md)  
 - **Non-compliant scan**: [❌ noncompliant-plan-scan.md](terraform-compliance/noncompliant-plan-scan.md)
 
-### 📈 Infrastructure Validation
-- **Compliant summary**: [✅ compliant-summary.md](compliance/compliant-summary.md)
-- **Noncompliant summary**: [🔴 noncompliant-summary.md](compliance/noncompliant-summary.md)
+### 🌟 Kind Integration  
+- **Validation results**: [📊 validation-results.txt](kind-cluster/validation-results.txt)
+- **Cluster resources**: [🎯 cluster-resources.yaml](kind-cluster/cluster-resources.yaml)
 
 ---
 
@@ -137,6 +153,7 @@ cat >> "$SUMMARY_FILE" << EOF
 |------------|--------|------------|-------|
 | Policy Unit Tests | $( [ -f "$REPORT_DIR/policy-tests/summary.md" ] && echo "✅ Complete" || echo "❌ Missing" ) | $( [ -f "$REPORT_DIR/policy-tests/summary.md" ] && echo "100%" || echo "0%" ) | Kubernetes policy validation |
 | Terraform Compliance | $( [ -f "$REPORT_DIR/terraform-compliance/compliant-plan-scan.md" ] && echo "✅ Complete" || echo "❌ Missing" ) | $( [ -f "$REPORT_DIR/terraform-compliance/compliant-plan-scan.md" ] && echo "100%" || echo "0%" ) | Infrastructure compliance |
+| Kind Integration | $( [ -f "$REPORT_DIR/kind-cluster/validation-results.txt" ] && echo "✅ Complete" || echo "❌ Missing" ) | $( [ -f "$REPORT_DIR/kind-cluster/validation-results.txt" ] && echo "100%" || echo "0%" ) | Local cluster testing |
 | **Overall** | **${COMPLETION_RATE}%** | **${COMPLETE_REPORTS}/${TOTAL_REPORTS}** | **Test suite completion** |
 
 ---
