@@ -183,28 +183,6 @@ jobs:
         # Create Kind cluster and run integration tests
         ./scripts/test-kind-cluster.sh || true
         
-        # As a fallback, run offline policy validation
-        echo "Running offline policy validation as fallback..."
-        mkdir -p reports/kind-cluster
-        
-        # Create a sample manifest for testing
-        cat > reports/kind-cluster/test-manifest.yaml << 'EOF'
-        apiVersion: v1
-        kind: Pod
-        metadata:
-          name: test-pod
-          namespace: default
-        spec:
-          containers:
-          - name: nginx
-            image: nginx:latest
-        EOF
-        
-        # Run offline validation
-        KYVERNO_EXPERIMENTAL=true kyverno apply policies/kubernetes --resource reports/kind-cluster/test-manifest.yaml > reports/kind-cluster/offline-validation.log 2>&1 || true
-        
-        echo "Offline validation completed"
-        
     - name: Capture test status
       if: always()
       run: |

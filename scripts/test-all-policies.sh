@@ -1,6 +1,8 @@
 #!/bin/bash
 
-set -euo pipefail
+set -uo pipefail
+# Don't exit on error immediately - we want to see what's failing
+set +e
 
 START_TIME=$(date +%s)
 echo "Script started at $(date)"
@@ -23,8 +25,8 @@ FAILED=0
 SKIPPED=0
 
 # Arrays to store results for summary
-declare -a K8S_RESULTS
-declare -a TF_RESULTS
+declare -a K8S_RESULTS=()
+declare -a TF_RESULTS=()
 
 echo "Kyverno version: $(kyverno version)"
 
@@ -43,6 +45,7 @@ EOF
 
 # Test Kubernetes policies
 echo "Testing Kubernetes policies..."
+
 for category_dir in "$POLICIES_DIR/kubernetes"/*; do
     if [ -d "$category_dir" ]; then
         category=$(basename "$category_dir")
@@ -122,7 +125,9 @@ for category_dir in "$POLICIES_DIR/kubernetes"/*; do
                     echo "- ⚠️ $policy_name: NO TESTS FOUND" >> "$DETAILED_FILE"
                 fi
                 
-                K8S_RESULTS+=("$result_line")
+                if [ -n "$result_line" ]; then
+                    K8S_RESULTS+=("$result_line")
+                fi
                 echo "" >> "$DETAILED_FILE"
             fi
         done
@@ -202,7 +207,9 @@ for category_dir in "$POLICIES_DIR/terraform"/*; do
                     echo ""
                 fi
                 
-                TF_RESULTS+=("$result_line")
+                if [ -n "$result_line" ]; then
+                    TF_RESULTS+=("$result_line")
+                fi
                 echo "" >> "$DETAILED_FILE"
             fi
         done
@@ -239,7 +246,8 @@ fi
 END_TIME=$(date +%s)
 DURATION=$((END_TIME - START_TIME))
 if [ $DURATION -gt 0 ]; then
-    TESTS_PER_SEC=$(echo "scale=2; $TOTAL_TESTS / $DURATION" | bc 2>/dev/null || echo "N/A")
+    # Use awk instead of bc for better compatibility
+    TESTS_PER_SEC=$(awk -v t="$TOTAL_TESTS" -v d="$DURATION" 'BEGIN {printf "%.2f", t/d}' 2>/dev/null || echo "N/A")
 else
     TESTS_PER_SEC="N/A"
 fi
@@ -258,18 +266,22 @@ cat >> "$SUMMARY_FILE" << EOF
 EOF
 
 # Add Kubernetes results to summary
-for result in "${K8S_RESULTS[@]}"; do
-    echo "$result" >> "$SUMMARY_FILE"
-done
+if [ ${#K8S_RESULTS[@]} -gt 0 ]; then
+    for result in "${K8S_RESULTS[@]}"; do
+        echo "$result" >> "$SUMMARY_FILE"
+    done
+fi
 
 echo "" >> "$SUMMARY_FILE"
 echo "## Terraform Policies" >> "$SUMMARY_FILE"
 echo "" >> "$SUMMARY_FILE"
 
 # Add Terraform results to summary
-for result in "${TF_RESULTS[@]}"; do
-    echo "$result" >> "$SUMMARY_FILE"
-done
+if [ ${#TF_RESULTS[@]} -gt 0 ]; then
+    for result in "${TF_RESULTS[@]}"; do
+        echo "$result" >> "$SUMMARY_FILE"
+    done
+fi
 
 # List policies without tests
 echo "" >> "$SUMMARY_FILE"
@@ -289,6 +301,13 @@ if [ $NO_TESTS -eq 0 ]; then
 fi
 
 # Generate JSON stats
+# Handle N/A case for tests_per_second
+if [ "$TESTS_PER_SEC" = "N/A" ]; then
+    TESTS_PER_SEC_JSON="0"
+else
+    TESTS_PER_SEC_JSON="$TESTS_PER_SEC"
+fi
+
 cat > "$JSON_STATS" << EOF
 {
   "execution_time": "$DURATION",
@@ -299,7 +318,7 @@ cat > "$JSON_STATS" << EOF
   "skipped": $SKIPPED,
   "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
   "success_rate": ${SUCCESS_RATE:-0},
-  "tests_per_second": ${TESTS_PER_SEC//N\/A/0}
+  "tests_per_second": $TESTS_PER_SEC_JSON
 }
 EOF
 

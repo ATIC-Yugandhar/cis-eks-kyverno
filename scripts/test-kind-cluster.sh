@@ -88,7 +88,16 @@ EOF
     # Test with sample resources
     if [ -d "tests/kind-manifests" ]; then
         echo "Testing with Kind manifests..."
-        kubectl apply -f tests/kind-manifests/ --dry-run=server > "$REPORTS_DIR/validation-results.txt" 2>&1 || true
+        # First create the namespace for real
+        kubectl apply -f tests/kind-manifests/namespace.yaml 2>/dev/null || true
+        
+        # Now test the other resources with dry-run
+        for manifest in tests/kind-manifests/*.yaml; do
+            if [ -f "$manifest" ] && [ "$(basename "$manifest")" != "namespace.yaml" ]; then
+                echo "Testing $(basename "$manifest")..." >> "$REPORTS_DIR/validation-results.txt"
+                kubectl apply -f "$manifest" --dry-run=server >> "$REPORTS_DIR/validation-results.txt" 2>&1 || true
+            fi
+        done
     fi
     
     # Run Kyverno apply on test resources
@@ -170,6 +179,23 @@ else
     TOTAL_POLICIES=$(find policies/kubernetes -name "*.yaml" | wc -l | tr -d ' ')
     TEST_MANIFESTS=$(find tests/kind-manifests -name "*.yaml" 2>/dev/null | wc -l | tr -d ' ' || echo 0)
     
+    # Run Kyverno validation offline
+    echo "Running Kyverno validation on test resources (offline mode)..."
+    mkdir -p "$REPORTS_DIR"
+    
+    for policy_dir in policies/kubernetes/*/; do
+        if [ -d "$policy_dir" ]; then
+            category=$(basename "$policy_dir")
+            echo "Testing $category policies..."
+            
+            # Apply all policies in the category against all test manifests
+            kyverno apply "$policy_dir" --resource tests/kind-manifests/ > "$REPORTS_DIR/kyverno-${category}-results.txt" 2>&1 || true
+        fi
+    done
+    
+    # Generate validation summary
+    VALIDATION_COUNT=$(find "$REPORTS_DIR" -name "kyverno-*-results.txt" -exec grep -l "pass:\|fail:" {} \; 2>/dev/null | wc -l || echo 0)
+    
     cat > "$REPORTS_DIR/validation-summary.md" << EOF
 # Kind Cluster Validation Summary
 
@@ -182,17 +208,33 @@ else
 |--------|-------|
 | Total Policies | $TOTAL_POLICIES |
 | Test Manifests | $TEST_MANIFESTS |
+| Categories Tested | $VALIDATION_COUNT |
 | Validation Mode | Offline |
 
-## Results
-
-Offline validation completed. In a real Kind cluster, these policies would:
-- Enforce pod security standards
-- Control RBAC permissions
-- Validate node configurations
-- Ensure compliance with CIS benchmarks
+## Policy Validation Results
 
 EOF
+    
+    # Add validation results summary
+    for result_file in "$REPORTS_DIR"/kyverno-*-results.txt; do
+        if [ -f "$result_file" ]; then
+            category=$(basename "$result_file" | sed 's/kyverno-\(.*\)-results.txt/\1/')
+            echo "### $category" >> "$REPORTS_DIR/validation-summary.md"
+            echo "" >> "$REPORTS_DIR/validation-summary.md"
+            
+            # Extract pass/fail counts
+            if grep -q "pass:\|fail:" "$result_file"; then
+                tail -1 "$result_file" >> "$REPORTS_DIR/validation-summary.md"
+            else
+                echo "No validation results found" >> "$REPORTS_DIR/validation-summary.md"
+            fi
+            echo "" >> "$REPORTS_DIR/validation-summary.md"
+        fi
+    done
+    
+    echo "## Results" >> "$REPORTS_DIR/validation-summary.md"
+    echo "" >> "$REPORTS_DIR/validation-summary.md"
+    echo "Offline validation completed. Policy validation results show how these policies would behave in a real cluster." >> "$REPORTS_DIR/validation-summary.md"
 fi
 
 echo "=== Kind cluster tests completed ==="
