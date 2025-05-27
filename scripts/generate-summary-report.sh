@@ -50,7 +50,7 @@ if [ -f "$REPORT_DIR/policy-tests/summary.md" ]; then
     fi
     
     if grep -q "Performance Metrics" "$REPORT_DIR/policy-tests/summary.md"; then
-        echo "\n#### ⚡ Performance Metrics" >> "$SUMMARY_FILE"
+        echo -e "\n#### ⚡ Performance Metrics" >> "$SUMMARY_FILE"
         grep -A 5 "Performance Metrics" "$REPORT_DIR/policy-tests/summary.md" | tail -n +2 >> "$SUMMARY_FILE"
     fi
 else

@@ -180,8 +180,8 @@ jobs:
         chmod +x scripts/test-kind-cluster.sh
         # Set environment variable to keep cluster for debugging on failure
         export KEEP_CLUSTER=false
-        # In CI, we'll skip the full cluster test and just validate policies offline
-        ./scripts/test-kind-cluster.sh --skip-create || true
+        # Create Kind cluster and run integration tests
+        ./scripts/test-kind-cluster.sh || true
         
         # As a fallback, run offline policy validation
         echo "Running offline policy validation as fallback..."

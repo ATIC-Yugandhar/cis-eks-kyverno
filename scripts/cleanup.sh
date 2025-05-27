@@ -11,5 +11,4 @@ if [ -d "terraform/noncompliant" ]; then
   terraform -chdir=terraform/noncompliant destroy -auto-approve || true
 fi
 
-
-echo "[INFO] Cleanup complete." 
+echo "[INFO] Cleanup complete."
