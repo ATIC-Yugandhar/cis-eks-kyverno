@@ -13,6 +13,18 @@ TIMESTAMP=$(date +"%Y-%m-%d %H:%M:%S")
 
 echo -e "${PURPLE}📈 Generating Executive Summary Report...${NC}"
 
+# Debug: Show current environment and available reports
+if [ "${CI:-false}" = "true" ] || [ "${GITHUB_ACTIONS:-false}" = "true" ]; then
+    echo "🔍 CI Environment detected - Debug info:"
+    echo "Working directory: $(pwd)"
+    echo "Reports directory exists: $([ -d "$REPORT_DIR" ] && echo 'YES' || echo 'NO')"
+    if [ -d "$REPORT_DIR" ]; then
+        echo "Available report files:"
+        find "$REPORT_DIR" -type f -name "*.md" -o -name "*.txt" -o -name "*.json" | sort
+    fi
+    echo "---"
+fi
+
 # Count total test suites available
 TOTAL_REPORTS=3  # Policy tests, Terraform Compliance, Kind Integration
 
@@ -58,24 +70,46 @@ echo "### 📋 Policy Unit Tests" >> "$SUMMARY_FILE"
 if [ -f "$REPORT_DIR/policy-tests/summary.md" ]; then
     echo -e "${GREEN}✅ Policy tests found${NC}"
     
-    if grep -q "Test Statistics" "$REPORT_DIR/policy-tests/summary.md"; then
-        echo "" >> "$SUMMARY_FILE"
-        # Extract Test Statistics table
-        sed -n '/## Test Statistics/,/## Performance Metrics/p' "$REPORT_DIR/policy-tests/summary.md" | grep -E "^\|" >> "$SUMMARY_FILE"
-        echo "" >> "$SUMMARY_FILE"
-        
-        echo "#### ⚡ Performance Metrics" >> "$SUMMARY_FILE"
-        echo "" >> "$SUMMARY_FILE"
-        # Extract Performance Metrics table
-        sed -n '/## Performance Metrics/,/## Kubernetes Policies/p' "$REPORT_DIR/policy-tests/summary.md" | grep -E "^\|" >> "$SUMMARY_FILE"
-    else
-        echo "- ❌ No detailed policy test statistics available" >> "$SUMMARY_FILE"
-    fi
+    # Extract exact metrics from the summary file
+    TOTAL_POLICIES=$(grep "Total Policies" "$REPORT_DIR/policy-tests/summary.md" | grep -o '[0-9]*' | head -1)
+    TOTAL_TESTS=$(grep "Total Tests" "$REPORT_DIR/policy-tests/summary.md" | grep -o '[0-9]*' | head -1)
+    PASSED_TESTS=$(grep "✅ Passed" "$REPORT_DIR/policy-tests/summary.md" | grep -o '[0-9]*' | head -1)
+    FAILED_TESTS=$(grep "❌ Failed" "$REPORT_DIR/policy-tests/summary.md" | grep -o '[0-9]*' | head -1)
+    SKIPPED_TESTS=$(grep "⏭️ Skipped" "$REPORT_DIR/policy-tests/summary.md" | grep -o '[0-9]*' | head -1)
+    SUCCESS_RATE=$(grep "Success Rate" "$REPORT_DIR/policy-tests/summary.md" | grep -o '[0-9]*%' | head -1)
     
-    if grep -q "Performance Metrics" "$REPORT_DIR/policy-tests/summary.md"; then
-        echo -e "\n#### ⚡ Performance Metrics" >> "$SUMMARY_FILE"
-        grep -A 5 "Performance Metrics" "$REPORT_DIR/policy-tests/summary.md" | tail -n +2 >> "$SUMMARY_FILE"
-    fi
+    DURATION=$(grep "Duration" "$REPORT_DIR/policy-tests/summary.md" | awk '{print $4}' | head -1)
+    TESTS_PER_SEC=$(grep "Tests/Second" "$REPORT_DIR/policy-tests/summary.md" | awk '{print $4}' | head -1)
+    
+    # Default values if extraction fails
+    TOTAL_POLICIES=${TOTAL_POLICIES:-"0"}
+    TOTAL_TESTS=${TOTAL_TESTS:-"0"}
+    PASSED_TESTS=${PASSED_TESTS:-"0"}
+    FAILED_TESTS=${FAILED_TESTS:-"0"}
+    SKIPPED_TESTS=${SKIPPED_TESTS:-"0"}
+    SUCCESS_RATE=${SUCCESS_RATE:-"0%"}
+    DURATION=${DURATION:-"N/A"}
+    TESTS_PER_SEC=${TESTS_PER_SEC:-"N/A"}
+    
+    cat >> "$SUMMARY_FILE" << POLICY_EOF
+
+| Metric | Value |
+|--------|-------|
+| Total Policies | $TOTAL_POLICIES |
+| Total Tests | $TOTAL_TESTS |
+| ✅ Passed | $PASSED_TESTS |
+| ❌ Failed | $FAILED_TESTS |
+| ⏭️ Skipped | $SKIPPED_TESTS |
+| Success Rate | $SUCCESS_RATE |
+
+#### ⚡ Performance Metrics
+
+| Metric | Value |
+|--------|-------|
+| Duration | $DURATION |
+| Tests/Second | $TESTS_PER_SEC |
+
+POLICY_EOF
 else
     echo -e "${YELLOW}⚠️  Policy test results not found${NC}"
     echo "- ❌ No policy test results found" >> "$SUMMARY_FILE"
@@ -89,20 +123,31 @@ EOF
 if [ -f "$REPORT_DIR/terraform-compliance/compliant-plan-scan.md" ] && [ -f "$REPORT_DIR/terraform-compliance/noncompliant-plan-scan.md" ]; then
     echo -e "${GREEN}✅ Terraform compliance tests found${NC}"
     
-    COMPLIANT_SUCCESS=$(grep -o "Success Rate.*%" "$REPORT_DIR/terraform-compliance/compliant-plan-scan.md" 2>/dev/null || echo "N/A")
-    NONCOMPLIANT_SUCCESS=$(grep -o "Success Rate.*%" "$REPORT_DIR/terraform-compliance/noncompliant-plan-scan.md" 2>/dev/null || echo "N/A")
+    # Extract exact metrics from terraform reports using the correct format
+    COMPLIANT_SUCCESS=$(grep "\*\*Success Rate\*\*:" "$REPORT_DIR/terraform-compliance/compliant-plan-scan.md" | awk '{print $NF}' 2>/dev/null || echo "0%")
+    NONCOMPLIANT_DETECTION=$(grep "\*\*Detection Rate\*\*:" "$REPORT_DIR/terraform-compliance/noncompliant-plan-scan.md" | awk '{print $NF}' 2>/dev/null || echo "0%")
+    
+    # If the markdown format doesn't work, try the simple format
+    if [ "$COMPLIANT_SUCCESS" = "0%" ]; then
+        COMPLIANT_SUCCESS=$(grep "Success Rate" "$REPORT_DIR/terraform-compliance/compliant-plan-scan.md" | sed 's/.*Success Rate[^:]*: *//' | awk '{print $1}' 2>/dev/null || echo "0%")
+    fi
+    
+    if [ "$NONCOMPLIANT_DETECTION" = "0%" ]; then
+        NONCOMPLIANT_DETECTION=$(grep "Detection Rate" "$REPORT_DIR/terraform-compliance/noncompliant-plan-scan.md" | sed 's/.*Detection Rate[^:]*: *//' | awk '{print $1}' 2>/dev/null || echo "0%")
+    fi
+    
+    VIOLATIONS_DETECTED=$(grep "Violations Detected" "$REPORT_DIR/terraform-compliance/noncompliant-plan-scan.md" | sed 's/.*Violations Detected[^:]*: *//' | awk '{print $1}' 2>/dev/null || echo "0")
     
     cat >> "$SUMMARY_FILE" << TERRAFORM_EOF
 
 | Configuration | Status | Success Rate |
 |---------------|--------|--------------|
 | ✅ Compliant | Complete | $COMPLIANT_SUCCESS |
-| 🔴 Noncompliant | Complete | $NONCOMPLIANT_SUCCESS |
+| 🔴 Noncompliant | Complete | N/A |
+
+- 🔴 Policy violations detected in non-compliant config: **$VIOLATIONS_DETECTED**
 
 TERRAFORM_EOF
-    
-    VIOLATIONS=$(grep -c "fail" "$REPORT_DIR/terraform-compliance/noncompliant-plan-scan.md" 2>/dev/null || echo "0")
-    echo "- 🔴 Policy violations detected in non-compliant config: **$VIOLATIONS**" >> "$SUMMARY_FILE"
 else
     echo -e "${YELLOW}⚠️  Terraform compliance results not found${NC}"
     echo "- ❌ No terraform compliance results found" >> "$SUMMARY_FILE"
@@ -113,14 +158,22 @@ cat >> "$SUMMARY_FILE" << EOF
 ### 🌟 Kind Integration Tests
 EOF
 
-if [ -f "$REPORT_DIR/kind-cluster/validation-results.txt" ]; then
+if [ -f "$REPORT_DIR/kind-cluster/validation-results.txt" ] || [ -f "$REPORT_DIR/kind-cluster/validation-summary.md" ]; then
     echo -e "${GREEN}✅ Kind integration tests found${NC}"
-    echo "" >> "$SUMMARY_FILE"
-    echo "✅ Integration tests completed successfully" >> "$SUMMARY_FILE"
     
-    # Count resources tested
-    RESOURCE_COUNT=$(grep -c "Testing" "$REPORT_DIR/kind-cluster/validation-results.txt" 2>/dev/null || echo "0")
-    echo "- Resources tested: **$RESOURCE_COUNT**" >> "$SUMMARY_FILE"
+    if [ -f "$REPORT_DIR/kind-cluster/validation-summary.md" ]; then
+        # Extract from validation summary if available
+        VALIDATION_COUNT=$(grep "Total Validations:" "$REPORT_DIR/kind-cluster/validation-summary.md" | awk '{print $NF}' 2>/dev/null || echo "0")
+        SUCCESS_COUNT=$(grep "Successful:" "$REPORT_DIR/kind-cluster/validation-summary.md" | awk '{print $NF}' 2>/dev/null || echo "0")
+        echo "- ✅ Integration tests completed successfully" >> "$SUMMARY_FILE"
+        echo "- Validations run: **$VALIDATION_COUNT**" >> "$SUMMARY_FILE"
+        echo "- Successful: **$SUCCESS_COUNT**" >> "$SUMMARY_FILE"
+    else
+        # Fallback to validation-results.txt
+        RESOURCE_COUNT=$(grep -c "Testing\|PASS\|FAIL" "$REPORT_DIR/kind-cluster/validation-results.txt" 2>/dev/null || echo "0")
+        echo "- ✅ Integration tests completed successfully" >> "$SUMMARY_FILE"
+        echo "- Resources tested: **$RESOURCE_COUNT**" >> "$SUMMARY_FILE"
+    fi
 else
     echo -e "${YELLOW}⚠️  Kind integration results not found${NC}"
     echo "- ❌ No Kind integration test results found" >> "$SUMMARY_FILE"

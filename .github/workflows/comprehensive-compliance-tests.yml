@@ -249,8 +249,25 @@ jobs:
     - name: Generate comprehensive summary
       continue-on-error: true
       run: |
+        # Give a moment for all file operations to complete
+        sleep 2
+        
+        # Debug: Show what files are available for processing
+        echo "=== Available report files for processing ==="
+        find reports -type f -name "*.md" -o -name "*.txt" -o -name "*.json" 2>/dev/null | sort
+        echo "============================================="
+        
         chmod +x scripts/generate-summary-report.sh
         ./scripts/generate-summary-report.sh || echo "Warning: Summary generation had issues but continuing..."
+        
+        # Verify the executive summary was generated
+        if [ -f "reports/executive-summary.md" ]; then
+          echo "✅ Executive summary generated successfully"
+          echo "📊 Summary preview:"
+          head -15 reports/executive-summary.md
+        else
+          echo "❌ Executive summary was not generated"
+        fi
         
     - name: Create final compliance report
       run: |
