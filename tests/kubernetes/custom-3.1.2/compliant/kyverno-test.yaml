@@ -1,0 +1,15 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: custom-3.1.2-compliant
+policies:
+  - ../../../../policies/kubernetes/worker-nodes/custom-3.1.2.yaml
+resources:
+  - node.yaml
+results:
+  - policy: custom-3-1-2-kubelet-kubeconfig-owner
+    rule: check-kubelet-kubeconfig-owner
+    resources:
+      - compliant-node
+    kind: Node
+    result: pass 

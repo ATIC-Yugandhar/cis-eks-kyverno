@@ -2,8 +2,8 @@
 
 **This stack provisions a reference CIS-compliant EKS cluster for validating plan-level Kyverno JSON policies. It is used as the gold standard for passing all enforceable CIS controls at the Terraform plan stage.**
 
-- Automated validation is performed using `scripts/test-terraform-cis-policies.sh`.
-- See `kyverno-policies/terraform/README.md` for policy details and plan-time limitations.
+- Automated validation is performed using `scripts/test-terraform-policies.sh`.
+- See `policies/README.md` for policy organization and structure.
 
 ## Prerequisites
 

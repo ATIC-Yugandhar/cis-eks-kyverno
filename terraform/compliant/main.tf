@@ -2,7 +2,6 @@ provider "aws" {
   region = var.region
 }
 
-# VPC with private subnets only
 resource "aws_vpc" "main" {
   cidr_block           = var.vpc_cidr
   enable_dns_support   = true
@@ -20,7 +19,6 @@ resource "aws_subnet" "private" {
   }
 }
 
-# Minimal security group for node group
 resource "aws_security_group" "nodes" {
   name        = "${var.cluster_name}-nodes"
   description = "Node group security group"
@@ -41,14 +39,12 @@ resource "aws_security_group" "nodes" {
   }
 }
 
-# KMS Key for EKS secrets encryption
 resource "aws_kms_key" "eks" {
   description             = "EKS Secret Encryption Key"
   deletion_window_in_days = 7
   enable_key_rotation     = true
 }
 
-# IAM Role for EKS control plane
 resource "aws_iam_role" "eks" {
   name = "cis-eks-compliant-eks-role"
   assume_role_policy = jsonencode({
@@ -70,7 +66,6 @@ resource "aws_iam_role_policy_attachment" "eks_cluster_policy" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
 }
 
-# IAM Role for EKS Node Group
 resource "aws_iam_role" "eks_node_group" {
   name = "${var.cluster_name}-node-group-role"
   assume_role_policy = jsonencode({
@@ -98,7 +93,6 @@ resource "aws_iam_role_policy_attachment" "ec2_container_registry" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
 }
 
-# EKS Cluster with audit logging, private endpoint, encryption, OIDC
 resource "aws_eks_cluster" "main" {
   name     = var.cluster_name
   role_arn = aws_iam_role.eks.arn
@@ -132,7 +126,6 @@ data "aws_eks_cluster_auth" "main" {
   name = aws_eks_cluster.main.name
 }
 
-# EKS Node Group uses only private subnets and the above security group
 resource "aws_eks_node_group" "main" {
   cluster_name    = aws_eks_cluster.main.name
   node_group_name = "compliant-ng"

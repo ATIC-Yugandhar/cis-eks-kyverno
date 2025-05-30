@@ -2,8 +2,8 @@
 
 **This stack provisions an intentionally noncompliant EKS cluster to serve as a negative test case for plan-level Kyverno JSON policy validation.**
 
-- Automated validation is performed using `scripts/test-terraform-cis-policies.sh`.
-- See `kyverno-policies/terraform/README.md` for policy details and plan-time limitations.
+- Automated validation is performed using `scripts/test-terraform-policies.sh`.
+- See `policies/README.md` for policy organization and structure.
 
 ## Prerequisites
 

@@ -1,33 +1,64 @@
-# Automation Scripts
+# Scripts Directory
 
-This folder contains automation scripts for validating CIS EKS compliance at the Terraform plan level using Kyverno JSON policies.
+This directory contains utility scripts for testing and managing the CIS EKS Kyverno policies.
 
-## Prerequisites
+## Scripts
 
-- [Kyverno CLI must be installed](https://kyverno.io/docs/installation/) locally and/or in your Kubernetes cluster.
+### test-kubernetes-policies.sh
+Main test runner that validates all Kubernetes and Terraform policies against test resources.
+- Tests both compliant and non-compliant scenarios
+- Generates comprehensive reports in `reports/policy-tests/`
+- Used by GitHub Actions CI/CD pipeline
 
-## Main Script: test-terraform-cis-policies.sh
+### test-terraform-policies.sh
+Dedicated script for testing Terraform policies against Terraform plans.
+- Tests both compliant and non-compliant Terraform configurations
+- Generates reports in `reports/terraform-compliance/`
 
-This script automates the following workflow:
+### test-kind-cluster.sh
+Integration test script that creates a Kind cluster and tests policies in a real Kubernetes environment.
+- Creates Kind cluster with Kyverno installed
+- Applies all policies to the cluster
+- Tests policy enforcement with sample resources
+- Can skip cluster creation with `--skip-create` flag
 
-1. Generates Terraform plans for both the compliant and noncompliant EKS stacks.
-2. Converts the plans to JSON format.
-3. Runs all Kyverno JSON policies (from `kyverno-policies/terraform/`) against each plan using `kyverno-json`.
-4. Writes results to `reports/compliance/` for both stacks.
 
-### Usage
+### generate-summary-report.sh
+Generates an executive summary report from all test results.
+- Aggregates results from policy tests
+- Creates `reports/executive-summary.md`
 
-```sh
-./test-terraform-cis-policies.sh
+### cleanup.sh
+Utility script to clean up Terraform state files and temporary resources.
+- Removes `.terraform` directories
+- Cleans up `tfplan.*` files
+- Safe to run at any time
+
+## Usage
+
+```bash
+# Run Kubernetes and Terraform policy tests
+./scripts/test-kubernetes-policies.sh
+
+# Run only Terraform policy tests
+./scripts/test-terraform-policies.sh
+
+# Run Kind cluster integration tests
+./scripts/test-kind-cluster.sh
+
+# Run Kind cluster tests without creating cluster
+./scripts/test-kind-cluster.sh --skip-create
+
+# Generate executive summary
+./scripts/generate-summary-report.sh
+
+# Clean up Terraform files
+./scripts/cleanup.sh
 ```
 
-- Requires: Terraform, kyverno-json CLI, and AWS credentials for planning.
+## CI/CD Integration
 
-## Other Scripts
-- `test-all-policies.sh`: Runs Kyverno tests for all test cases in the `tests/` folder (if present).
-- `compliant-validate.sh`, `noncompliant-validate.sh`: Validate individual stacks.
-- `cleanup.sh`: Clean up generated files and plans.
-
-## References
-- See `kyverno-policies/terraform/README.md` for policy details.
-- See `terraform/compliant/README.md` and `terraform/noncompliant/README.md` for stack documentation. 
+The GitHub Actions workflow uses:
+- `test-kubernetes-policies.sh` for unit tests (includes Terraform policies)
+- `test-terraform-policies.sh` for dedicated Terraform compliance testing
+- `test-kind-cluster.sh` for integration testing with a real Kubernetes cluster
