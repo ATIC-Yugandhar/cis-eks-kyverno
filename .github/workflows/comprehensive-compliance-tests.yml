@@ -258,19 +258,19 @@ jobs:
       run: |
         mkdir -p reports/comprehensive
         
-        # Copy unit test results if available
+        # Copy unit test results if available - preserve directory structure
         if [ -d "artifacts/unit-test-results" ]; then
-          cp -r artifacts/unit-test-results/* reports/ 2>/dev/null || true
+          cp -r artifacts/unit-test-results/. reports/ 2>/dev/null || true
         fi
         
-        # Copy Terraform test results if available
+        # Copy Terraform test results if available - preserve directory structure
         if [ -d "artifacts/terraform-test-results" ]; then
-          cp -r artifacts/terraform-test-results/* reports/ 2>/dev/null || true
+          cp -r artifacts/terraform-test-results/. reports/ 2>/dev/null || true
         fi
         
-        # Copy Kind cluster test results if available
+        # Copy Kind cluster test results if available - preserve directory structure
         if [ -d "artifacts/kind-cluster-test-results" ]; then
-          cp -r artifacts/kind-cluster-test-results/* reports/ 2>/dev/null || true
+          cp -r artifacts/kind-cluster-test-results/. reports/ 2>/dev/null || true
         fi
         
         # List what we have for debugging
