@@ -22,11 +22,12 @@ Plan-time policies that validate infrastructure configurations before deployment
 
 ## Policy Naming Convention
 
-Policies follow the pattern: `cis-[section]-[control]-[short-description].yaml`
+Policies follow the pattern: `custom-[section].[control].[subcontrol].yaml`
 
 Examples:
-- `cis-2-1-1-enable-audit-logs.yaml` - CIS control 2.1.1
-- `cis-5-4-2-private-endpoint.yaml` - CIS control 5.4.2
+- `custom-2.1.1.yaml` - CIS control 2.1.1 (Enable audit logs)
+- `custom-5.4.2.yaml` - CIS control 5.4.2 (Private endpoint access)
+- `custom-3.1.1.yaml` - CIS control 3.1.1 (Worker node configuration)
 
 ## Usage
 

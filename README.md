@@ -2,7 +2,7 @@
 
 [![Tests](https://github.com/ATIC-Yugandhar/cis-eks-kyverno/workflows/Kyverno%20Policy%20and%20Plan%20Compliance%20Check/badge.svg)](https://github.com/ATIC-Yugandhar/cis-eks-kyverno/actions)
 
-A comprehensive, production-ready framework for implementing and validating **CIS Amazon EKS Benchmark** controls using **Kyverno policies**. This repository serves as the reference implementation for the ebook ["Enforcing CIS EKS Benchmark Compliance with Kyverno: A Comprehensive Guide"](ebook.md).
+A comprehensive, production-ready framework for implementing and validating **CIS Amazon EKS Benchmark** controls using **Kyverno policies**. This repository provides complete CIS compliance automation with both runtime and plan-time validation.
 
 ## 🎯 What This Framework Provides
 
@@ -41,11 +41,8 @@ cd cis-eks-kyverno
 
 ```
 cis-eks-kyverno/
-├── 📚 docs/                    # Comprehensive documentation
-│   ├── getting-started/        # Quick start guides
-│   ├── architecture/           # Solution architecture  
-│   ├── policies/               # Policy documentation
-│   └── examples/               # Detailed walkthroughs
+├── 📚 docs/                    # Documentation
+│   └── README.md              # Documentation overview
 ├── 🛡️ policies/                # Organized Kyverno policies
 │   ├── kubernetes/             # Runtime policies by CIS section
 │   │   ├── control-plane/      # Section 2: Control Plane
@@ -58,15 +55,18 @@ cis-eks-kyverno/
 │       ├── encryption/         # KMS and encryption
 │       └── monitoring/         # Logging and monitoring
 ├── 🧪 tests/                   # Comprehensive test cases
-├── 📝 examples/                # Working examples
-│   ├── basic-setup/           # Simple getting started
-│   ├── production-ready/      # Enterprise-grade example
-│   └── custom-scenarios/      # Additional use cases
-├── 🔧 tools/                   # Automation and utilities
-│   ├── scripts/               # Organized automation scripts
-│   ├── terraform/             # Infrastructure modules
-│   └── ci-cd/                 # CI/CD configurations
-└── 📊 reports/                 # Generated compliance reports
+│   ├── kind-manifests/        # Kind cluster test resources
+│   └── kubernetes/            # Policy-specific test cases
+├── 🔧 scripts/                 # Automation scripts
+│   ├── test-kubernetes-policies.sh  # Main policy test runner
+│   ├── test-terraform-policies.sh   # Terraform compliance tests
+│   ├── test-kind-cluster.sh         # Kind integration tests
+│   ├── generate-summary-report.sh   # Report generation
+│   └── cleanup.sh                   # Cleanup utilities
+├── 🏗️ terraform/               # Terraform examples
+│   ├── compliant/             # CIS-compliant configurations
+│   └── noncompliant/          # Non-compliant configurations for testing
+└── 📊 reports/                 # Generated compliance reports (created by scripts)
 ```
 
 ## 🏁 Getting Started Paths
@@ -74,16 +74,13 @@ cis-eks-kyverno/
 Choose your learning path based on your goals:
 
 ### 🎓 **Learning & Education**
-→ Start with [docs/getting-started/](docs/getting-started/) → Try [examples/basic-setup/](examples/basic-setup/)
+→ Start with [policies/README.md](policies/README.md) for policy structure → Try [tests/](tests/) examples
 
-### 🏭 **Production Implementation**  
-→ Review [docs/architecture/](docs/architecture/) → Adapt [examples/production-ready/](examples/production-ready/)
+### 🏭 **Production Implementation**
+→ Review [terraform/compliant/](terraform/compliant/) → Adapt policies from [policies/](policies/)
 
 ### 🔧 **Development & Contributing**
-→ See [docs/contributing/](docs/contributing/) → Review [tools/](tools/)
-
-### 📖 **Ebook Readers**
-→ Each ebook chapter maps to repository sections → Follow chapter-by-chapter
+→ See [docs/README.md](docs/README.md) → Review [scripts/](scripts/) for automation
 
 ## 🛡️ Dual Enforcement Strategy
 
@@ -112,7 +109,7 @@ This framework implements a comprehensive **"shift-left"** security approach:
 
 **Legend**: ✅ Fully Supported | ⚠️ Partially Supported | ❌ Not Applicable
 
-See [docs/policies/mapping.md](docs/policies/mapping.md) for detailed coverage analysis.
+See [policies/README.md](policies/README.md) for detailed policy organization and structure.
 
 ## 🧪 Testing & Validation
 
@@ -127,11 +124,11 @@ See [docs/policies/mapping.md](docs/policies/mapping.md) for detailed coverage a
 # Test all policies (unit tests)
 ./scripts/test-kubernetes-policies.sh
 
-# Test Terraform compliance (integration tests)  
+# Test Terraform compliance (integration tests)
 ./scripts/test-terraform-policies.sh
 
-# Run all tests comprehensively
-./scripts/test-all.sh
+# Test with Kind cluster (integration tests)
+./scripts/test-kind-cluster.sh
 
 # Generate comprehensive reports
 ./scripts/generate-summary-report.sh
@@ -159,16 +156,16 @@ All reports are GitHub-friendly Markdown with emojis and tables for professional
 
 ## 🤝 Contributing
 
-We welcome contributions! See [docs/contributing/](docs/contributing/) for:
+We welcome contributions! Please follow these guidelines:
 
-- Development setup and guidelines
-- Testing standards and procedures  
-- Code style and conventions
-- How to add new policies or examples
+- Review existing policies in [policies/](policies/) for patterns and conventions
+- Add comprehensive test cases in [tests/](tests/) for new policies
+- Use the provided scripts in [scripts/](scripts/) for testing
+- Follow the naming convention: `custom-[section]-[control]-[description].yaml`
+- Ensure both compliant and non-compliant test scenarios
 
 ## 📖 Related Resources
 
-- **[Ebook](ebook.md)**: "Enforcing CIS EKS Benchmark Compliance with Kyverno"
 - **[CIS EKS Benchmark](https://www.cisecurity.org/benchmark/amazon_web_services)**: Official CIS guidelines
 - **[Kyverno Documentation](https://kyverno.io/docs/)**: Official Kyverno docs
 - **[AWS EKS Best Practices](https://aws.github.io/aws-eks-best-practices/)**: AWS security guidance
@@ -183,8 +180,8 @@ If you find this framework useful, please consider starring the repository to he
 
 ---
 
-**🎯 Ready to get started?** → [docs/getting-started/](docs/getting-started/)
+**🎯 Ready to get started?** → [policies/README.md](policies/README.md) for policy structure
 
-**❓ Need help?** → [docs/examples/troubleshooting.md](docs/examples/troubleshooting.md)
+**❓ Need help?** → [scripts/README.md](scripts/README.md) for testing guidance
 
-**💡 Want to contribute?** → [docs/contributing/](docs/contributing/)
+**💡 Want to contribute?** → Review [policies/README.md](policies/README.md) for policy structure

@@ -1,27 +1,18 @@
 # Documentation
 
-This directory contains comprehensive documentation for the CIS EKS Kyverno Compliance Framework.
+This directory contains documentation for the CIS EKS Kyverno Compliance Framework.
 
-## Quick Navigation
+## Getting Started
 
-- **[Getting Started](getting-started/)** - Quick start guides and tutorials
-- **[Architecture](architecture/)** - Solution architecture and design decisions  
-- **[Policies](policies/)** - Policy documentation and mapping
-- **[Examples](examples/)** - Detailed examples and walkthroughs
-- **[Contributing](contributing/)** - Contribution guidelines and development setup
+- Review [policy structure](../policies/README.md) for implementation details
+- Check [test examples](../tests/) for hands-on scenarios
+- Use [automation scripts](../scripts/README.md) for testing and validation
+- Explore [compliant configurations](../terraform/compliant/) for production examples
+- Review [non-compliant configurations](../terraform/noncompliant/) for testing scenarios
 
-## Document Structure
+## Framework Components
 
-Each section provides:
-- Clear overview and purpose
-- Step-by-step instructions
-- Working examples
-- Troubleshooting guides
-- References to related sections
-
-## Getting Help
-
-- Start with [Getting Started](getting-started/) for your first time
-- Check [Examples](examples/) for specific use cases
-- Review [Architecture](architecture/) for design understanding
-- See [Contributing](contributing/) to extend the framework
+- **Policies**: Kyverno policies organized by CIS control sections
+- **Tests**: Comprehensive test cases for validation
+- **Scripts**: Automation tools for testing and reporting
+- **Terraform**: Example configurations for compliant and non-compliant clusters

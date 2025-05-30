@@ -58,6 +58,14 @@ reports/
 
 # Logs
 docs/changelog.md
+
+# Documentation artifacts (local only)
+ebook.md
+*.docx
+*.xlsx
+docs/images/
+generate_docx.py
+
 # Sensitive Terraform-generated private key
 terraform/compliant/bastion_key.pem
 terraform/compliant/tfplan
