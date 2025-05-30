@@ -28,6 +28,9 @@ jobs:
   unit-tests:
     name: Unit Tests (Policy Validation)
     runs-on: ubuntu-latest
+    outputs:
+      exit_code: ${{ steps.unit-tests-run.outputs.exit_code }}
+      outcome: ${{ steps.unit-tests-run.outputs.outcome }}
     
     steps:
     - name: Checkout code
@@ -62,6 +65,11 @@ jobs:
         
         echo "Test script exit code: $EXIT_CODE"
         echo "exit_code=$EXIT_CODE" >> $GITHUB_OUTPUT
+        if [ $EXIT_CODE -eq 0 ]; then
+          echo "outcome=success" >> $GITHUB_OUTPUT
+        else
+          echo "outcome=failure" >> $GITHUB_OUTPUT
+        fi
         
         # Always exit 0 here since we're using continue-on-error
         exit 0
@@ -87,6 +95,9 @@ jobs:
     name: Terraform Compliance Tests
     runs-on: ubuntu-latest
     if: ${{ github.event.inputs.run_terraform_tests != 'false' }}
+    outputs:
+      exit_code: ${{ steps.terraform-tests-run.outputs.exit_code }}
+      outcome: ${{ steps.terraform-tests-run.outputs.outcome }}
     
     steps:
     - name: Checkout code
@@ -110,7 +121,17 @@ jobs:
       continue-on-error: true
       run: |
         chmod +x scripts/test-terraform-policies.sh
-        ./scripts/test-terraform-policies.sh
+        EXIT_CODE=0
+        ./scripts/test-terraform-policies.sh || EXIT_CODE=$?
+        echo "Test script exit code: $EXIT_CODE"
+        echo "exit_code=$EXIT_CODE" >> $GITHUB_OUTPUT
+        if [ $EXIT_CODE -eq 0 ]; then
+          echo "outcome=success" >> $GITHUB_OUTPUT
+        else
+          echo "outcome=failure" >> $GITHUB_OUTPUT
+        fi
+        # Always exit 0 here since we're using continue-on-error
+        exit 0
         
     - name: Capture test status
       if: always()
@@ -133,6 +154,9 @@ jobs:
     name: Kind Cluster Integration Tests
     runs-on: ubuntu-latest
     if: ${{ github.event.inputs.run_kind_tests != 'false' }}
+    outputs:
+      exit_code: ${{ steps.kind-tests-run.outputs.exit_code }}
+      outcome: ${{ steps.kind-tests-run.outputs.outcome }}
     
     steps:
     - name: Checkout code
@@ -180,10 +204,18 @@ jobs:
         CI: true
       run: |
         chmod +x scripts/test-kind-cluster.sh
-        # Set environment variable to keep cluster for debugging on failure
+        EXIT_CODE=0
         export KEEP_CLUSTER=false
-        # Create Kind cluster and run integration tests
-        ./scripts/test-kind-cluster.sh || true
+        ./scripts/test-kind-cluster.sh || EXIT_CODE=$?
+        echo "Test script exit code: $EXIT_CODE"
+        echo "exit_code=$EXIT_CODE" >> $GITHUB_OUTPUT
+        if [ $EXIT_CODE -eq 0 ]; then
+          echo "outcome=success" >> $GITHUB_OUTPUT
+        else
+          echo "outcome=failure" >> $GITHUB_OUTPUT
+        fi
+        # Always exit 0 here since we're using continue-on-error
+        exit 0
         
     - name: Capture test status
       if: always()
