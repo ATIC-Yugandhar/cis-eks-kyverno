@@ -1,0 +1,22 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: custom-5.1.2-and-5.1.3-combined-noncompliant
+policies:
+  - ../../../../policies/kubernetes/pod-security/custom-5.1.2.yaml
+  - ../../../../policies/kubernetes/pod-security/custom-5.1.3.yaml
+resources:
+  - serviceaccount.yaml
+results:
+  - policy: custom-5-1-2-minimize-ecr-access
+    rule: check-minimize-ecr-access
+    resources:
+      - noncompliant-sa
+    kind: ServiceAccount
+    result: fail
+  - policy: custom-5-1-3-limit-ecr-access-read-only
+    rule: check-limit-ecr-access-read-only
+    resources:
+      - noncompliant-sa
+    kind: ServiceAccount
+    result: fail 

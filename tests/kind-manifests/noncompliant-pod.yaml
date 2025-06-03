@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: noncompliant-nginx
+  namespace: kyverno-cis-test
+  labels:
+    app: nginx
+    security.test/compliant: "false"
+spec:
+  containers:
+  - name: nginx
+    image: nginx:latest
+    securityContext:
+      privileged: true
+      runAsUser: 0
+    ports:
+    - containerPort: 80

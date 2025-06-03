@@ -1,0 +1,12 @@
+apiVersion: json.kyverno.io/v1alpha1
+kind: ValidatingPolicy
+metadata:
+  name: cis-5-4-3-private-nodes
+spec:
+  rules:
+    - name: eks-nodegroup-private-subnets
+      assert:
+        all:
+          - message: "EKS node groups must be deployed in private subnets. Found node groups using public subnets."
+            check:
+              (length(configuration.root_module.resources[?type=='aws_eks_node_group' && contains(expressions.subnet_ids.references[*], 'aws_subnet.public')]) == `0`): true 
