@@ -308,18 +308,16 @@ jobs:
           echo "❌ Executive summary was not generated"
           # Create a minimal summary if generation failed
           mkdir -p reports
-          cat > reports/executive-summary.md << 'FALLBACK_EOF'
-# 📋 CIS EKS Compliance Executive Summary
-
-**Status**: ⚠️ Summary generation failed
-
-## Available Reports
-- Policy tests: $([ -f "reports/policy-tests/summary.md" ] && echo "✅ Available" || echo "❌ Missing")
-- Terraform compliance: $([ -f "reports/terraform-compliance/compliant-plan-scan.md" ] && echo "✅ Available" || echo "❌ Missing")
-- Kind integration: $([ -f "reports/kind-cluster/validation-summary.md" ] && echo "✅ Available" || echo "❌ Missing")
-
-*Please check individual test artifacts for detailed results.*
-FALLBACK_EOF
+          echo "# CIS EKS Compliance Executive Summary" > reports/executive-summary.md
+          echo "" >> reports/executive-summary.md
+          echo "**Status**: Summary generation failed" >> reports/executive-summary.md
+          echo "" >> reports/executive-summary.md
+          echo "## Available Reports" >> reports/executive-summary.md
+          echo "- Policy tests: Check artifacts for policy-tests/summary.md" >> reports/executive-summary.md
+          echo "- Terraform compliance: Check artifacts for terraform-compliance/compliant-plan-scan.md" >> reports/executive-summary.md
+          echo "- Kind integration: Check artifacts for kind-cluster/validation-summary.md" >> reports/executive-summary.md
+          echo "" >> reports/executive-summary.md
+          echo "Please check individual test artifacts for detailed results." >> reports/executive-summary.md
           echo "📝 Created fallback summary"
         fi
         
