@@ -265,16 +265,25 @@ jobs:
         
         # Copy unit test results if available - preserve directory structure
         if [ -d "artifacts/unit-test-results" ]; then
+          mkdir -p reports/policy-tests
+          cp -r artifacts/unit-test-results/. reports/policy-tests/ 2>/dev/null || true
+          # Also copy to root for backward compatibility
           cp -r artifacts/unit-test-results/. reports/ 2>/dev/null || true
         fi
         
         # Copy Terraform test results if available - preserve directory structure
         if [ -d "artifacts/terraform-test-results" ]; then
+          mkdir -p reports/terraform-compliance
+          cp -r artifacts/terraform-test-results/. reports/terraform-compliance/ 2>/dev/null || true
+          # Also copy to root for backward compatibility
           cp -r artifacts/terraform-test-results/. reports/ 2>/dev/null || true
         fi
         
         # Copy Kind cluster test results if available - preserve directory structure
         if [ -d "artifacts/kind-cluster-test-results" ]; then
+          mkdir -p reports/kind-cluster
+          cp -r artifacts/kind-cluster-test-results/. reports/kind-cluster/ 2>/dev/null || true
+          # Also copy to root for backward compatibility
           cp -r artifacts/kind-cluster-test-results/. reports/ 2>/dev/null || true
         fi
         
