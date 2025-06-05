@@ -21,6 +21,11 @@ on:
         default: true
         type: boolean
 
+permissions:
+  contents: read
+  security-events: write  # Required for SARIF upload
+  actions: read
+
 env:
   KYVERNO_VERSION: "1.13.6"
 
@@ -92,7 +97,7 @@ jobs:
         retention-days: 30
 
   terraform-tests:
-    name: Terraform Compliance Tests
+    name: Plan Time tests
     runs-on: ubuntu-latest
     if: ${{ github.event.inputs.run_terraform_tests != 'false' }}
     outputs:
@@ -445,6 +450,10 @@ jobs:
   security-scan:
     name: Security Scan
     runs-on: ubuntu-latest
+    permissions:
+      security-events: write  # Required for SARIF upload
+      contents: read
+      actions: read
     
     steps:
     - name: Checkout code
@@ -458,8 +467,15 @@ jobs:
         format: 'sarif'
         output: 'trivy-results.sarif'
         
-    - name: Upload Trivy scan results
+    - name: Upload Trivy scan results to Security tab
       uses: github/codeql-action/upload-sarif@v3
-      if: always()
+      if: always() && github.event_name != 'pull_request'  # Skip on PRs to avoid permission issues
       with:
         sarif_file: 'trivy-results.sarif'
+    - name: Upload Trivy results as artifact (for PRs and branches)
+      uses: actions/upload-artifact@v4
+      if: always() && github.event_name == 'pull_request'
+      with:
+        name: trivy-security-scan-results
+        path: 'trivy-results.sarif'
+        retention-days: 30
