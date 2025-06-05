@@ -163,11 +163,13 @@ if [ -f "$REPORT_DIR/kind-cluster/validation-results.txt" ] || [ -f "$REPORT_DIR
     
     if [ -f "$REPORT_DIR/kind-cluster/validation-summary.md" ]; then
         # Extract from validation summary if available
-        VALIDATION_COUNT=$(grep "Total Validations:" "$REPORT_DIR/kind-cluster/validation-summary.md" | awk '{print $NF}' 2>/dev/null || echo "0")
-        SUCCESS_COUNT=$(grep "Successful:" "$REPORT_DIR/kind-cluster/validation-summary.md" | awk '{print $NF}' 2>/dev/null || echo "0")
+        POLICIES_APPLIED=$(grep "Policies Applied" "$REPORT_DIR/kind-cluster/validation-summary.md" | awk -F'|' '{print $3}' | tr -d ' ' 2>/dev/null || echo "0")
+        CATEGORIES_TESTED=$(grep "Categories Tested" "$REPORT_DIR/kind-cluster/validation-summary.md" | awk -F'|' '{print $3}' | tr -d ' ' 2>/dev/null || echo "0")
+        TEST_MANIFESTS=$(grep "Test Manifests" "$REPORT_DIR/kind-cluster/validation-summary.md" | awk -F'|' '{print $3}' | tr -d ' ' 2>/dev/null || echo "0")
         echo "- ✅ Integration tests completed successfully" >> "$SUMMARY_FILE"
-        echo "- Validations run: **$VALIDATION_COUNT**" >> "$SUMMARY_FILE"
-        echo "- Successful: **$SUCCESS_COUNT**" >> "$SUMMARY_FILE"
+        echo "- Policies Applied: **$POLICIES_APPLIED**" >> "$SUMMARY_FILE"
+        echo "- Categories Tested: **$CATEGORIES_TESTED**" >> "$SUMMARY_FILE"
+        echo "- Test Manifests: **$TEST_MANIFESTS**" >> "$SUMMARY_FILE"
     else
         # Fallback to validation-results.txt
         RESOURCE_COUNT=$(grep -c "Testing\|PASS\|FAIL" "$REPORT_DIR/kind-cluster/validation-results.txt" 2>/dev/null || echo "0")

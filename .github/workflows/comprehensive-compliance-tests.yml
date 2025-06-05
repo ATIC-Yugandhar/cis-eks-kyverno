@@ -302,8 +302,25 @@ jobs:
           echo "✅ Executive summary generated successfully"
           echo "📊 Summary preview:"
           head -15 reports/executive-summary.md
+          echo ""
+          echo "📏 Summary file size: $(wc -l < reports/executive-summary.md) lines"
         else
           echo "❌ Executive summary was not generated"
+          # Create a minimal summary if generation failed
+          mkdir -p reports
+          cat > reports/executive-summary.md << 'FALLBACK_EOF'
+# 📋 CIS EKS Compliance Executive Summary
+
+**Status**: ⚠️ Summary generation failed
+
+## Available Reports
+- Policy tests: $([ -f "reports/policy-tests/summary.md" ] && echo "✅ Available" || echo "❌ Missing")
+- Terraform compliance: $([ -f "reports/terraform-compliance/compliant-plan-scan.md" ] && echo "✅ Available" || echo "❌ Missing")
+- Kind integration: $([ -f "reports/kind-cluster/validation-summary.md" ] && echo "✅ Available" || echo "❌ Missing")
+
+*Please check individual test artifacts for detailed results.*
+FALLBACK_EOF
+          echo "📝 Created fallback summary"
         fi
         
     - name: Create final compliance report
@@ -387,6 +404,11 @@ jobs:
       run: |
         echo "## 🎯 CIS EKS Compliance Test Results" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Workflow**: ${{ github.workflow }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Run ID**: ${{ github.run_id }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Branch**: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Generated**: $(date)" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
         echo "| Test Suite | Status |" >> $GITHUB_STEP_SUMMARY
         echo "|------------|--------|" >> $GITHUB_STEP_SUMMARY
         echo "| Unit Tests | ${{ needs.unit-tests.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
@@ -397,12 +419,16 @@ jobs:
         echo "- **comprehensive-compliance-report**: Complete test results and reports" >> $GITHUB_STEP_SUMMARY
         
         # Add detailed results if available
-        if [ -f "reports/executive-summary.md" ]; then
+        if [ -f "reports/executive-summary.md" ] && [ -s "reports/executive-summary.md" ]; then
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 📊 Executive Summary" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          head -20 reports/executive-summary.md >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          cat reports/executive-summary.md >> $GITHUB_STEP_SUMMARY
+        else
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### ⚠️ Executive Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "❌ Executive summary not available. Check individual test artifacts for details." >> $GITHUB_STEP_SUMMARY
         fi
         
         # Add test failure information if available
@@ -472,6 +498,7 @@ jobs:
       if: always() && github.event_name != 'pull_request'  # Skip on PRs to avoid permission issues
       with:
         sarif_file: 'trivy-results.sarif'
+        
     - name: Upload Trivy results as artifact (for PRs and branches)
       uses: actions/upload-artifact@v4
       if: always() && github.event_name == 'pull_request'
