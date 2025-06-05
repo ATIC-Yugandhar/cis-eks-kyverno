@@ -11,7 +11,7 @@ metadata:
       Ensure that the cluster-admin role is only used when absolutely necessary.
       This policy checks for RoleBindings and ClusterRoleBindings that grant cluster-admin privileges.
 spec:
-  validationFailureAction: audit
+  validationFailureAction: Audit
   background: true
   rules:
     - name: restrict-cluster-admin

@@ -20,6 +20,7 @@ A comprehensive, production-ready framework for implementing and validating **CI
 - Terraform >= 1.0
 - Kyverno CLI >= 1.11
 - kubectl configured
+- **RBAC permissions**: Cluster-admin access (for RBAC setup)
 
 ### 30-Second Demo
 ```bash
@@ -36,6 +37,17 @@ cd cis-eks-kyverno
 # Generate executive summary
 ./scripts/generate-summary-report.sh
 ```
+
+## ⚙️ Important Setup: Kyverno RBAC
+
+Our policies validate Node resources, which requires additional RBAC permissions. **Apply this after installing Kyverno:**
+
+```bash
+# Apply RBAC fix for Node access permissions
+kubectl apply -f kyverno-node-rbac.yaml
+```
+
+**Why this is needed:** Some CIS controls validate worker node configurations, requiring Kyverno to read Node resources.
 
 ## 📁 Repository Structure
 

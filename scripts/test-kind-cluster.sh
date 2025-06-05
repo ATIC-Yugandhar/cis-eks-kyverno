@@ -68,6 +68,40 @@ EOF
     echo "Waiting for Kyverno to be ready..."
     kubectl wait --for=condition=Ready pods -n kyverno --all --timeout=300s
     
+    # Apply RBAC fix for Node access
+    echo "Applying RBAC fix for Node access..."
+    if [ -f "kyverno-node-rbac.yaml" ]; then
+        kubectl apply -f kyverno-node-rbac.yaml
+        echo "✅ RBAC fix applied for Node access permissions"
+    else
+        echo "⚠️ RBAC fix file not found, creating it..."
+        cat > kyverno-node-rbac.yaml << 'RBAC_EOF'
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kyverno-reports-controller-node-access
+rules:
+- apiGroups: [""]
+  resources: ["nodes"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kyverno-reports-controller-node-access
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kyverno-reports-controller-node-access
+subjects:
+- kind: ServiceAccount
+  name: kyverno-reports-controller
+  namespace: kyverno
+RBAC_EOF
+        kubectl apply -f kyverno-node-rbac.yaml
+        echo "✅ RBAC fix created and applied"
+    fi
+    
     # Apply all policies to the cluster
     echo "Applying policies to cluster..."
     # Apply policies from all subdirectories

@@ -10,7 +10,7 @@ metadata:
     policies.kyverno.io/description: >-
       Ensure that access to create pods is minimized. This policy checks for roles that grant create permissions on pods.
 spec:
-  validationFailureAction: audit
+  validationFailureAction: Audit
   background: true
   rules:
     - name: restrict-create-pods

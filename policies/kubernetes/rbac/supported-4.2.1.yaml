@@ -10,7 +10,7 @@ metadata:
     policies.kyverno.io/description: >-
       Ensure that privileged containers are not allowed.
 spec:
-  validationFailureAction: audit
+  validationFailureAction: Audit
   background: true
   rules:
     - name: restrict-privileged

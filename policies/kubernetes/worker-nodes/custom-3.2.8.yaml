@@ -7,7 +7,7 @@ metadata:
     policies.kyverno.io/description: |
       Checks for --rotate-certificates flag set to true or absent in node annotations or ConfigMap if available.
 spec:
-  validationFailureAction: audit
+  validationFailureAction: Audit
   background: true
   rules:
     - name: check-rotate-certificates

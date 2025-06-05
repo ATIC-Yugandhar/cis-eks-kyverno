@@ -10,7 +10,7 @@ metadata:
     policies.kyverno.io/description: >-
       Ensure that wildcards are not used in roles. This policy checks for roles that use '*' in resources or verbs.
 spec:
-  validationFailureAction: audit
+  validationFailureAction: Audit
   background: true
   rules:
     - name: restrict-wildcard-use
