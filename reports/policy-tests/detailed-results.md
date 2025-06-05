@@ -1,6 +1,6 @@
 # Detailed Policy Test Results
 
-Generated: Fri May 30 08:33:58 IST 2025
+Generated: Thu Jun  5 18:26:05 IST 2025
 
 ## Kubernetes Policies
 
@@ -57,6 +57,36 @@ Generated: Fri May 30 08:33:58 IST 2025
 
 - ⏭️ custom-4.5.1 - compliant: SKIPPED (namespace policy)
 - ✅ custom-4.5.1 - noncompliant: PASS (rejected)
+
+- ✅ supported-4.1.1 - compliant: PASS
+- ✅ supported-4.1.1 - noncompliant: PASS (rejected)
+
+- ❌ supported-4.1.2 - compliant: FAIL
+- ✅ supported-4.1.2 - noncompliant: PASS (rejected)
+
+- ❌ supported-4.1.3 - compliant: FAIL
+- ✅ supported-4.1.3 - noncompliant: PASS (rejected)
+
+- ✅ supported-4.1.4 - compliant: PASS
+- ✅ supported-4.1.4 - noncompliant: PASS (rejected)
+
+- ✅ supported-4.1.5 - compliant: PASS
+- ✅ supported-4.1.5 - noncompliant: PASS (rejected)
+
+- ✅ supported-4.1.6 - compliant: PASS
+- ✅ supported-4.1.6 - noncompliant: PASS (rejected)
+
+- ✅ supported-4.2.1 - compliant: PASS
+- ✅ supported-4.2.1 - noncompliant: PASS (rejected)
+
+- ❌ supported-4.2.2 - compliant: FAIL
+- ✅ supported-4.2.2 - noncompliant: PASS (rejected)
+
+- ❌ supported-4.2.3 - compliant: FAIL
+- ✅ supported-4.2.3 - noncompliant: PASS (rejected)
+
+- ❌ supported-4.2.4 - compliant: FAIL
+- ✅ supported-4.2.4 - noncompliant: PASS (rejected)
 
 ### worker-nodes
 

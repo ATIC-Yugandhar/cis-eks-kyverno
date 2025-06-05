@@ -6,7 +6,7 @@ A comprehensive, production-ready framework for implementing and validating **CI
 
 ## 🎯 What This Framework Provides
 
-- **🛡️ Complete CIS Coverage**: 56+ policies covering major CIS EKS Benchmark controls
+- **🛡️ Complete CIS Coverage**: 45 policies covering major CIS EKS Benchmark controls
 - **🔄 Dual Enforcement Strategy**: Both runtime (Kubernetes) and plan-time (Terraform) validation  
 - **📋 Automated Testing**: Comprehensive test suite with CI/CD integration
 - **📊 Professional Reporting**: GitHub-friendly Markdown reports with visual indicators
@@ -104,7 +104,7 @@ This framework implements a comprehensive **"shift-left"** security approach:
 |-------------|----------|---------|-----------|--------|
 | **2. Control Plane** | 2 | ✅ | ✅ | Complete |
 | **3. Worker Nodes** | 13 | ✅ | ⚠️ | Mostly Complete |
-| **4. RBAC & Service Accounts** | 5 | ✅ | ⚠️ | Complete |
+| **4. RBAC & Service Accounts** | 15 | ✅ | ⚠️ | Complete |
 | **5. Pod Security** | 9 | ✅ | ✅ | Complete |
 
 **Legend**: ✅ Fully Supported | ⚠️ Partially Supported | ❌ Not Applicable

@@ -1,0 +1,26 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: supported-4.1.5
+  annotations:
+    policies.kyverno.io/title: Default service accounts should not be used
+    policies.kyverno.io/category: ServiceAccount
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/subject: ServiceAccount
+    policies.kyverno.io/description: >-
+      Ensure that the default service account is not used in any namespace.
+spec:
+  validationFailureAction: audit
+  background: true
+  rules:
+    - name: restrict-default-sa
+      match:
+        any:
+        - resources:
+            kinds:
+              - Pod
+      validate:
+        message: "Default service account should not be used."
+        pattern:
+          spec:
+            serviceAccountName: '!default' 

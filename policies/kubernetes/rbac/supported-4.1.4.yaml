@@ -1,0 +1,29 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: supported-4.1.4
+  annotations:
+    policies.kyverno.io/title: Minimize access to create pods
+    policies.kyverno.io/category: RBAC
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: Role, ClusterRole
+    policies.kyverno.io/description: >-
+      Ensure that access to create pods is minimized. This policy checks for roles that grant create permissions on pods.
+spec:
+  validationFailureAction: audit
+  background: true
+  rules:
+    - name: restrict-create-pods
+      match:
+        any:
+        - resources:
+            kinds:
+              - Role
+              - ClusterRole
+      validate:
+        message: "Access to create pods should be minimized."
+        pattern:
+          rules:
+            - resources:
+                - pods
+              verbs: '!create' 

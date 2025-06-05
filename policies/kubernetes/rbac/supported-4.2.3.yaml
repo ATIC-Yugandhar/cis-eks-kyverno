@@ -1,0 +1,26 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: supported-4.2.3
+  annotations:
+    policies.kyverno.io/title: Minimize host IPC namespace sharing
+    policies.kyverno.io/category: Pod Security
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/description: >-
+      Ensure that host IPC namespace sharing is not allowed.
+spec:
+  validationFailureAction: audit
+  background: true
+  rules:
+    - name: restrict-host-ipc
+      match:
+        any:
+        - resources:
+            kinds:
+              - Pod
+      validate:
+        message: "Host IPC namespace sharing is not allowed."
+        pattern:
+          spec:
+            hostIPC: false 

@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: compliant-pod
+  namespace: secure-ns
+spec:
+  automountServiceAccountToken: false
+  containers:
+  - name: test
+    image: nginx:latest
