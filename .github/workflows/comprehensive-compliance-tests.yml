@@ -280,8 +280,21 @@ jobs:
         
         # List what we have for debugging
         echo "=== Reports directory structure ==="
-        find reports -type f -name "*.md" -o -name "*.txt" | sort
+        find reports -type f -name "*.md" -o -name "*.txt" -o -name "*.json" | sort
         echo "==================================="
+        
+        # Also show directory structure
+        echo "=== Directory tree ==="
+        find reports -type d | sort
+        echo "======================"
+        
+        # Debug specific files the summary script looks for
+        echo "=== Expected files status ==="
+        echo "Policy tests summary: $([ -f 'reports/policy-tests/summary.md' ] && echo '✅ EXISTS' || echo '❌ MISSING')"
+        echo "Terraform compliant: $([ -f 'reports/terraform-compliance/compliant-plan-scan.md' ] && echo '✅ EXISTS' || echo '❌ MISSING')"
+        echo "Terraform noncompliant: $([ -f 'reports/terraform-compliance/noncompliant-plan-scan.md' ] && echo '✅ EXISTS' || echo '❌ MISSING')"
+        echo "Kind validation: $([ -f 'reports/kind-cluster/validation-summary.md' ] && echo '✅ EXISTS' || echo '❌ MISSING')"
+        echo "=========================="
         
     - name: Generate comprehensive summary
       continue-on-error: true
