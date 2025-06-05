@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: noncompliant-pod
+  namespace: secure-ns
+spec:
+  hostNetwork: true
+  containers:
+  - name: test
+    image: nginx:latest
