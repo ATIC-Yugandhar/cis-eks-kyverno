@@ -1,10 +1,10 @@
-# Kyverno Node Access RBAC Extension for CIS Compliance
-# This extends Kyverno's default RBAC with Node access permissions required for CIS EKS validation
+# Kyverno CIS Resource Access RBAC Extension
+# This extends Kyverno's default RBAC with resource access permissions required for CIS EKS validation
 
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: kyverno:system:node-reader
+  name: kyverno:system:resource-reader
   labels:
     app.kubernetes.io/name: kyverno
     app.kubernetes.io/instance: kyverno
@@ -24,13 +24,19 @@ rules:
 - apiGroups: [""]
   resources: ["nodes/status"]
   verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["rbac.authorization.k8s.io"]
+  resources: ["roles", "rolebindings", "clusterroles", "clusterrolebindings"]
+  verbs: ["get", "list", "watch"]
 
 ---
-# Bind node access to kyverno admission controller for policy evaluation
+# Bind CIS resource access to kyverno admission controller for policy evaluation
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: kyverno:system:node-reader:admission-controller
+  name: kyverno:system:resource-reader:admission-controller
   labels:
     app.kubernetes.io/name: kyverno
     app.kubernetes.io/instance: kyverno
@@ -45,18 +51,18 @@ metadata:
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: kyverno:system:node-reader
+  name: kyverno:system:resource-reader
 subjects:
 - kind: ServiceAccount
   name: kyverno-service-account
   namespace: kyverno
 
 ---
-# Bind node access to kyverno reports controller for background scanning
+# Bind CIS resource access to kyverno reports controller for background scanning
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: kyverno:system:node-reader:reports-controller
+  name: kyverno:system:resource-reader:reports-controller
   labels:
     app.kubernetes.io/name: kyverno
     app.kubernetes.io/instance: kyverno
@@ -71,18 +77,18 @@ metadata:
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: kyverno:system:node-reader
+  name: kyverno:system:resource-reader
 subjects:
 - kind: ServiceAccount
   name: kyverno-reports-controller
   namespace: kyverno
 
 ---
-# Bind node access to kyverno cleanup controller if needed
+# Bind CIS resource access to kyverno cleanup controller if needed
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: kyverno:system:node-reader:cleanup-controller
+  name: kyverno:system:resource-reader:cleanup-controller
   labels:
     app.kubernetes.io/name: kyverno
     app.kubernetes.io/instance: kyverno
@@ -97,7 +103,7 @@ metadata:
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: kyverno:system:node-reader
+  name: kyverno:system:resource-reader
 subjects:
 - kind: ServiceAccount
   name: kyverno-cleanup-controller
