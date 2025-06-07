@@ -15,8 +15,8 @@ on:
         required: false
         default: true
         type: boolean
-      run_terraform_tests:
-        description: 'Run Terraform compliance tests'
+      run_opentofu_tests:
+        description: 'Run OpenTofu compliance tests'
         required: false
         default: true
         type: boolean
@@ -96,22 +96,22 @@ jobs:
           reports/policy-tests/
         retention-days: 30
 
-  terraform-tests:
+  opentofu-tests:
     name: Plan Time tests
     runs-on: ubuntu-latest
-    if: ${{ github.event.inputs.run_terraform_tests != 'false' }}
+    if: ${{ github.event.inputs.run_opentofu_tests != 'false' }}
     outputs:
-      exit_code: ${{ steps.terraform-tests-run.outputs.exit_code }}
-      outcome: ${{ steps.terraform-tests-run.outputs.outcome }}
+      exit_code: ${{ steps.opentofu-tests-run.outputs.exit_code }}
+      outcome: ${{ steps.opentofu-tests-run.outputs.outcome }}
     
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
       
-    - name: Setup Terraform
-      uses: hashicorp/setup-terraform@v3
+    - name: Setup OpenTofu
+      uses: opentofu/setup-opentofu@v1
       with:
-        terraform_version: "1.5.0"
+        tofu_version: "1.6.1"
         
     - name: Setup Kyverno CLI
       id: setup-kyverno
@@ -121,13 +121,15 @@ jobs:
         sudo mv kyverno /usr/local/bin/
         kyverno version
         
-    - name: Run Terraform compliance tests
-      id: terraform-tests-run
+    - name: Run OpenTofu compliance tests
+      id: opentofu-tests-run
       continue-on-error: true
+      env:
+        KYVERNO_EXPERIMENTAL: true
       run: |
-        chmod +x scripts/test-terraform-policies.sh
+        chmod +x scripts/test-opentofu-policies.sh
         EXIT_CODE=0
-        ./scripts/test-terraform-policies.sh || EXIT_CODE=$?
+        ./scripts/test-opentofu-policies.sh || EXIT_CODE=$?
         echo "Test script exit code: $EXIT_CODE"
         echo "exit_code=$EXIT_CODE" >> $GITHUB_OUTPUT
         if [ $EXIT_CODE -eq 0 ]; then
@@ -141,18 +143,18 @@ jobs:
     - name: Capture test status
       if: always()
       run: |
-        mkdir -p reports/terraform-compliance
-        echo "Terraform Tests Exit Code: ${{ steps.terraform-tests-run.outputs.exit_code || 'N/A' }}" > reports/terraform-compliance/test-status.txt
-        echo "Terraform Tests Result: ${{ steps.terraform-tests-run.outcome }}" >> reports/terraform-compliance/test-status.txt
-        echo "Timestamp: $(date)" >> reports/terraform-compliance/test-status.txt
+        mkdir -p reports/opentofu-compliance
+        echo "OpenTofu Tests Exit Code: ${{ steps.opentofu-tests-run.outputs.exit_code || 'N/A' }}" > reports/opentofu-compliance/test-status.txt
+        echo "OpenTofu Tests Result: ${{ steps.opentofu-tests-run.outcome }}" >> reports/opentofu-compliance/test-status.txt
+        echo "Timestamp: $(date)" >> reports/opentofu-compliance/test-status.txt
         
-    - name: Upload Terraform test results
+    - name: Upload OpenTofu test results
       uses: actions/upload-artifact@v4
       if: always()
       with:
-        name: terraform-test-results
+        name: opentofu-test-results
         path: |
-          reports/terraform-compliance/
+          reports/opentofu-compliance/
         retention-days: 30
 
   kind-cluster-tests:
@@ -247,7 +249,7 @@ jobs:
   comprehensive-report:
     name: Generate Comprehensive Report
     runs-on: ubuntu-latest
-    needs: [unit-tests, terraform-tests, kind-cluster-tests]
+    needs: [unit-tests, opentofu-tests, kind-cluster-tests]
     if: always()
     
     steps:
@@ -265,23 +267,45 @@ jobs:
         
         # Copy unit test results if available - preserve directory structure
         if [ -d "artifacts/unit-test-results" ]; then
+          mkdir -p reports/policy-tests
+          cp -r artifacts/unit-test-results/. reports/policy-tests/ 2>/dev/null || true
+          # Also copy to root for backward compatibility
           cp -r artifacts/unit-test-results/. reports/ 2>/dev/null || true
         fi
         
-        # Copy Terraform test results if available - preserve directory structure
-        if [ -d "artifacts/terraform-test-results" ]; then
-          cp -r artifacts/terraform-test-results/. reports/ 2>/dev/null || true
+        # Copy OpenTofu test results if available - preserve directory structure
+        if [ -d "artifacts/opentofu-test-results" ]; then
+          mkdir -p reports/opentofu-compliance
+          cp -r artifacts/opentofu-test-results/. reports/opentofu-compliance/ 2>/dev/null || true
+          # Also copy to root for backward compatibility
+          cp -r artifacts/opentofu-test-results/. reports/ 2>/dev/null || true
         fi
         
         # Copy Kind cluster test results if available - preserve directory structure
         if [ -d "artifacts/kind-cluster-test-results" ]; then
+          mkdir -p reports/kind-cluster
+          cp -r artifacts/kind-cluster-test-results/. reports/kind-cluster/ 2>/dev/null || true
+          # Also copy to root for backward compatibility
           cp -r artifacts/kind-cluster-test-results/. reports/ 2>/dev/null || true
         fi
         
         # List what we have for debugging
         echo "=== Reports directory structure ==="
-        find reports -type f -name "*.md" -o -name "*.txt" | sort
+        find reports -type f -name "*.md" -o -name "*.txt" -o -name "*.json" | sort
         echo "==================================="
+        
+        # Also show directory structure
+        echo "=== Directory tree ==="
+        find reports -type d | sort
+        echo "======================"
+        
+        # Debug specific files the summary script looks for
+        echo "=== Expected files status ==="
+        echo "Policy tests summary: $([ -f 'reports/policy-tests/summary.md' ] && echo '✅ EXISTS' || echo '❌ MISSING')"
+        echo "OpenTofu compliant: $([ -f 'reports/opentofu-compliance/compliant-plan-scan.md' ] && echo '✅ EXISTS' || echo '❌ MISSING')"
+        echo "OpenTofu noncompliant: $([ -f 'reports/opentofu-compliance/noncompliant-plan-scan.md' ] && echo '✅ EXISTS' || echo '❌ MISSING')"
+        echo "Kind validation: $([ -f 'reports/kind-cluster/validation-summary.md' ] && echo '✅ EXISTS' || echo '❌ MISSING')"
+        echo "=========================="
         
     - name: Generate comprehensive summary
       continue-on-error: true
@@ -302,8 +326,23 @@ jobs:
           echo "✅ Executive summary generated successfully"
           echo "📊 Summary preview:"
           head -15 reports/executive-summary.md
+          echo ""
+          echo "📏 Summary file size: $(wc -l < reports/executive-summary.md) lines"
         else
           echo "❌ Executive summary was not generated"
+          # Create a minimal summary if generation failed
+          mkdir -p reports
+          echo "# CIS EKS Compliance Executive Summary" > reports/executive-summary.md
+          echo "" >> reports/executive-summary.md
+          echo "**Status**: Summary generation failed" >> reports/executive-summary.md
+          echo "" >> reports/executive-summary.md
+          echo "## Available Reports" >> reports/executive-summary.md
+          echo "- Policy tests: Check artifacts for policy-tests/summary.md" >> reports/executive-summary.md
+          echo "- OpenTofu compliance: Check artifacts for opentofu-compliance/compliant-plan-scan.md" >> reports/executive-summary.md
+          echo "- Kind integration: Check artifacts for kind-cluster/validation-summary.md" >> reports/executive-summary.md
+          echo "" >> reports/executive-summary.md
+          echo "Please check individual test artifacts for detailed results." >> reports/executive-summary.md
+          echo "📝 Created fallback summary"
         fi
         
     - name: Create final compliance report
@@ -324,7 +363,7 @@ jobs:
         | Test Suite | Status | Artifact |
         |------------|--------|----------|
         | Unit Tests | ${{ needs.unit-tests.result == 'success' && '✅ Passed' || '❌ Failed' }} | unit-test-results |
-        | Terraform Tests | ${{ needs.terraform-tests.result == 'success' && '✅ Passed' || (needs.terraform-tests.result == 'skipped' && '⏭️ Skipped' || '❌ Failed') }} | terraform-test-results |
+        | OpenTofu Tests | ${{ needs.opentofu-tests.result == 'success' && '✅ Passed' || (needs.opentofu-tests.result == 'skipped' && '⏭️ Skipped' || '❌ Failed') }} | opentofu-test-results |
         | Kind Cluster Tests | ${{ needs.kind-cluster-tests.result == 'success' && '✅ Passed' || (needs.kind-cluster-tests.result == 'skipped' && '⏭️ Skipped' || '❌ Failed') }} | kind-cluster-test-results |
         
         ## 🔗 Links
@@ -345,18 +384,18 @@ jobs:
           echo "" >> reports/comprehensive/github-actions-summary.md
         fi
         
-        # Add terraform test results if available
-        if [ -f "reports/terraform-compliance/compliant-plan-scan.md" ]; then
-          echo "### Terraform Compliance Tests" >> reports/comprehensive/github-actions-summary.md
+        # Add opentofu test results if available
+        if [ -f "reports/opentofu-compliance/compliant-plan-scan.md" ]; then
+          echo "### OpenTofu Compliance Tests" >> reports/comprehensive/github-actions-summary.md
           echo "" >> reports/comprehensive/github-actions-summary.md
           echo "#### Compliant Configuration" >> reports/comprehensive/github-actions-summary.md
-          sed -n '/Executive Summary/,/Detailed Test Results/p' reports/terraform-compliance/compliant-plan-scan.md | grep -E "^\|" >> reports/comprehensive/github-actions-summary.md || true
+          sed -n '/Executive Summary/,/Detailed Test Results/p' reports/opentofu-compliance/compliant-plan-scan.md | grep -E "^\|" >> reports/comprehensive/github-actions-summary.md || true
           echo "" >> reports/comprehensive/github-actions-summary.md
         fi
         
-        if [ -f "reports/terraform-compliance/noncompliant-plan-scan.md" ]; then
+        if [ -f "reports/opentofu-compliance/noncompliant-plan-scan.md" ]; then
           echo "#### Non-Compliant Configuration" >> reports/comprehensive/github-actions-summary.md
-          sed -n '/Executive Summary/,/Detailed Test Results/p' reports/terraform-compliance/noncompliant-plan-scan.md | grep -E "^\|" >> reports/comprehensive/github-actions-summary.md || true
+          sed -n '/Executive Summary/,/Detailed Test Results/p' reports/opentofu-compliance/noncompliant-plan-scan.md | grep -E "^\|" >> reports/comprehensive/github-actions-summary.md || true
           echo "" >> reports/comprehensive/github-actions-summary.md
         fi
         
@@ -387,22 +426,31 @@ jobs:
       run: |
         echo "## 🎯 CIS EKS Compliance Test Results" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Workflow**: ${{ github.workflow }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Run ID**: ${{ github.run_id }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Branch**: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Generated**: $(date)" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
         echo "| Test Suite | Status |" >> $GITHUB_STEP_SUMMARY
         echo "|------------|--------|" >> $GITHUB_STEP_SUMMARY
         echo "| Unit Tests | ${{ needs.unit-tests.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
-        echo "| Terraform Tests | ${{ needs.terraform-tests.result == 'success' && '✅ Passed' || (needs.terraform-tests.result == 'skipped' && '⏭️ Skipped' || '❌ Failed') }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| OpenTofu Tests | ${{ needs.opentofu-tests.result == 'success' && '✅ Passed' || (needs.opentofu-tests.result == 'skipped' && '⏭️ Skipped' || '❌ Failed') }} |" >> $GITHUB_STEP_SUMMARY
         echo "| Kind Cluster Tests | ${{ needs.kind-cluster-tests.result == 'success' && '✅ Passed' || (needs.kind-cluster-tests.result == 'skipped' && '⏭️ Skipped' || '❌ Failed') }} |" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### 📁 Artifacts Generated" >> $GITHUB_STEP_SUMMARY
         echo "- **comprehensive-compliance-report**: Complete test results and reports" >> $GITHUB_STEP_SUMMARY
         
         # Add detailed results if available
-        if [ -f "reports/executive-summary.md" ]; then
+        if [ -f "reports/executive-summary.md" ] && [ -s "reports/executive-summary.md" ]; then
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 📊 Executive Summary" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          head -20 reports/executive-summary.md >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          cat reports/executive-summary.md >> $GITHUB_STEP_SUMMARY
+        else
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### ⚠️ Executive Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "❌ Executive summary not available. Check individual test artifacts for details." >> $GITHUB_STEP_SUMMARY
         fi
         
         # Add test failure information if available
@@ -421,12 +469,12 @@ jobs:
           echo "Summary file not found" >> $GITHUB_STEP_SUMMARY
         fi
         
-        if [ -f "reports/terraform-compliance/compliant-plan-scan.md" ]; then
+        if [ -f "reports/opentofu-compliance/compliant-plan-scan.md" ]; then
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "#### Terraform Compliance Summary" >> $GITHUB_STEP_SUMMARY
+          echo "#### OpenTofu Compliance Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           # Extract executive summary
-          sed -n '/Executive Summary/,/^$/p' reports/terraform-compliance/compliant-plan-scan.md | grep -E "^\|" | head -10 >> $GITHUB_STEP_SUMMARY || echo "No summary found" >> $GITHUB_STEP_SUMMARY
+          sed -n '/Executive Summary/,/^$/p' reports/opentofu-compliance/compliant-plan-scan.md | grep -E "^\|" | head -10 >> $GITHUB_STEP_SUMMARY || echo "No summary found" >> $GITHUB_STEP_SUMMARY
         fi
         
         if [ -f "reports/kind-cluster/validation-summary.md" ]; then
@@ -444,7 +492,7 @@ jobs:
         echo "Download the **comprehensive-compliance-report** artifact for:" >> $GITHUB_STEP_SUMMARY
         echo "- Detailed test results" >> $GITHUB_STEP_SUMMARY
         echo "- Policy validation outcomes" >> $GITHUB_STEP_SUMMARY
-        echo "- Terraform compliance analysis" >> $GITHUB_STEP_SUMMARY
+        echo "- OpenTofu compliance analysis" >> $GITHUB_STEP_SUMMARY
         echo "- Kind cluster validation results" >> $GITHUB_STEP_SUMMARY
 
   security-scan:
@@ -472,6 +520,7 @@ jobs:
       if: always() && github.event_name != 'pull_request'  # Skip on PRs to avoid permission issues
       with:
         sarif_file: 'trivy-results.sarif'
+        
     - name: Upload Trivy results as artifact (for PRs and branches)
       uses: actions/upload-artifact@v4
       if: always() && github.event_name == 'pull_request'

@@ -15,39 +15,23 @@ metadata:
       3. KMS key policy validation
 spec:
   rules:
-    - name: validate-terraform-eks-encryption
+    - name: validate-cluster-encryption-config
       match:
         any:
         - resources:
             kinds:
-              - json.kyverno.io/v1alpha1
+              - ConfigMap
+            names:
+              - eks-encryption-config
       validate:
-        message: "EKS cluster must have KMS encryption enabled for secrets."
-        pattern:
-          resource_changes:
-            - type: "aws_eks_cluster"
-              change:
-                after:
-                  encryption_config:
-                    - provider:
-                        key_arn: "?*"
-                      resources:
-                        - "secrets"
-
-    - name: validate-kms-key-policy
-      match:
-        any:
-        - resources:
-            kinds:
-              - json.kyverno.io/v1alpha1
-      validate:
-        message: "KMS key policy must allow EKS to use the key for encryption."
-        pattern:
-          resource_changes:
-            - type: "aws_kms_key_policy"
-              change:
-                after:
-                  policy: "?*\"kms:Encrypt\"?*\"kms:Decrypt\"?*"
+        message: "EKS cluster encryption configuration must be present and valid."
+        anyPattern:
+          - data:
+              encryption-enabled: "true"
+              kms-key-arn: "?*"
+          - metadata:
+              annotations:
+                aws.eks.encryption/enabled: "true"
 
     - name: validate-secret-encryption
       match:

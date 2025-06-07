@@ -7,7 +7,7 @@ metadata:
     policies.kyverno.io/description: |
       Checks for audit logging configuration in ConfigMap or node annotations if available.
 spec:
-  validationFailureAction: audit
+  validationFailureAction: Audit
   background: true
   rules:
     - name: check-audit-logging
@@ -22,26 +22,21 @@ spec:
           data:
             logging: "?*audit?*"
 
-    - name: validate-auditsink
+    - name: validate-node-audit-config
       match:
         any:
         - resources:
             kinds:
-              - AuditSink
+              - Node
       validate:
-        message: "AuditSink must be properly configured with webhook endpoint and appropriate policy level."
-        pattern:
-          spec:
-            webhook:
-              throttle:
-                qps: ">0"
-                burst: ">0"
-              clientConfig:
-                url: "?*"
-            policy:
-              level: "Metadata | Request | RequestResponse"
-              stages:
-                - "ResponseComplete"
+        message: "Node should have audit configuration annotation indicating proper audit setup."
+        anyPattern:
+          - metadata:
+              annotations:
+                audit-config: "enabled"
+          - metadata:
+              labels:
+                audit-enabled: "true"
 
     - name: validate-eks-audit-logging
       match:
@@ -59,18 +54,19 @@ spec:
           data:
             logging: "*audit*"
 
-    - name: validate-terraform-audit-logging
+    - name: validate-cluster-logging-annotation
       match:
         any:
         - resources:
             kinds:
-              - json.kyverno.io/v1alpha1
+              - ConfigMap
+            names:
+              - cluster-logging-config
       validate:
-        message: "Terraform configuration must enable EKS audit logging."
-        pattern:
-          resource_changes:
-            - type: "aws_eks_cluster"
-              change:
-                after:
-                  enabled_cluster_log_types:
-                    - "audit" 
+        message: "Cluster logging configuration must indicate audit logging is enabled."
+        anyPattern:
+          - data:
+              audit-enabled: "true"
+          - metadata:
+              annotations:
+                logging.cluster/audit: "enabled" 

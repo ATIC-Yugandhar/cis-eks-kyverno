@@ -7,7 +7,7 @@ A comprehensive, production-ready framework for implementing and validating **CI
 ## 🎯 What This Framework Provides
 
 - **🛡️ Complete CIS Coverage**: 45 policies covering major CIS EKS Benchmark controls
-- **🔄 Dual Enforcement Strategy**: Both runtime (Kubernetes) and plan-time (Terraform) validation  
+- **🔄 Dual Enforcement Strategy**: Both runtime (Kubernetes) and plan-time (OpenTofu) validation  
 - **📋 Automated Testing**: Comprehensive test suite with CI/CD integration
 - **📊 Professional Reporting**: GitHub-friendly Markdown reports with visual indicators
 - **🏗️ Production Examples**: Real-world configurations for compliant and non-compliant clusters
@@ -17,9 +17,10 @@ A comprehensive, production-ready framework for implementing and validating **CI
 
 ### Prerequisites
 - AWS CLI configured with appropriate permissions
-- Terraform >= 1.0
+- OpenTofu >= 1.6.0 (or Terraform >= 1.0 for legacy support)
 - Kyverno CLI >= 1.11
 - kubectl configured
+- **RBAC permissions**: Cluster-admin access (for RBAC setup)
 
 ### 30-Second Demo
 ```bash
@@ -30,12 +31,23 @@ cd cis-eks-kyverno
 # Run all policy tests
 ./scripts/test-kubernetes-policies.sh
 
-# Run Terraform compliance tests  
-./scripts/test-terraform-policies.sh
+# Run OpenTofu compliance tests  
+./scripts/test-opentofu-policies.sh
 
 # Generate executive summary
 ./scripts/generate-summary-report.sh
 ```
+
+## ⚙️ Important Setup: Kyverno RBAC
+
+Our policies validate Node resources, which requires additional RBAC permissions. **Apply this after installing Kyverno:**
+
+```bash
+# Apply RBAC fix for Node access permissions
+kubectl apply -f kyverno-node-rbac.yaml
+```
+
+**Why this is needed:** Some CIS controls validate worker node configurations, requiring Kyverno to read Node resources.
 
 ## 📁 Repository Structure
 
@@ -49,7 +61,7 @@ cis-eks-kyverno/
 │   │   ├── worker-nodes/       # Section 3: Worker Nodes
 │   │   ├── rbac/              # Section 4: RBAC & Service Accounts
 │   │   └── pod-security/      # Section 5: Pod Security
-│   └── terraform/             # Plan-time policies by component
+│   └── terraform/             # Plan-time policies by component (works with OpenTofu)
 │       ├── cluster-config/     # EKS cluster configuration
 │       ├── networking/         # VPC and networking
 │       ├── encryption/         # KMS and encryption
@@ -59,11 +71,11 @@ cis-eks-kyverno/
 │   └── kubernetes/            # Policy-specific test cases
 ├── 🔧 scripts/                 # Automation scripts
 │   ├── test-kubernetes-policies.sh  # Main policy test runner
-│   ├── test-terraform-policies.sh   # Terraform compliance tests
+│   ├── test-opentofu-policies.sh    # OpenTofu compliance tests
 │   ├── test-kind-cluster.sh         # Kind integration tests
 │   ├── generate-summary-report.sh   # Report generation
 │   └── cleanup.sh                   # Cleanup utilities
-├── 🏗️ terraform/               # Terraform examples
+├── 🏗️ opentofu/               # OpenTofu examples (Terraform compatible)
 │   ├── compliant/             # CIS-compliant configurations
 │   └── noncompliant/          # Non-compliant configurations for testing
 └── 📊 reports/                 # Generated compliance reports (created by scripts)
@@ -77,7 +89,7 @@ Choose your learning path based on your goals:
 → Start with [policies/README.md](policies/README.md) for policy structure → Try [tests/](tests/) examples
 
 ### 🏭 **Production Implementation**
-→ Review [terraform/compliant/](terraform/compliant/) → Adapt policies from [policies/](policies/)
+→ Review [opentofu/compliant/](opentofu/compliant/) → Adapt policies from [policies/](policies/)
 
 ### 🔧 **Development & Contributing**
 → See [docs/README.md](docs/README.md) → Review [scripts/](scripts/) for automation
@@ -87,7 +99,7 @@ Choose your learning path based on your goals:
 This framework implements a comprehensive **"shift-left"** security approach:
 
 ### 1. **Plan-Time Validation** (Prevention)
-- Validate Terraform configurations before deployment
+- Validate OpenTofu/Terraform configurations before deployment
 - Catch misconfigurations early in development
 - Policies scan Infrastructure as Code for CIS compliance
 - **Location**: `policies/terraform/`
@@ -124,8 +136,8 @@ See [policies/README.md](policies/README.md) for detailed policy organization an
 # Test all policies (unit tests)
 ./scripts/test-kubernetes-policies.sh
 
-# Test Terraform compliance (integration tests)
-./scripts/test-terraform-policies.sh
+# Test OpenTofu compliance (integration tests)
+./scripts/test-opentofu-policies.sh
 
 # Test with Kind cluster (integration tests)
 ./scripts/test-kind-cluster.sh
@@ -140,7 +152,7 @@ Generated reports include:
 
 - **📈 Executive Summary** - High-level compliance dashboard
 - **📋 Policy Test Results** - Detailed test outcomes with visual indicators  
-- **🛠️ Terraform Compliance** - Infrastructure validation results
+- **🛠️ OpenTofu Compliance** - Infrastructure validation results
 - **📊 Trend Analysis** - Historical compliance tracking
 
 All reports are GitHub-friendly Markdown with emojis and tables for professional presentation.

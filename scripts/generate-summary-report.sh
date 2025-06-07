@@ -26,14 +26,14 @@ if [ "${CI:-false}" = "true" ] || [ "${GITHUB_ACTIONS:-false}" = "true" ]; then
 fi
 
 # Count total test suites available
-TOTAL_REPORTS=3  # Policy tests, Terraform Compliance, Kind Integration
+TOTAL_REPORTS=3  # Policy tests, OpenTofu Compliance, Kind Integration
 
 # Count completed reports
 COMPLETE_REPORTS=0
 if [ -f "$REPORT_DIR/policy-tests/summary.md" ]; then
     ((COMPLETE_REPORTS++))
 fi
-if [ -f "$REPORT_DIR/terraform-compliance/compliant-plan-scan.md" ]; then
+if [ -f "$REPORT_DIR/opentofu-compliance/compliant-plan-scan.md" ]; then
     ((COMPLETE_REPORTS++))
 fi
 if [ -f "$REPORT_DIR/kind-cluster/validation-results.txt" ]; then
@@ -117,28 +117,28 @@ fi
 
 cat >> "$SUMMARY_FILE" << EOF
 
-### 🛠️ Terraform Compliance Tests
+### 🛠️ OpenTofu Compliance Tests
 EOF
 
-if [ -f "$REPORT_DIR/terraform-compliance/compliant-plan-scan.md" ] && [ -f "$REPORT_DIR/terraform-compliance/noncompliant-plan-scan.md" ]; then
-    echo -e "${GREEN}✅ Terraform compliance tests found${NC}"
+if [ -f "$REPORT_DIR/opentofu-compliance/compliant-plan-scan.md" ] && [ -f "$REPORT_DIR/opentofu-compliance/noncompliant-plan-scan.md" ]; then
+    echo -e "${GREEN}✅ OpenTofu compliance tests found${NC}"
     
-    # Extract exact metrics from terraform reports using the correct format
-    COMPLIANT_SUCCESS=$(grep "\*\*Success Rate\*\*:" "$REPORT_DIR/terraform-compliance/compliant-plan-scan.md" | awk '{print $NF}' 2>/dev/null || echo "0%")
-    NONCOMPLIANT_DETECTION=$(grep "\*\*Detection Rate\*\*:" "$REPORT_DIR/terraform-compliance/noncompliant-plan-scan.md" | awk '{print $NF}' 2>/dev/null || echo "0%")
+    # Extract exact metrics from opentofu reports using the correct format
+    COMPLIANT_SUCCESS=$(grep "\*\*Success Rate\*\*:" "$REPORT_DIR/opentofu-compliance/compliant-plan-scan.md" | awk '{print $NF}' 2>/dev/null || echo "0%")
+    NONCOMPLIANT_DETECTION=$(grep "\*\*Detection Rate\*\*:" "$REPORT_DIR/opentofu-compliance/noncompliant-plan-scan.md" | awk '{print $NF}' 2>/dev/null || echo "0%")
     
     # If the markdown format doesn't work, try the simple format
     if [ "$COMPLIANT_SUCCESS" = "0%" ]; then
-        COMPLIANT_SUCCESS=$(grep "Success Rate" "$REPORT_DIR/terraform-compliance/compliant-plan-scan.md" | sed 's/.*Success Rate[^:]*: *//' | awk '{print $1}' 2>/dev/null || echo "0%")
+        COMPLIANT_SUCCESS=$(grep "Success Rate" "$REPORT_DIR/opentofu-compliance/compliant-plan-scan.md" | sed 's/.*Success Rate[^:]*: *//' | awk '{print $1}' 2>/dev/null || echo "0%")
     fi
     
     if [ "$NONCOMPLIANT_DETECTION" = "0%" ]; then
-        NONCOMPLIANT_DETECTION=$(grep "Detection Rate" "$REPORT_DIR/terraform-compliance/noncompliant-plan-scan.md" | sed 's/.*Detection Rate[^:]*: *//' | awk '{print $1}' 2>/dev/null || echo "0%")
+        NONCOMPLIANT_DETECTION=$(grep "Detection Rate" "$REPORT_DIR/opentofu-compliance/noncompliant-plan-scan.md" | sed 's/.*Detection Rate[^:]*: *//' | awk '{print $1}' 2>/dev/null || echo "0%")
     fi
     
-    VIOLATIONS_DETECTED=$(grep "Violations Detected" "$REPORT_DIR/terraform-compliance/noncompliant-plan-scan.md" | sed 's/.*Violations Detected[^:]*: *//' | awk '{print $1}' 2>/dev/null || echo "0")
+    VIOLATIONS_DETECTED=$(grep "Violations Detected" "$REPORT_DIR/opentofu-compliance/noncompliant-plan-scan.md" | sed 's/.*Violations Detected[^:]*: *//' | awk '{print $1}' 2>/dev/null || echo "0")
     
-    cat >> "$SUMMARY_FILE" << TERRAFORM_EOF
+    cat >> "$SUMMARY_FILE" << OPENTOFU_EOF
 
 | Configuration | Status | Success Rate |
 |---------------|--------|--------------|
@@ -147,10 +147,10 @@ if [ -f "$REPORT_DIR/terraform-compliance/compliant-plan-scan.md" ] && [ -f "$RE
 
 - 🔴 Policy violations detected in non-compliant config: **$VIOLATIONS_DETECTED**
 
-TERRAFORM_EOF
+OPENTOFU_EOF
 else
-    echo -e "${YELLOW}⚠️  Terraform compliance results not found${NC}"
-    echo "- ❌ No terraform compliance results found" >> "$SUMMARY_FILE"
+    echo -e "${YELLOW}⚠️  OpenTofu compliance results not found${NC}"
+    echo "- ❌ No opentofu compliance results found" >> "$SUMMARY_FILE"
 fi
 
 cat >> "$SUMMARY_FILE" << EOF
@@ -163,11 +163,13 @@ if [ -f "$REPORT_DIR/kind-cluster/validation-results.txt" ] || [ -f "$REPORT_DIR
     
     if [ -f "$REPORT_DIR/kind-cluster/validation-summary.md" ]; then
         # Extract from validation summary if available
-        VALIDATION_COUNT=$(grep "Total Validations:" "$REPORT_DIR/kind-cluster/validation-summary.md" | awk '{print $NF}' 2>/dev/null || echo "0")
-        SUCCESS_COUNT=$(grep "Successful:" "$REPORT_DIR/kind-cluster/validation-summary.md" | awk '{print $NF}' 2>/dev/null || echo "0")
+        POLICIES_APPLIED=$(grep "Policies Applied" "$REPORT_DIR/kind-cluster/validation-summary.md" | awk -F'|' '{print $3}' | tr -d ' ' 2>/dev/null || echo "0")
+        CATEGORIES_TESTED=$(grep "Categories Tested" "$REPORT_DIR/kind-cluster/validation-summary.md" | awk -F'|' '{print $3}' | tr -d ' ' 2>/dev/null || echo "0")
+        TEST_MANIFESTS=$(grep "Test Manifests" "$REPORT_DIR/kind-cluster/validation-summary.md" | awk -F'|' '{print $3}' | tr -d ' ' 2>/dev/null || echo "0")
         echo "- ✅ Integration tests completed successfully" >> "$SUMMARY_FILE"
-        echo "- Validations run: **$VALIDATION_COUNT**" >> "$SUMMARY_FILE"
-        echo "- Successful: **$SUCCESS_COUNT**" >> "$SUMMARY_FILE"
+        echo "- Policies Applied: **$POLICIES_APPLIED**" >> "$SUMMARY_FILE"
+        echo "- Categories Tested: **$CATEGORIES_TESTED**" >> "$SUMMARY_FILE"
+        echo "- Test Manifests: **$TEST_MANIFESTS**" >> "$SUMMARY_FILE"
     else
         # Fallback to validation-results.txt
         RESOURCE_COUNT=$(grep -c "Testing\|PASS\|FAIL" "$REPORT_DIR/kind-cluster/validation-results.txt" 2>/dev/null || echo "0")
@@ -190,9 +192,9 @@ cat >> "$SUMMARY_FILE" << EOF
 - **Summary**: [📈 summary.md](policy-tests/summary.md)
 - **Execution stats**: [📊 execution-stats.json](policy-tests/execution-stats.json)
 
-### 🛠️ Terraform Compliance
-- **Compliant scan**: [✅ compliant-plan-scan.md](terraform-compliance/compliant-plan-scan.md)  
-- **Non-compliant scan**: [❌ noncompliant-plan-scan.md](terraform-compliance/noncompliant-plan-scan.md)
+### 🛠️ OpenTofu Compliance
+- **Compliant scan**: [✅ compliant-plan-scan.md](opentofu-compliance/compliant-plan-scan.md)  
+- **Non-compliant scan**: [❌ noncompliant-plan-scan.md](opentofu-compliance/noncompliant-plan-scan.md)
 
 ### 🌟 Kind Integration  
 - **Validation results**: [📊 validation-results.txt](kind-cluster/validation-results.txt)
@@ -205,7 +207,7 @@ cat >> "$SUMMARY_FILE" << EOF
 | Test Suite | Status | Completion | Notes |
 |------------|--------|------------|-------|
 | Policy Unit Tests | $( [ -f "$REPORT_DIR/policy-tests/summary.md" ] && echo "✅ Complete" || echo "❌ Missing" ) | $( [ -f "$REPORT_DIR/policy-tests/summary.md" ] && echo "100%" || echo "0%" ) | Kubernetes policy validation |
-| Terraform Compliance | $( [ -f "$REPORT_DIR/terraform-compliance/compliant-plan-scan.md" ] && echo "✅ Complete" || echo "❌ Missing" ) | $( [ -f "$REPORT_DIR/terraform-compliance/compliant-plan-scan.md" ] && echo "100%" || echo "0%" ) | Infrastructure compliance |
+| OpenTofu Compliance | $( [ -f "$REPORT_DIR/opentofu-compliance/compliant-plan-scan.md" ] && echo "✅ Complete" || echo "❌ Missing" ) | $( [ -f "$REPORT_DIR/opentofu-compliance/compliant-plan-scan.md" ] && echo "100%" || echo "0%" ) | Infrastructure compliance |
 | Kind Integration | $( [ -f "$REPORT_DIR/kind-cluster/validation-results.txt" ] && echo "✅ Complete" || echo "❌ Missing" ) | $( [ -f "$REPORT_DIR/kind-cluster/validation-results.txt" ] && echo "100%" || echo "0%" ) | Local cluster testing |
 | **Overall** | **${COMPLETION_RATE}%** | **${COMPLETE_REPORTS}/${TOTAL_REPORTS}** | **Test suite completion** |
 

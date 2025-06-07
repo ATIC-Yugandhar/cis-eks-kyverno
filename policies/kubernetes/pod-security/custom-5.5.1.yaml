@@ -7,7 +7,7 @@ metadata:
     policies.kyverno.io/description: |
       Checks for IAM annotation or label in ServiceAccount or Namespace if available.
 spec:
-  validationFailureAction: audit
+  validationFailureAction: Audit
   background: true
   rules:
     - name: check-iam-authenticator
