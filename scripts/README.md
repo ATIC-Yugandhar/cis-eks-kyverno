@@ -58,7 +58,19 @@ Utility script to clean up OpenTofu/Terraform state files and temporary resource
 
 ## CI/CD Integration
 
-The GitHub Actions workflow uses:
+The GitHub Actions workflow "Comprehensive CIS EKS Compliance Tests" uses:
 - `test-kubernetes-policies.sh` for unit tests (includes OpenTofu/Terraform policies)
 - `test-opentofu-policies.sh` for dedicated OpenTofu compliance testing
 - `test-kind-cluster.sh` for integration testing with a real Kubernetes cluster
+
+### Workflow Status
+The workflow runs on:
+- Push to main and develop branches
+- Pull requests to main
+- Daily schedule (2 AM UTC)
+- Manual dispatch via GitHub Actions UI
+
+### Test Requirements
+- **OpenTofu Tests**: Require `tofuplan.json` files in `opentofu/compliant/` and `opentofu/noncompliant/`
+- **Kind Tests**: Require Docker and Kind to create test cluster
+- **Unit Tests**: Only require Kyverno CLI
