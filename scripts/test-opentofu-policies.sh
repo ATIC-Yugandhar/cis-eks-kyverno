@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -euo pipefail
+set -uo pipefail
 
 REPORTS_DIR="reports/opentofu-compliance"
 POLICIES_DIR="policies/terraform"
