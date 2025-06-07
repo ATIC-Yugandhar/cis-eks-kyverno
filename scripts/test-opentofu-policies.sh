@@ -39,7 +39,7 @@ for policy in "$POLICIES_DIR"/*/*.yaml; do
         policy_name=$(basename "$policy" .yaml)
         echo -n "  Testing $policy_name... "
         
-        output=$(KYVERNO_EXPERIMENTAL=true kyverno json scan --policy "$policy" --payload "opentofu/compliant/tofuplan.json" 2>&1)
+        output=$(KYVERNO_EXPERIMENTAL=true kyverno json scan --policy "$policy" --payload "opentofu/compliant/tofuplan.json" 2>&1 || true)
         if echo "$output" | grep -q "PASSED"; then
             echo "✅ PASS"
             echo "| $policy_name | ✅ PASS |" >> "$REPORTS_DIR/compliant-plan-scan.md"
@@ -84,7 +84,7 @@ for policy in "$POLICIES_DIR"/*/*.yaml; do
         policy_name=$(basename "$policy" .yaml)
         echo -n "  Testing $policy_name... "
         
-        output=$(KYVERNO_EXPERIMENTAL=true kyverno json scan --policy "$policy" --payload "opentofu/noncompliant/tofuplan.json" 2>&1)
+        output=$(KYVERNO_EXPERIMENTAL=true kyverno json scan --policy "$policy" --payload "opentofu/noncompliant/tofuplan.json" 2>&1 || true)
         
         if echo "$output" | grep -q "FAILED"; then
             echo "✅ FAILED (violation correctly detected)"
