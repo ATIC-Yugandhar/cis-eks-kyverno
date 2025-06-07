@@ -3,7 +3,7 @@
 set -uo pipefail
 
 REPORTS_DIR="reports/opentofu-compliance"
-POLICIES_DIR="policies/terraform"
+POLICIES_DIR="policies/opentofu"
 
 mkdir -p "$REPORTS_DIR"
 

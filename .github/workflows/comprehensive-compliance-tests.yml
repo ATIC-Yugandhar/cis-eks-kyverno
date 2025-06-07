@@ -121,6 +121,22 @@ jobs:
         sudo mv kyverno /usr/local/bin/
         kyverno version
         
+    - name: Verify OpenTofu plan files
+      run: |
+        echo "=== Checking for OpenTofu plan files ==="
+        echo "Compliant plan: $([ -f 'opentofu/compliant/tofuplan.json' ] && echo '✅ EXISTS' || echo '❌ MISSING')"
+        echo "Non-compliant plan: $([ -f 'opentofu/noncompliant/tofuplan.json' ] && echo '✅ EXISTS' || echo '❌ MISSING')"
+        
+        # If plan files don't exist, provide helpful error message
+        if [ ! -f "opentofu/compliant/tofuplan.json" ] || [ ! -f "opentofu/noncompliant/tofuplan.json" ]; then
+          echo "⚠️ OpenTofu plan files are missing. They should be committed to the repository."
+          echo "To generate them locally, run:"
+          echo "  cd opentofu/compliant && tofu plan -out=tofuplan.binary && tofu show -json tofuplan.binary > tofuplan.json"
+          echo "  cd ../noncompliant && tofu plan -out=tofuplan.binary && tofu show -json tofuplan.binary > tofuplan.json"
+          echo ""
+          echo "Files will be checked in the test script..."
+        fi
+        
     - name: Run OpenTofu compliance tests
       id: opentofu-tests-run
       continue-on-error: true

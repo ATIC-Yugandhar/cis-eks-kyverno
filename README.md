@@ -1,8 +1,29 @@
 # CIS EKS Kyverno Compliance Framework
 
-[![Tests](https://github.com/ATIC-Yugandhar/cis-eks-kyverno/workflows/Kyverno%20Policy%20and%20Plan%20Compliance%20Check/badge.svg)](https://github.com/ATIC-Yugandhar/cis-eks-kyverno/actions)
+[![Tests](https://github.com/ATIC-Yugandhar/cis-eks-kyverno/workflows/Comprehensive%20CIS%20EKS%20Compliance%20Tests/badge.svg)](https://github.com/ATIC-Yugandhar/cis-eks-kyverno/actions)
+[![Tests Status](https://github.com/ATIC-Yugandhar/cis-eks-kyverno/workflows/Comprehensive%20CIS%20EKS%20Compliance%20Tests/badge.svg?branch=main)](https://github.com/ATIC-Yugandhar/cis-eks-kyverno/actions?query=branch%3Amain)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![OpenTofu](https://img.shields.io/badge/OpenTofu-1.6+-purple.svg)](https://opentofu.org/)
+[![Kyverno](https://img.shields.io/badge/Kyverno-1.13+-green.svg)](https://kyverno.io/)
 
 A comprehensive, production-ready framework for implementing and validating **CIS Amazon EKS Benchmark** controls using **Kyverno policies**. This repository provides complete CIS compliance automation with both runtime and plan-time validation.
+
+## 🚦 Workflow Status
+
+The badges above show the current status of our comprehensive test suite:
+
+- **Tests**: Overall workflow status across all test types
+- **Tests Status**: Main branch specific status
+- **License**: Apache 2.0 open source license
+- **OpenTofu**: Compatible OpenTofu version
+- **Kyverno**: Required Kyverno version
+
+### Test Coverage
+Our automated testing includes:
+- **45 Policy Unit Tests**: Validate individual policy logic
+- **Plan-Time Validation**: OpenTofu/Terraform infrastructure scanning
+- **Kind Cluster Integration**: Real Kubernetes cluster testing
+- **Security Scanning**: Vulnerability detection with Trivy
 
 ## 🎯 What This Framework Provides
 
@@ -61,7 +82,7 @@ cis-eks-kyverno/
 │   │   ├── worker-nodes/       # Section 3: Worker Nodes
 │   │   ├── rbac/              # Section 4: RBAC & Service Accounts
 │   │   └── pod-security/      # Section 5: Pod Security
-│   └── terraform/             # Plan-time policies by component (works with OpenTofu)
+│   └── opentofu/              # Plan-time policies by component (OpenTofu/Terraform compatible)
 │       ├── cluster-config/     # EKS cluster configuration
 │       ├── networking/         # VPC and networking
 │       ├── encryption/         # KMS and encryption
@@ -102,7 +123,7 @@ This framework implements a comprehensive **"shift-left"** security approach:
 - Validate OpenTofu/Terraform configurations before deployment
 - Catch misconfigurations early in development
 - Policies scan Infrastructure as Code for CIS compliance
-- **Location**: `policies/terraform/`
+- **Location**: `policies/opentofu/` (OpenTofu/Terraform compatible)
 
 ### 2. **Runtime Validation** (Detection)  
 - Validate live Kubernetes resources in EKS clusters

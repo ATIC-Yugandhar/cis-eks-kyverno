@@ -135,14 +135,14 @@ for category_dir in "$POLICIES_DIR/kubernetes"/*; do
     fi
 done
 
-# Test Terraform policies
+# Test OpenTofu policies
 echo "" >> "$DETAILED_FILE"
-echo "## Terraform Policies" >> "$DETAILED_FILE"
+echo "## OpenTofu Policies" >> "$DETAILED_FILE"
 echo "" >> "$DETAILED_FILE"
 
 echo ""
-echo "Testing Terraform policies..."
-for category_dir in "$POLICIES_DIR/terraform"/*; do
+echo "Testing OpenTofu policies..."
+for category_dir in "$POLICIES_DIR/opentofu"/*; do
     if [ -d "$category_dir" ]; then
         category=$(basename "$category_dir")
         echo ""
@@ -164,8 +164,8 @@ for category_dir in "$POLICIES_DIR/terraform"/*; do
                 result_line=""
                 
                 # Check compliant plan
-                if [ -f "terraform/compliant/tfplan.json" ]; then
-                    if kyverno apply "$policy" --resource "terraform/compliant/tfplan.json" >/dev/null 2>&1; then
+                if [ -f "opentofu/compliant/tofuplan.json" ]; then
+                    if kyverno apply "$policy" --resource "opentofu/compliant/tofuplan.json" >/dev/null 2>&1; then
                         echo -n "[✓] "
                         result_line+="- ✅ $policy_name - compliant plan: PASS"
                         echo "- ✅ $policy_name - compliant plan: PASS" >> "$DETAILED_FILE"
@@ -181,8 +181,8 @@ for category_dir in "$POLICIES_DIR/terraform"/*; do
                 fi
                 
                 # Check noncompliant plan
-                if [ -f "terraform/noncompliant/tfplan.json" ]; then
-                    output=$(kyverno apply "$policy" --resource "terraform/noncompliant/tfplan.json" 2>&1 || true)
+                if [ -f "opentofu/noncompliant/tofuplan.json" ]; then
+                    output=$(kyverno apply "$policy" --resource "opentofu/noncompliant/tofuplan.json" 2>&1 || true)
                     
                     if echo "$output" | grep -q "failed\|blocked\|violation\|error"; then
                         echo -n "[✓] "
@@ -273,10 +273,10 @@ if [ ${#K8S_RESULTS[@]} -gt 0 ]; then
 fi
 
 echo "" >> "$SUMMARY_FILE"
-echo "## Terraform Policies" >> "$SUMMARY_FILE"
+echo "## OpenTofu Policies" >> "$SUMMARY_FILE"
 echo "" >> "$SUMMARY_FILE"
 
-# Add Terraform results to summary
+# Add OpenTofu results to summary
 if [ ${#TF_RESULTS[@]} -gt 0 ]; then
     for result in "${TF_RESULTS[@]}"; do
         echo "$result" >> "$SUMMARY_FILE"
