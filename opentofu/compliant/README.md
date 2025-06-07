@@ -1,8 +1,8 @@
 # CIS-Compliant EKS Automation (Compliant Cluster)
 
-**This stack provisions a reference CIS-compliant EKS cluster for validating plan-level Kyverno JSON policies. It is used as the gold standard for passing all enforceable CIS controls at the Terraform plan stage.**
+**This stack provisions a reference CIS-compliant EKS cluster for validating plan-level Kyverno JSON policies. It is used as the gold standard for passing all enforceable CIS controls at the OpenTofu/Terraform plan stage.**
 
-- Automated validation is performed using `scripts/test-terraform-policies.sh`.
+- Automated validation is performed using `scripts/test-opentofu-policies.sh`.
 - See `policies/README.md` for policy organization and structure.
 
 ## Prerequisites
@@ -17,12 +17,12 @@ This module provisions a CIS-compliant EKS cluster, Kyverno, policies, and a pri
 ## Workflow
 
 1. **Provision Infrastructure**
-   - Run `terraform apply` from your local machine or CI/CD to create the VPC, EKS, S3 bucket, and the SSM-enabled automation EC2 instance in a private subnet.
+   - Run `tofu apply` (or `terraform apply`) from your local machine or CI/CD to create the VPC, EKS, S3 bucket, and the SSM-enabled automation EC2 instance in a private subnet.
 
 2. **Connect to the Automation Instance (via SSM)**
-   - After `terraform apply`, get the SSM connect command:
+   - After `tofu apply`, get the SSM connect command:
      ```sh
-     terraform -chdir=terraform/compliant output automation_instance_ssm_command
+     tofu -chdir=opentofu/compliant output automation_instance_ssm_command
      ```
    - Use the output command to start an SSM session:
      ```sh
@@ -30,13 +30,13 @@ This module provisions a CIS-compliant EKS cluster, Kyverno, policies, and a pri
      ```
    - This gives you a shell inside the private subnet, with full access to the EKS API endpoint.
 
-3. **Run Terraform and Automation Scripts from Inside the Instance**
+3. **Run OpenTofu and Automation Scripts from Inside the Instance**
    - Upload your code (e.g., via S3) or clone your repo inside the instance.
-   - Run `terraform apply` from inside the instance to install Kyverno and apply policies.
+   - Run `tofu apply` from inside the instance to install Kyverno and apply policies.
    - Run your orchestrator/test scripts as needed.
 
 4. **Cleanup**
-   - You can run `terraform destroy` from inside the instance for full cleanup.
+   - You can run `tofu destroy` from inside the instance for full cleanup.
 
 ## Security & Compliance
 - The EKS API endpoint is private-only (`endpoint_public_access = false`).

@@ -5,15 +5,15 @@ This directory contains utility scripts for testing and managing the CIS EKS Kyv
 ## Scripts
 
 ### test-kubernetes-policies.sh
-Main test runner that validates all Kubernetes and Terraform policies against test resources.
+Main test runner that validates all Kubernetes and OpenTofu/Terraform policies against test resources.
 - Tests both compliant and non-compliant scenarios
 - Generates comprehensive reports in `reports/policy-tests/`
 - Used by GitHub Actions CI/CD pipeline
 
-### test-terraform-policies.sh
-Dedicated script for testing Terraform policies against Terraform plans.
-- Tests both compliant and non-compliant Terraform configurations
-- Generates reports in `reports/terraform-compliance/`
+### test-opentofu-policies.sh
+Dedicated script for testing OpenTofu/Terraform policies against plan files.
+- Tests both compliant and non-compliant OpenTofu/Terraform configurations
+- Generates reports in `reports/opentofu-compliance/`
 
 ### test-kind-cluster.sh
 Integration test script that creates a Kind cluster and tests policies in a real Kubernetes environment.
@@ -29,7 +29,7 @@ Generates an executive summary report from all test results.
 - Creates `reports/executive-summary.md`
 
 ### cleanup.sh
-Utility script to clean up Terraform state files and temporary resources.
+Utility script to clean up OpenTofu/Terraform state files and temporary resources.
 - Removes `.terraform` directories
 - Cleans up `tfplan.*` files
 - Safe to run at any time
@@ -37,11 +37,11 @@ Utility script to clean up Terraform state files and temporary resources.
 ## Usage
 
 ```bash
-# Run Kubernetes and Terraform policy tests
+# Run Kubernetes and OpenTofu/Terraform policy tests
 ./scripts/test-kubernetes-policies.sh
 
-# Run only Terraform policy tests
-./scripts/test-terraform-policies.sh
+# Run only OpenTofu/Terraform policy tests
+./scripts/test-opentofu-policies.sh
 
 # Run Kind cluster integration tests
 ./scripts/test-kind-cluster.sh
@@ -52,13 +52,13 @@ Utility script to clean up Terraform state files and temporary resources.
 # Generate executive summary
 ./scripts/generate-summary-report.sh
 
-# Clean up Terraform files
+# Clean up OpenTofu/Terraform files
 ./scripts/cleanup.sh
 ```
 
 ## CI/CD Integration
 
 The GitHub Actions workflow uses:
-- `test-kubernetes-policies.sh` for unit tests (includes Terraform policies)
-- `test-terraform-policies.sh` for dedicated Terraform compliance testing
+- `test-kubernetes-policies.sh` for unit tests (includes OpenTofu/Terraform policies)
+- `test-opentofu-policies.sh` for dedicated OpenTofu compliance testing
 - `test-kind-cluster.sh` for integration testing with a real Kubernetes cluster

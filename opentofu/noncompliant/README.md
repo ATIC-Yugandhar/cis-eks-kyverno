@@ -2,7 +2,7 @@
 
 **This stack provisions an intentionally noncompliant EKS cluster to serve as a negative test case for plan-level Kyverno JSON policy validation.**
 
-- Automated validation is performed using `scripts/test-terraform-policies.sh`.
+- Automated validation is performed using `scripts/test-opentofu-policies.sh`.
 - See `policies/README.md` for policy organization and structure.
 
 ## Prerequisites
@@ -19,7 +19,7 @@ This stack is configured to violate key CIS EKS controls, including:
 - No Kubernetes network policies present
 
 ## Purpose
-This stack is used to demonstrate that Kyverno JSON policies can detect and fail noncompliant infrastructure at the Terraform plan stage.
+This stack is used to demonstrate that Kyverno JSON policies can detect and fail noncompliant infrastructure at the OpenTofu/Terraform plan stage.
 
 ---
 
