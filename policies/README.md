@@ -12,13 +12,13 @@ Runtime policies that validate live Kubernetes resources in EKS clusters:
 - **[rbac/](kubernetes/rbac/)** - Section 4: RBAC and Service Accounts  
 - **[pod-security/](kubernetes/pod-security/)** - Section 5: Pod Security Standards
 
-### OpenTofu/Terraform Policies (`terraform/`)
+### OpenTofu/Terraform Policies (`opentofu/`)
 Plan-time policies that validate infrastructure configurations before deployment (compatible with both OpenTofu and Terraform):
 
-- **[cluster-config/](terraform/cluster-config/)** - EKS cluster configuration policies
-- **[networking/](terraform/networking/)** - VPC and networking policies
-- **[encryption/](terraform/encryption/)** - KMS and encryption policies
-- **[monitoring/](terraform/monitoring/)** - Logging and monitoring policies
+- **[cluster-config/](opentofu/cluster-config/)** - EKS cluster configuration policies
+- **[networking/](opentofu/networking/)** - VPC and networking policies
+- **[encryption/](opentofu/encryption/)** - KMS and encryption policies
+- **[monitoring/](opentofu/monitoring/)** - Logging and monitoring policies
 
 ## Policy Naming Convention
 
