@@ -124,6 +124,8 @@ jobs:
     - name: Run OpenTofu compliance tests
       id: opentofu-tests-run
       continue-on-error: true
+      env:
+        KYVERNO_EXPERIMENTAL: true
       run: |
         chmod +x scripts/test-opentofu-policies.sh
         EXIT_CODE=0
