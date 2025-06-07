@@ -11,9 +11,9 @@ echo "=== OpenTofu Policy Compliance Tests ==="
 echo "Started at: $(date)"
 
 # Check if OpenTofu plans exist
-if [ ! -f "opentofu/compliant/tfplan.json" ] || [ ! -f "opentofu/noncompliant/tfplan.json" ]; then
+if [ ! -f "opentofu/compliant/tofuplan.json" ] || [ ! -f "opentofu/noncompliant/tofuplan.json" ]; then
     echo "Error: OpenTofu plans not found. Please generate them first."
-    echo "Run: cd opentofu/compliant && tofu plan -out=tfplan.binary && tofu show -json tfplan.binary > tfplan.json"
+    echo "Run: cd opentofu/compliant && tofu plan -out=tofuplan.binary && tofu show -json tofuplan.binary > tofuplan.json"
     exit 1
 fi
 
@@ -39,7 +39,8 @@ for policy in "$POLICIES_DIR"/*/*.yaml; do
         policy_name=$(basename "$policy" .yaml)
         echo -n "  Testing $policy_name... "
         
-        if kyverno apply "$policy" --resource "opentofu/compliant/tfplan.json" >/dev/null 2>&1; then
+        output=$(KYVERNO_EXPERIMENTAL=true kyverno json scan --policy "$policy" --payload "opentofu/compliant/tofuplan.json" 2>&1)
+        if echo "$output" | grep -q "PASSED"; then
             echo "✅ PASS"
             echo "| $policy_name | ✅ PASS |" >> "$REPORTS_DIR/compliant-plan-scan.md"
             ((PASSED++))
@@ -83,9 +84,9 @@ for policy in "$POLICIES_DIR"/*/*.yaml; do
         policy_name=$(basename "$policy" .yaml)
         echo -n "  Testing $policy_name... "
         
-        output=$(kyverno apply "$policy" --resource "opentofu/noncompliant/tfplan.json" 2>&1 || true)
+        output=$(KYVERNO_EXPERIMENTAL=true kyverno json scan --policy "$policy" --payload "opentofu/noncompliant/tofuplan.json" 2>&1)
         
-        if echo "$output" | grep -q "failed\|blocked\|violation\|error"; then
+        if echo "$output" | grep -q "FAILED"; then
             echo "✅ Violation detected"
             echo "| $policy_name | ✅ Detected | Yes |" >> "$REPORTS_DIR/noncompliant-plan-scan.md"
             ((VIOLATIONS++))

@@ -6,6 +6,11 @@ resource "aws_vpc" "main" {
   cidr_block           = var.vpc_cidr
   enable_dns_support   = true
   enable_dns_hostnames = true
+  
+  tags = {
+    Environment = "production"
+    Owner       = "platform-team"
+  }
 }
 
 resource "aws_subnet" "private" {
@@ -16,6 +21,8 @@ resource "aws_subnet" "private" {
   tags = {
     "kubernetes.io/cluster/${var.cluster_name}" = "owned"
     "kubernetes.io/role/internal-elb" = "1"
+    Environment = "production"
+    Owner       = "platform-team"
   }
 }
 
@@ -37,12 +44,22 @@ resource "aws_security_group" "nodes" {
     protocol    = "-1"
     self        = true
   }
+  
+  tags = {
+    Environment = "production"
+    Owner       = "platform-team"
+  }
 }
 
 resource "aws_kms_key" "eks" {
   description             = "EKS Secret Encryption Key"
   deletion_window_in_days = 7
   enable_key_rotation     = true
+  
+  tags = {
+    Environment = "production"
+    Owner       = "platform-team"
+  }
 }
 
 resource "aws_iam_role" "eks" {
@@ -59,6 +76,11 @@ resource "aws_iam_role" "eks" {
       }
     ]
   })
+  
+  tags = {
+    Environment = "production"
+    Owner       = "platform-team"
+  }
 }
 
 resource "aws_iam_role_policy_attachment" "eks_cluster_policy" {
@@ -78,6 +100,11 @@ resource "aws_iam_role" "eks_node_group" {
       Action = "sts:AssumeRole"
     }]
   })
+  
+  tags = {
+    Environment = "production"
+    Owner       = "platform-team"
+  }
 }
 
 resource "aws_iam_role_policy_attachment" "eks_worker_node" {
