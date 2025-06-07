@@ -143,6 +143,11 @@ resource "aws_eks_cluster" "main" {
       key_arn = aws_kms_key.eks.arn
     }
   }
+  
+  tags = {
+    Environment = "production"
+    Owner       = "platform-team"
+  }
 }
 
 data "aws_eks_cluster" "main" {
@@ -166,6 +171,11 @@ resource "aws_eks_node_group" "main" {
     max_size     = 1
   }
   depends_on = [aws_security_group.nodes]
+  
+  tags = {
+    Environment = "production"
+    Owner       = "platform-team"
+  }
 }
 
 resource "kubernetes_network_policy" "default_deny_all" {
