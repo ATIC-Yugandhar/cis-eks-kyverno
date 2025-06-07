@@ -61,7 +61,7 @@ cis-eks-kyverno/
 │   │   ├── worker-nodes/       # Section 3: Worker Nodes
 │   │   ├── rbac/              # Section 4: RBAC & Service Accounts
 │   │   └── pod-security/      # Section 5: Pod Security
-│   └── terraform/             # Plan-time policies by component (works with OpenTofu)
+│   └── terraform/             # Plan-time policies by component (OpenTofu/Terraform compatible)
 │       ├── cluster-config/     # EKS cluster configuration
 │       ├── networking/         # VPC and networking
 │       ├── encryption/         # KMS and encryption
@@ -102,7 +102,7 @@ This framework implements a comprehensive **"shift-left"** security approach:
 - Validate OpenTofu/Terraform configurations before deployment
 - Catch misconfigurations early in development
 - Policies scan Infrastructure as Code for CIS compliance
-- **Location**: `policies/terraform/`
+- **Location**: `policies/terraform/` (OpenTofu/Terraform compatible)
 
 ### 2. **Runtime Validation** (Detection)  
 - Validate live Kubernetes resources in EKS clusters
