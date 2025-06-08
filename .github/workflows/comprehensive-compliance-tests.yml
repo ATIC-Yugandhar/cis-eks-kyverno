@@ -231,27 +231,7 @@ jobs:
         sudo apt-get install -y jq
         jq --version
         
-    - name: Verify kube-bench integration files  
-      run: |
-        echo "=== Kube-bench Integration Files ==="
-        echo "Kube-bench directory: $([ -d 'kube-bench' ] && echo '✅ EXISTS' || echo '❌ MISSING')"
-        echo "RBAC config: $([ -f 'kube-bench/rbac.yaml' ] && echo '✅ EXISTS' || echo '❌ MISSING')"
-        echo "Node job config: $([ -f 'kube-bench/job-node.yaml' ] && echo '✅ EXISTS' || echo '❌ MISSING')"
-        echo "Master job config: $([ -f 'kube-bench/job-master.yaml' ] && echo '✅ EXISTS' || echo '❌ MISSING')"
-        # Check if run script exists or is integrated
-        if [ -f "kube-bench/run-kube-bench.sh" ]; then
-          echo "Run script: ✅ EXISTS"
-        else
-          echo "Run script: ✅ INTEGRATED (into test-kind-cluster.sh)"
-        fi
-        echo "Updated test script: ✅ INTEGRATED"
-        
-        # Also check OpenTofu plan files from Kind context
-        echo ""
-        echo "=== Checking for OpenTofu plan files ==="
-        echo "Compliant plan: $([ -f 'opentofu/compliant/tofuplan.json' ] && echo '✅ EXISTS' || echo '❌ MISSING')"
-        echo "Non-compliant plan: $([ -f 'opentofu/noncompliant/tofuplan.json' ] && echo '✅ EXISTS' || echo '❌ MISSING')"
-        
+
     - name: Run Kind cluster tests with kube-bench
       id: kind-tests-run
       continue-on-error: true

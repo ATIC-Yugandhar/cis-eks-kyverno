@@ -10,18 +10,21 @@ Kube-bench runs as Kubernetes Jobs on worker nodes to perform CIS compliance sca
 
 - `job-node.yaml`: Kube-bench job for worker node scanning
 - `job-master.yaml`: Kube-bench job for control-plane scanning  
-- `configmap.yaml`: Configuration for kube-bench
 - `rbac.yaml`: RBAC permissions for kube-bench jobs
-- `run-kube-bench.sh`: Script to deploy and collect kube-bench results
 
 ## Usage
 
-```bash
-# Deploy kube-bench and run scans
-./kube-bench/run-kube-bench.sh
+The kube-bench integration is built into the test framework. To run kube-bench scanning:
 
-# View results
-kubectl logs -l app=kube-bench
+```bash
+# Run complete testing with kube-bench integration
+./scripts/test-kind-cluster.sh
+
+# View kube-bench results
+kubectl logs -l app=kube-bench,component=node
+
+# Check generated reports
+ls reports/kind-cluster/kube-bench/
 ```
 
 ## Integration with Testing
