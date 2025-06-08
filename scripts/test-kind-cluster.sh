@@ -185,14 +185,70 @@ RBAC_EOF
     # Get node scan results
     NODE_POD=$(kubectl get pods -n kube-system -l app=kube-bench,component=node -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
     if [ -n "$NODE_POD" ]; then
-        kubectl logs "$NODE_POD" -n kube-system > "$REPORTS_DIR/kube-bench/node-scan.json" 2>/dev/null || {
+        # Collect raw results first
+        kubectl logs "$NODE_POD" -n kube-system > "$REPORTS_DIR/kube-bench/node-scan-raw.json" 2>/dev/null || {
             echo "Warning: Could not collect node scan logs"
-            echo '{"error": "Could not collect node scan logs"}' > "$REPORTS_DIR/kube-bench/node-scan.json"
+            echo '{"error": "Could not collect node scan logs"}' > "$REPORTS_DIR/kube-bench/node-scan-raw.json"
         }
-        echo "✅ Node scan results collected"
+        
+        # Convert to standardized format if raw results are valid
+        if [ -f "$REPORTS_DIR/kube-bench/node-scan-raw.json" ] && jq empty "$REPORTS_DIR/kube-bench/node-scan-raw.json" 2>/dev/null; then
+            # Convert inline to standardized format
+            TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+            jq --arg timestamp "$TIMESTAMP" '
+            {
+              "scan_metadata": {
+                "scan_type": "kube-bench-cis",
+                "scan_target": "worker-nodes",
+                "scanner_version": (.Controls[0].version // "cis-1.9"),
+                "timestamp": $timestamp,
+                "scan_id": ("kube-bench-" + ($timestamp | gsub("[^0-9]"; "")))
+              },
+              "summary": {
+                "total_checks": (.Totals.total_pass + .Totals.total_fail + .Totals.total_warn + .Totals.total_info),
+                "passed": .Totals.total_pass,
+                "failed": .Totals.total_fail,
+                "warned": .Totals.total_warn,
+                "skipped": .Totals.total_info,
+                "success_rate_percent": (
+                  if (.Totals.total_pass + .Totals.total_fail + .Totals.total_warn + .Totals.total_info) > 0 
+                  then ((.Totals.total_pass * 100) / (.Totals.total_pass + .Totals.total_fail + .Totals.total_warn + .Totals.total_info)) | round
+                  else 0 
+                  end
+                )
+              },
+              "detailed_results": [
+                .Controls[] | .tests[] | .results[] | {
+                  "check_id": .test_number,
+                  "check_name": .test_desc,
+                  "category": (
+                    if (.test_number | startswith("4.1")) then "worker-node-files"
+                    elif (.test_number | startswith("4.2")) then "worker-node-kubelet"
+                    elif (.test_number | startswith("4.3")) then "worker-node-proxy"
+                    else "other"
+                    end
+                  ),
+                  "severity": (if .scored then "high" else "medium" end),
+                  "status": .status,
+                  "expected_result": .expected_result,
+                  "actual_result": .actual_value,
+                  "remediation": (.remediation // .test_info[0] // ""),
+                  "scored": .scored
+                }
+              ]
+            }' "$REPORTS_DIR/kube-bench/node-scan-raw.json" > "$REPORTS_DIR/kube-bench/node-scan.json" || {
+                echo "Warning: Could not convert to standardized format, using raw format"
+                cp "$REPORTS_DIR/kube-bench/node-scan-raw.json" "$REPORTS_DIR/kube-bench/node-scan.json"
+            }
+            echo "✅ Node scan results collected and standardized"
+        else
+            echo "Warning: Raw scan results invalid, creating error placeholder"
+            echo '{"error": "Invalid raw scan results"}' > "$REPORTS_DIR/kube-bench/node-scan.json"
+        fi
     else
         echo "❌ No kube-bench node pod found"
         echo '{"error": "No kube-bench node pod found"}' > "$REPORTS_DIR/kube-bench/node-scan.json"
+        echo '{"error": "No kube-bench node pod found"}' > "$REPORTS_DIR/kube-bench/node-scan-raw.json"
     fi
     
     # Try to get master scan results (might not work in KIND due to node labeling)
@@ -220,26 +276,36 @@ RBAC_EOF
 ## Node Scan Results
 EOF
     
-    if [ -f "$REPORTS_DIR/kube-bench/node-scan.json" ] && grep -q '"Totals"' "$REPORTS_DIR/kube-bench/node-scan.json" 2>/dev/null; then
+    if [ -f "$REPORTS_DIR/kube-bench/node-scan.json" ] && jq -e '.summary' "$REPORTS_DIR/kube-bench/node-scan.json" >/dev/null 2>&1; then
         echo "✅ Node scan completed successfully" >> "$REPORTS_DIR/kube-bench/summary.md"
         
-        # Extract totals using jq if available, otherwise use grep
+        # Extract totals from standardized format
         if command -v jq >/dev/null 2>&1; then
-            PASS=$(jq -r '.Totals.pass // 0' "$REPORTS_DIR/kube-bench/node-scan.json" 2>/dev/null || echo "N/A")
-            FAIL=$(jq -r '.Totals.fail // 0' "$REPORTS_DIR/kube-bench/node-scan.json" 2>/dev/null || echo "N/A")
-            WARN=$(jq -r '.Totals.warn // 0' "$REPORTS_DIR/kube-bench/node-scan.json" 2>/dev/null || echo "N/A")
-            INFO=$(jq -r '.Totals.info // 0' "$REPORTS_DIR/kube-bench/node-scan.json" 2>/dev/null || echo "N/A")
+            PASS=$(jq -r '.summary.passed // 0' "$REPORTS_DIR/kube-bench/node-scan.json" 2>/dev/null || echo "N/A")
+            FAIL=$(jq -r '.summary.failed // 0' "$REPORTS_DIR/kube-bench/node-scan.json" 2>/dev/null || echo "N/A")
+            WARN=$(jq -r '.summary.warned // 0' "$REPORTS_DIR/kube-bench/node-scan.json" 2>/dev/null || echo "N/A")
+            SKIP=$(jq -r '.summary.skipped // 0' "$REPORTS_DIR/kube-bench/node-scan.json" 2>/dev/null || echo "N/A")
+            SUCCESS_RATE=$(jq -r '.summary.success_rate_percent // 0' "$REPORTS_DIR/kube-bench/node-scan.json" 2>/dev/null || echo "N/A")
+            TOTAL=$(jq -r '.summary.total_checks // 0' "$REPORTS_DIR/kube-bench/node-scan.json" 2>/dev/null || echo "N/A")
         else
-            PASS=$(grep -o '"pass":[0-9]*' "$REPORTS_DIR/kube-bench/node-scan.json" | cut -d: -f2 || echo "N/A")
-            FAIL=$(grep -o '"fail":[0-9]*' "$REPORTS_DIR/kube-bench/node-scan.json" | cut -d: -f2 || echo "N/A")
-            WARN=$(grep -o '"warn":[0-9]*' "$REPORTS_DIR/kube-bench/node-scan.json" | cut -d: -f2 || echo "N/A")
-            INFO=$(grep -o '"info":[0-9]*' "$REPORTS_DIR/kube-bench/node-scan.json" | cut -d: -f2 || echo "N/A")
+            # Fallback to grep parsing for standardized format
+            PASS=$(grep -o '"passed":[0-9]*' "$REPORTS_DIR/kube-bench/node-scan.json" | cut -d: -f2 || echo "N/A")
+            FAIL=$(grep -o '"failed":[0-9]*' "$REPORTS_DIR/kube-bench/node-scan.json" | cut -d: -f2 || echo "N/A")
+            WARN=$(grep -o '"warned":[0-9]*' "$REPORTS_DIR/kube-bench/node-scan.json" | cut -d: -f2 || echo "N/A")
+            SKIP=$(grep -o '"skipped":[0-9]*' "$REPORTS_DIR/kube-bench/node-scan.json" | cut -d: -f2 || echo "N/A")
+            SUCCESS_RATE=$(grep -o '"success_rate_percent":[0-9]*' "$REPORTS_DIR/kube-bench/node-scan.json" | cut -d: -f2 || echo "N/A")
+            TOTAL=$(grep -o '"total_checks":[0-9]*' "$REPORTS_DIR/kube-bench/node-scan.json" | cut -d: -f2 || echo "N/A")
         fi
         
-        echo "- **Pass**: $PASS" >> "$REPORTS_DIR/kube-bench/summary.md"
-        echo "- **Fail**: $FAIL" >> "$REPORTS_DIR/kube-bench/summary.md"
-        echo "- **Warn**: $WARN" >> "$REPORTS_DIR/kube-bench/summary.md"
-        echo "- **Info**: $INFO" >> "$REPORTS_DIR/kube-bench/summary.md"
+        echo "" >> "$REPORTS_DIR/kube-bench/summary.md"
+        echo "| Metric | Count |" >> "$REPORTS_DIR/kube-bench/summary.md"
+        echo "|--------|-------|" >> "$REPORTS_DIR/kube-bench/summary.md"
+        echo "| **Total Checks** | $TOTAL |" >> "$REPORTS_DIR/kube-bench/summary.md"
+        echo "| **Passed** | $PASS |" >> "$REPORTS_DIR/kube-bench/summary.md"
+        echo "| **Failed** | $FAIL |" >> "$REPORTS_DIR/kube-bench/summary.md"
+        echo "| **Warned** | $WARN |" >> "$REPORTS_DIR/kube-bench/summary.md"
+        echo "| **Skipped** | $SKIP |" >> "$REPORTS_DIR/kube-bench/summary.md"
+        echo "| **Success Rate** | $SUCCESS_RATE% |" >> "$REPORTS_DIR/kube-bench/summary.md"
     else
         echo "❌ Node scan failed or returned invalid data" >> "$REPORTS_DIR/kube-bench/summary.md"
     fi
@@ -323,7 +389,7 @@ EOF
     VALIDATION_COUNT=$(find "$REPORTS_DIR" -name "kyverno-*-results.txt" -exec grep -l "pass:\|fail:" {} \; | wc -l || echo 0)
     KUBE_BENCH_STATUS="❌ Failed"
     
-    if [ -f "$REPORTS_DIR/kube-bench/node-scan.json" ] && grep -q '"Totals"' "$REPORTS_DIR/kube-bench/node-scan.json" 2>/dev/null; then
+    if [ -f "$REPORTS_DIR/kube-bench/node-scan.json" ] && jq -e '.summary' "$REPORTS_DIR/kube-bench/node-scan.json" >/dev/null 2>&1; then
         KUBE_BENCH_STATUS="✅ Completed"
     fi
     
