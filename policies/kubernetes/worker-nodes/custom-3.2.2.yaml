@@ -5,18 +5,45 @@ metadata:
   annotations:
     policies.kyverno.io/category: CIS 3.2.2
     policies.kyverno.io/description: |
-      Audit for bindings that grant cluster-wide permissions, which may indicate an "AlwaysAllow" authorization mode. Partial coverage, as some settings are outside Kyverno's scope.
+      CIS 3.2.2: Ensure that the --authorization-mode argument is not set to AlwaysAllow.
+      
+      HYBRID VALIDATION APPROACH: This control has both kubelet configuration aspects (validated by kube-bench) 
+      and Kubernetes RBAC aspects (validated by Kyverno).
+      
+      KUBE-BENCH INTEGRATION: The primary kubelet --authorization-mode flag validation requires kube-bench 
+      to access kubelet configuration files on worker nodes.
+      
+      KYVERNO VALIDATION: This policy validates RBAC configurations that could indicate overly permissive 
+      authorization patterns, complementing the kubelet-level authorization mode checks.
+    policies.kyverno.io/kube-bench-required: "true"
+    policies.kyverno.io/validation-scope: "rbac-authorization-bindings"
 spec:
   validationFailureAction: Audit
+  background: true
   rules:
     - name: disallow-cluster-admin-binding
       match:
         resources:
           kinds:
             - ClusterRoleBinding
-            - RoleBinding
       validate:
-        message: "Bindings should not grant cluster-admin or wildcard permissions."
+        message: |
+          ClusterRoleBindings should not grant cluster-admin permissions except when explicitly required.
+          Note: Actual kubelet authorization mode validation requires kube-bench.
         pattern:
           roleRef:
             name: "!cluster-admin"
+    - name: audit-wildcard-permissions
+      match:
+        resources:
+          kinds:
+            - ClusterRole
+            - Role
+      validate:
+        message: |
+          Roles should avoid wildcard permissions which can indicate overly permissive authorization.
+          Note: Actual kubelet authorization mode validation requires kube-bench.
+        pattern:
+          rules:
+            - resources: "!*"
+              verbs: "!*"

@@ -115,32 +115,71 @@ Choose your learning path based on your goals:
 ### 🔧 **Development & Contributing**
 → See [docs/README.md](docs/README.md) → Review [scripts/](scripts/) for automation
 
-## 🛡️ Dual Enforcement Strategy
+## 🛡️ Multi-Tool Compliance Strategy
 
-This framework implements a comprehensive **"shift-left"** security approach:
+This framework implements a comprehensive **"defense-in-depth"** approach using multiple specialized tools:
 
 ### 1. **Plan-Time Validation** (Prevention)
-- Validate OpenTofu/Terraform configurations before deployment
+- **Tool**: OpenTofu/Terraform + Kyverno
+- Validate Infrastructure as Code before deployment
 - Catch misconfigurations early in development
 - Policies scan Infrastructure as Code for CIS compliance
 - **Location**: `policies/opentofu/` (OpenTofu/Terraform compatible)
 
-### 2. **Runtime Validation** (Detection)  
+### 2. **Runtime Validation** (Detection)
+- **Tool**: Kyverno
 - Validate live Kubernetes resources in EKS clusters
-- Continuous compliance monitoring
-- Policies enforce security standards on running workloads
+- Continuous compliance monitoring for API-accessible resources
 - **Location**: `policies/kubernetes/`
+
+### 3. **Node-Level Validation** (Deep Inspection) ⚠️
+- **Tool**: Kube-bench (Required for complete coverage)
+- Validate worker node file systems and kubelet configurations
+- Essential for file permissions, ownership, and node-level settings
+- **Integration**: Required for comprehensive CIS compliance
+
+### ⚠️ Important: Tool Boundaries and Limitations
+
+**Kyverno Limitations:**
+- ❌ Cannot access worker node file systems
+- ❌ Cannot validate file permissions or ownership
+- ❌ Cannot read kubelet configuration files directly
+- ✅ Validates Kubernetes API resources (Pods, RBAC, etc.)
+
+**Kube-bench Integration Required:**
+Most worker node controls (Section 3) require kube-bench for complete validation because they involve:
+- File permissions on kubeconfig and kubelet config files
+- Kubelet command-line arguments and configuration
+- System-level security settings on worker nodes
+
+See our [Worker Node Policy Documentation](policies/README.md#important-worker-node-policy-limitations) for detailed explanations.
 
 ## 📋 CIS EKS Benchmark Coverage
 
-| CIS Section | Policies | Runtime | Plan-Time | Status |
-|-------------|----------|---------|-----------|--------|
-| **2. Control Plane** | 2 | ✅ | ✅ | Complete |
-| **3. Worker Nodes** | 13 | ✅ | ⚠️ | Mostly Complete |
-| **4. RBAC & Service Accounts** | 15 | ✅ | ⚠️ | Complete |
-| **5. Pod Security** | 9 | ✅ | ✅ | Complete |
+| CIS Section | Policies | Kyverno | Kube-bench | Plan-Time | Status |
+|-------------|----------|---------|------------|-----------|--------|
+| **2. Control Plane** | 2 | ✅ | ⚠️ | ✅ | Complete |
+| **3. Worker Nodes** | 13 | ⚠️ | ✅ Required | ⚠️ | **Hybrid Approach** |
+| **4. RBAC & Service Accounts** | 15 | ✅ | ❌ | ⚠️ | Complete |
+| **5. Pod Security** | 9 | ✅ | ❌ | ✅ | Complete |
 
-**Legend**: ✅ Fully Supported | ⚠️ Partially Supported | ❌ Not Applicable
+**Legend**:
+- ✅ Fully Supported
+- ⚠️ Partially Supported
+- ❌ Not Applicable
+- **✅ Required** Essential for complete validation
+
+### ⚠️ Worker Nodes Section 3: Hybrid Validation Required
+
+**Why both tools are needed:**
+- **Kyverno**: Validates Pod security contexts, RBAC bindings, resource limits
+- **Kube-bench**: Validates file permissions, kubelet config, node-level settings
+- **Combined**: Provides comprehensive coverage of all CIS Section 3 controls
+
+All worker node policies include detailed annotations explaining:
+- What Kyverno validates vs. what requires kube-bench
+- Specific kube-bench integration requirements
+- Validation scope and limitations
 
 See [policies/README.md](policies/README.md) for detailed policy organization and structure.
 
@@ -182,10 +221,12 @@ All reports are GitHub-friendly Markdown with emojis and tables for professional
 
 1. **📚 Educational Focus**: Designed as a learning resource with comprehensive documentation
 2. **🏭 Production Ready**: Real-world examples suitable for enterprise deployment
-3. **🔄 Dual Strategy**: Both prevention (plan-time) and detection (runtime) approaches
-4. **🧪 Test-Driven**: Every policy has comprehensive test coverage
-5. **📊 Professional Reporting**: Publication-quality compliance reports
-6. **🔧 Extensible**: Modular design for easy customization and extension
+3. **🛡️ Multi-Tool Strategy**: Honest approach combining Kyverno + kube-bench for complete coverage
+4. **⚠️ Transparent Limitations**: Clear documentation of what each tool can and cannot validate
+5. **🧪 Test-Driven**: Every policy has comprehensive test coverage
+6. **📊 Professional Reporting**: Publication-quality compliance reports
+7. **🔧 Extensible**: Modular design for easy customization and extension
+8. **🎯 Realistic Approach**: Acknowledges the need for multiple tools for comprehensive CIS compliance
 
 ## 🤝 Contributing
 

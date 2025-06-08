@@ -1,4 +1,4 @@
-name: Comprehensive CIS EKS Compliance Tests
+name: Comprehensive CIS EKS Compliance Tests with Kube-bench
 
 on:
   push:
@@ -17,6 +17,11 @@ on:
         type: boolean
       run_opentofu_tests:
         description: 'Run OpenTofu compliance tests'
+        required: false
+        default: true
+        type: boolean
+      run_kube_bench:
+        description: 'Run kube-bench CIS compliance scans'
         required: false
         default: true
         type: boolean
@@ -62,6 +67,7 @@ jobs:
         echo "Script exists: $([ -f scripts/test-kubernetes-policies.sh ] && echo 'YES' || echo 'NO')"
         echo "Tests directory exists: $([ -d tests/kubernetes ] && echo 'YES' || echo 'NO')"
         echo "Number of test files: $(find tests/kubernetes -name 'kyverno-test.yaml' 2>/dev/null | wc -l || echo 0)"
+        echo "Kube-bench directory exists: $([ -d kube-bench ] && echo 'YES' || echo 'NO')"
         echo "============================="
         
         # Run comprehensive test script
@@ -174,7 +180,7 @@ jobs:
         retention-days: 30
 
   kind-cluster-tests:
-    name: Kind Cluster Integration Tests
+    name: Kind Cluster Integration Tests with Kube-bench
     runs-on: ubuntu-latest
     if: ${{ github.event.inputs.run_kind_tests != 'false' }}
     outputs:
@@ -218,17 +224,30 @@ jobs:
         sudo wget https://github.com/mikefarah/yq/releases/download/v4.40.5/yq_linux_amd64 -O /usr/local/bin/yq
         sudo chmod +x /usr/local/bin/yq
         yq --version
+
+    - name: Setup jq for kube-bench result parsing
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y jq
+        jq --version
         
-    - name: Run Kind cluster tests
+
+    - name: Run Kind cluster tests with kube-bench
       id: kind-tests-run
       continue-on-error: true
       env:
         GITHUB_ACTIONS: true
         CI: true
+        RUN_KUBE_BENCH: ${{ github.event.inputs.run_kube_bench != 'false' && 'true' || 'false' }}
       run: |
         chmod +x scripts/test-kind-cluster.sh
+        # Note: kube-bench/run-kube-bench.sh is integrated into test-kind-cluster.sh
         EXIT_CODE=0
         export KEEP_CLUSTER=false
+        
+        echo "🔍 Running Kind cluster tests with kube-bench integration..."
+        echo "Kube-bench enabled: $RUN_KUBE_BENCH"
+        
         ./scripts/test-kind-cluster.sh || EXIT_CODE=$?
         echo "Test script exit code: $EXIT_CODE"
         echo "exit_code=$EXIT_CODE" >> $GITHUB_OUTPUT
@@ -246,6 +265,7 @@ jobs:
         mkdir -p reports/kind-cluster
         echo "Kind Tests Exit Code: ${{ steps.kind-tests-run.outputs.exit_code || 'N/A' }}" > reports/kind-cluster/test-status.txt
         echo "Kind Tests Result: ${{ steps.kind-tests-run.outcome }}" >> reports/kind-cluster/test-status.txt
+        echo "Kube-bench Integration: ${{ github.event.inputs.run_kube_bench != 'false' && 'Enabled' || 'Disabled' }}" >> reports/kind-cluster/test-status.txt
         echo "Timestamp: $(date)" >> reports/kind-cluster/test-status.txt
         
     - name: Upload Kind cluster test results
@@ -321,9 +341,11 @@ jobs:
         echo "OpenTofu compliant: $([ -f 'reports/opentofu-compliance/compliant-plan-scan.md' ] && echo '✅ EXISTS' || echo '❌ MISSING')"
         echo "OpenTofu noncompliant: $([ -f 'reports/opentofu-compliance/noncompliant-plan-scan.md' ] && echo '✅ EXISTS' || echo '❌ MISSING')"
         echo "Kind validation: $([ -f 'reports/kind-cluster/validation-summary.md' ] && echo '✅ EXISTS' || echo '❌ MISSING')"
+        echo "Kube-bench summary: $([ -f 'reports/kind-cluster/kube-bench/summary.md' ] && echo '✅ EXISTS' || echo '❌ MISSING')"
+        echo "Kube-bench node scan: $([ -f 'reports/kind-cluster/kube-bench/node-scan.json' ] && echo '✅ EXISTS' || echo '❌ MISSING')"
         echo "=========================="
         
-    - name: Generate comprehensive summary
+    - name: Generate comprehensive summary with kube-bench
       continue-on-error: true
       run: |
         # Give a moment for all file operations to complete
@@ -339,11 +361,18 @@ jobs:
         
         # Verify the executive summary was generated
         if [ -f "reports/executive-summary.md" ]; then
-          echo "✅ Executive summary generated successfully"
+          echo "✅ Executive summary with kube-bench integration generated successfully"
           echo "📊 Summary preview:"
-          head -15 reports/executive-summary.md
+          head -20 reports/executive-summary.md
           echo ""
           echo "📏 Summary file size: $(wc -l < reports/executive-summary.md) lines"
+          
+          # Check if kube-bench results are included
+          if grep -q "Kube-bench CIS Compliance" reports/executive-summary.md; then
+            echo "🔒 Kube-bench results successfully integrated"
+          else
+            echo "⚠️ Kube-bench results not found in summary"
+          fi
         else
           echo "❌ Executive summary was not generated"
           # Create a minimal summary if generation failed
@@ -356,6 +385,7 @@ jobs:
           echo "- Policy tests: Check artifacts for policy-tests/summary.md" >> reports/executive-summary.md
           echo "- OpenTofu compliance: Check artifacts for opentofu-compliance/compliant-plan-scan.md" >> reports/executive-summary.md
           echo "- Kind integration: Check artifacts for kind-cluster/validation-summary.md" >> reports/executive-summary.md
+          echo "- Kube-bench CIS: Check artifacts for kind-cluster/kube-bench/summary.md" >> reports/executive-summary.md
           echo "" >> reports/executive-summary.md
           echo "Please check individual test artifacts for detailed results." >> reports/executive-summary.md
           echo "📝 Created fallback summary"
@@ -381,6 +411,7 @@ jobs:
         | Unit Tests | ${{ needs.unit-tests.result == 'success' && '✅ Passed' || '❌ Failed' }} | unit-test-results |
         | OpenTofu Tests | ${{ needs.opentofu-tests.result == 'success' && '✅ Passed' || (needs.opentofu-tests.result == 'skipped' && '⏭️ Skipped' || '❌ Failed') }} | opentofu-test-results |
         | Kind Cluster Tests | ${{ needs.kind-cluster-tests.result == 'success' && '✅ Passed' || (needs.kind-cluster-tests.result == 'skipped' && '⏭️ Skipped' || '❌ Failed') }} | kind-cluster-test-results |
+        | Kube-bench CIS Scan | ${{ github.event.inputs.run_kube_bench != 'false' && '🔒 Enabled' || '⏭️ Skipped' }} | included in kind-cluster-test-results |
         
         ## 🔗 Links
         
@@ -397,6 +428,16 @@ jobs:
           echo "" >> reports/comprehensive/github-actions-summary.md
           # Extract test statistics
           sed -n '/Test Statistics/,/Performance Metrics/p' reports/policy-tests/summary.md | grep -E "^\|" >> reports/comprehensive/github-actions-summary.md || true
+          echo "" >> reports/comprehensive/github-actions-summary.md
+        fi
+        
+        # Add kube-bench results if available
+        if [ -f "reports/kind-cluster/kube-bench/summary.md" ]; then
+          echo "### Kube-bench CIS Compliance Scan" >> reports/comprehensive/github-actions-summary.md
+          echo "" >> reports/comprehensive/github-actions-summary.md
+          echo "🔒 Node-level CIS compliance validation completed" >> reports/comprehensive/github-actions-summary.md
+          # Extract any summary statistics
+          grep -E "^- \*\*|^✅|^❌" reports/kind-cluster/kube-bench/summary.md | head -5 >> reports/comprehensive/github-actions-summary.md || true
           echo "" >> reports/comprehensive/github-actions-summary.md
         fi
         
@@ -419,7 +460,7 @@ jobs:
         if [ -f "reports/kind-cluster/validation-summary.md" ]; then
           echo "### Kind Cluster Integration Tests" >> reports/comprehensive/github-actions-summary.md
           echo "" >> reports/comprehensive/github-actions-summary.md
-          sed -n '/Validation Statistics/,/Kyverno CRD/p' reports/kind-cluster/validation-summary.md | grep -E "^\|" >> reports/comprehensive/github-actions-summary.md || true
+          sed -n '/Validation Statistics/,/CIS Compliance Coverage/p' reports/kind-cluster/validation-summary.md | grep -E "^\|" >> reports/comprehensive/github-actions-summary.md || true
           echo "" >> reports/comprehensive/github-actions-summary.md
         fi
         
@@ -427,7 +468,7 @@ jobs:
         
         ---
         
-        *🤖 Generated by GitHub Actions CIS EKS Compliance Workflow*
+        *🤖 Generated by GitHub Actions CIS EKS Compliance Workflow with Kube-bench Integration*
         EOF
         
     - name: Upload comprehensive report
@@ -452,21 +493,39 @@ jobs:
         echo "| Unit Tests | ${{ needs.unit-tests.result == 'success' && '✅ Passed' || '❌ Failed' }} |" >> $GITHUB_STEP_SUMMARY
         echo "| OpenTofu Tests | ${{ needs.opentofu-tests.result == 'success' && '✅ Passed' || (needs.opentofu-tests.result == 'skipped' && '⏭️ Skipped' || '❌ Failed') }} |" >> $GITHUB_STEP_SUMMARY
         echo "| Kind Cluster Tests | ${{ needs.kind-cluster-tests.result == 'success' && '✅ Passed' || (needs.kind-cluster-tests.result == 'skipped' && '⏭️ Skipped' || '❌ Failed') }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Kube-bench CIS Scan | ${{ github.event.inputs.run_kube_bench != 'false' && '🔒 Enabled' || '⏭️ Disabled' }} |" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### 📁 Artifacts Generated" >> $GITHUB_STEP_SUMMARY
-        echo "- **comprehensive-compliance-report**: Complete test results and reports" >> $GITHUB_STEP_SUMMARY
+        echo "- **comprehensive-compliance-report**: Complete test results and reports including kube-bench CIS scans" >> $GITHUB_STEP_SUMMARY
         
         # Add detailed results if available
         if [ -f "reports/executive-summary.md" ] && [ -s "reports/executive-summary.md" ]; then
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 📊 Executive Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          cat reports/executive-summary.md >> $GITHUB_STEP_SUMMARY
+          # Include first part of executive summary
+          head -50 reports/executive-summary.md >> $GITHUB_STEP_SUMMARY
         else
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### ⚠️ Executive Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "❌ Executive summary not available. Check individual test artifacts for details." >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        # Add kube-bench specific information
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 🔒 Kube-bench CIS Compliance" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        if [ -f "reports/kind-cluster/kube-bench/summary.md" ]; then
+          echo "✅ Kube-bench CIS compliance scan completed successfully" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**CIS Controls Validated:**" >> $GITHUB_STEP_SUMMARY
+          echo "- 3.1.x: Worker node configuration files" >> $GITHUB_STEP_SUMMARY
+          echo "- 3.2.x: Worker node kubelet configuration" >> $GITHUB_STEP_SUMMARY
+          echo "- Integration with Kyverno policies for comprehensive coverage" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "⚠️ Kube-bench results not found or scanning was disabled" >> $GITHUB_STEP_SUMMARY
         fi
         
         # Add test failure information if available
@@ -510,6 +569,7 @@ jobs:
         echo "- Policy validation outcomes" >> $GITHUB_STEP_SUMMARY
         echo "- OpenTofu compliance analysis" >> $GITHUB_STEP_SUMMARY
         echo "- Kind cluster validation results" >> $GITHUB_STEP_SUMMARY
+        echo "- **Kube-bench CIS compliance scan results**" >> $GITHUB_STEP_SUMMARY
 
   security-scan:
     name: Security Scan

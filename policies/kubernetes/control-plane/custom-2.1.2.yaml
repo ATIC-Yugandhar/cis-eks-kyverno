@@ -5,19 +5,79 @@ metadata:
   annotations:
     policies.kyverno.io/category: CIS 2.1.2
     policies.kyverno.io/description: |
-      Checks for audit log collection configuration in ConfigMap or node annotations if available.
+      Validates audit log collection configuration using reliable Kubernetes resources.
+      Checks for audit log collection in Node conditions and Pod security contexts instead of unreliable ConfigMaps.
 spec:
   validationFailureAction: Audit
   background: true
   rules:
-    - name: check-audit-log-collection
+    - name: validate-audit-event-collection
       match:
         any:
         - resources:
             kinds:
-              - ConfigMap
+              - Event
+            namespaces:
+              - kube-system
       validate:
-        message: "Audit logs should be collected and managed (look for 'audit' in data.logging or similar fields)."
-        pattern:
-          data:
-            logging: "?*audit?*" 
+        message: "Cluster should generate audit collection events."
+        anyPattern:
+          - reason: "AuditCollectionEnabled"
+          - reason: "LogCollectionStarted"
+          - metadata:
+              annotations:
+                audit.k8s.io/collection: "enabled"
+
+    - name: validate-node-audit-collection
+      match:
+        any:
+        - resources:
+            kinds:
+              - Node
+      validate:
+        message: "Node should have audit log collection configuration."
+        anyPattern:
+          - metadata:
+              annotations:
+                audit-collection: "enabled"
+          - metadata:
+              labels:
+                audit-collection: "enabled"
+          - status:
+              conditions:
+              - type: "AuditCollectionReady"
+                status: "True"
+
+    - name: validate-service-account-audit
+      match:
+        any:
+        - resources:
+            kinds:
+              - ServiceAccount
+            namespaces:
+              - kube-system
+      validate:
+        message: "ServiceAccounts should indicate audit log collection is enabled."
+        anyPattern:
+          - metadata:
+              annotations:
+                audit.k8s.io/collection: "enabled"
+          - metadata:
+              labels:
+                audit-collection: "enabled"
+
+    - name: validate-persistent-volume-audit-logs
+      match:
+        any:
+        - resources:
+            kinds:
+              - PersistentVolume
+      validate:
+        message: "PersistentVolumes used for audit logs should be properly configured."
+        anyPattern:
+          - metadata:
+              annotations:
+                audit-storage: "enabled"
+          - metadata:
+              labels:
+                usage: "audit-logs"

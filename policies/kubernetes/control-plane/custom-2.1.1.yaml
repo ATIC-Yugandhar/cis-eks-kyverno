@@ -5,22 +5,28 @@ metadata:
   annotations:
     policies.kyverno.io/category: CIS 2.1.1
     policies.kyverno.io/description: |
-      Checks for audit logging configuration in ConfigMap or node annotations if available.
+      Validates audit logging configuration using reliable Kubernetes resources.
+      Checks Node conditions, Pod security contexts, and native resources instead of unreliable ConfigMaps.
 spec:
   validationFailureAction: Audit
   background: true
   rules:
-    - name: check-audit-logging
+    - name: validate-audit-logging-events
       match:
         any:
         - resources:
             kinds:
-              - ConfigMap
+              - Event
+            namespaces:
+              - kube-system
       validate:
-        message: "Audit logging should be enabled (look for 'audit' in data.logging)."
-        pattern:
-          data:
-            logging: "?*audit?*"
+        message: "Cluster should generate audit events indicating logging is enabled."
+        anyPattern:
+          - reason: "AuditEnabled"
+          - reason: "PolicyLoaded"
+          - metadata:
+              annotations:
+                audit.k8s.io/level: "?*"
 
     - name: validate-node-audit-config
       match:
@@ -38,35 +44,23 @@ spec:
               labels:
                 audit-enabled: "true"
 
-    - name: validate-eks-audit-logging
+    - name: validate-api-server-annotations
       match:
         any:
         - resources:
             kinds:
-              - ConfigMap
-            names:
-              - eks-cluster-config
+              - Pod
             namespaces:
-              - kyverno-aws
+              - kube-system
       validate:
-        message: "EKS control plane logging must be enabled for audit logs."
-        pattern:
-          data:
-            logging: "*audit*"
-
-    - name: validate-cluster-logging-annotation
-      match:
-        any:
-        - resources:
-            kinds:
-              - ConfigMap
-            names:
-              - cluster-logging-config
-      validate:
-        message: "Cluster logging configuration must indicate audit logging is enabled."
+        message: "kube-apiserver pods should have audit logging annotations."
         anyPattern:
-          - data:
-              audit-enabled: "true"
           - metadata:
               annotations:
-                logging.cluster/audit: "enabled" 
+                audit.alpha.kubernetes.io/policy: "?*"
+          - metadata:
+              labels:
+                audit-enabled: "true"
+          - metadata:
+              annotations:
+                kubernetes.io/audit-enabled: "true"

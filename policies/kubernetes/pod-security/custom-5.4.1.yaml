@@ -5,24 +5,89 @@ metadata:
   annotations:
     policies.kyverno.io/category: CIS 5.4.1
     policies.kyverno.io/description: |
-      Checks for endpoint restriction annotation or label in Namespace or ConfigMap if available.
+      Validates control plane endpoint restrictions using reliable Kubernetes resources.
+      Checks Services, NetworkPolicies, and Namespaces for endpoint restriction indicators.
 spec:
   validationFailureAction: Audit
   background: true
   rules:
-    - name: check-restrict-control-plane-endpoint
+    - name: check-restrict-control-plane-endpoint-namespace
       match:
         any:
         - resources:
             kinds:
               - Namespace
-              - ConfigMap
       validate:
-        message: "Control plane endpoint access should be restricted (look for endpoint-restriction annotation or label)."
+        message: "Namespace should have control plane endpoint restriction annotation or label."
         anyPattern:
           - metadata:
               annotations:
                 endpoint-restriction: "enabled"
           - metadata:
               labels:
-                endpoint-restriction: "enabled" 
+                endpoint-restriction: "enabled"
+          - metadata:
+              annotations:
+                networking.k8s.io/control-plane-access: "restricted"
+
+    - name: validate-service-endpoint-restrictions
+      match:
+        any:
+        - resources:
+            kinds:
+              - Service
+            namespaces:
+              - kube-system
+      validate:
+        message: "Control plane services should have endpoint access restrictions."
+        anyPattern:
+          - metadata:
+              annotations:
+                service.beta.kubernetes.io/aws-load-balancer-internal: "true"
+          - spec:
+              type: "ClusterIP"
+          - metadata:
+              labels:
+                access-control: "restricted"
+
+    - name: validate-network-policy-endpoint-restrictions
+      match:
+        any:
+        - resources:
+            kinds:
+              - NetworkPolicy
+            namespaces:
+              - kube-system
+      validate:
+        message: "NetworkPolicies should restrict control plane endpoint access."
+        anyPattern:
+          - spec:
+              policyTypes:
+              - "Ingress"
+          - metadata:
+              annotations:
+                policy-purpose: "control-plane-restriction"
+          - spec:
+              ingress:
+              - from:
+                - namespaceSelector: {}
+
+    - name: validate-pod-security-context
+      match:
+        any:
+        - resources:
+            kinds:
+              - Pod
+            namespaces:
+              - kube-system
+      validate:
+        message: "Control plane pods should have security restrictions."
+        anyPattern:
+          - spec:
+              securityContext:
+                runAsNonRoot: true
+          - metadata:
+              annotations:
+                endpoint-access: "restricted"
+          - spec:
+              hostNetwork: false

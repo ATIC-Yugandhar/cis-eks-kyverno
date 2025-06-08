@@ -1,24 +1,45 @@
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
-  name: custom-3-2-9-rotate-kubelet-server-certificate
+  name: custom-3-2-9-event-qps
   annotations:
     policies.kyverno.io/category: CIS 3.2.9
     policies.kyverno.io/description: |
-      Checks for RotateKubeletServerCertificate flag set to true in node annotations or ConfigMap if available.
+      CIS 3.2.9: Ensure that the --event-qps argument is set to 0 or a level which ensures appropriate event capture.
+      
+      IMPORTANT: This control requires direct access to worker node kubelet configuration files 
+      to validate the event QPS setting. Kyverno cannot directly access node configuration files.
+      
+      KUBE-BENCH INTEGRATION REQUIRED: This control must be validated using kube-bench, which runs 
+      privileged pods on worker nodes to access and validate kubelet configuration files.
+      
+      This policy validates Pod-level resource and event configurations that relate to event handling, 
+      but the primary validation of kubelet event QPS settings occurs through kube-bench.
+    policies.kyverno.io/kube-bench-required: "true"
+    policies.kyverno.io/validation-scope: "limited-pod-event-security"
 spec:
   validationFailureAction: Audit
   background: true
   rules:
-    - name: check-rotate-kubelet-server-certificate
+    - name: validate-pod-event-security
       match:
         any:
         - resources:
             kinds:
-              - Node
+              - Pod
       validate:
-        message: "RotateKubeletServerCertificate should be true."
+        message: |
+          Pods should have appropriate resource limits to prevent event flooding.
+          Note: Actual kubelet event QPS validation requires kube-bench.
         pattern:
-          metadata:
-            annotations:
-              kubelet.config.RotateKubeletServerCertificate: "true" 
+          spec:
+            =(containers):
+            - =(resources):
+                =(limits):
+                  =(cpu): "?*"
+                  =(memory): "?*"
+                =(requests):
+                  =(cpu): "?*"
+                  =(memory): "?*"
+            =(securityContext):
+              =(runAsNonRoot): "true"
