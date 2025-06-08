@@ -5,19 +5,210 @@ metadata:
   annotations:
     policies.kyverno.io/category: CIS 3.2.1
     policies.kyverno.io/description: |
-      Audit for resources that may allow anonymous authentication. Partial coverage, as some settings are outside Kyverno's scope.
+      CIS 3.2.1: Ensure that the --anonymous-auth argument is set to false.
+      
+      HYBRID VALIDATION APPROACH: This control combines kube-bench kubelet configuration validation 
+      with Kyverno RBAC validation for comprehensive anonymous authentication prevention.
+      
+      KUBE-BENCH INTEGRATION: The primary kubelet --anonymous-auth flag validation requires kube-bench 
+      to access kubelet configuration on worker nodes. Kube-bench validates:
+      - kubelet --anonymous-auth=false flag in kubelet configuration
+      - /var/lib/kubelet/config.yaml authentication.anonymous.enabled=false
+      - kubelet service configuration files
+      - systemd kubelet service settings
+      
+      KYVERNO VALIDATION: This policy validates Kubernetes API-level controls that prevent anonymous 
+      access, which complements kubelet-level controls:
+      - RoleBindings and ClusterRoleBindings that bind to system:anonymous
+      - RoleBindings and ClusterRoleBindings that bind to system:unauthenticated
+      - ServiceAccounts with overly permissive anonymous access
+      - Pods that might enable anonymous authentication features
+    policies.kyverno.io/kube-bench-required: "true"
+    policies.kyverno.io/kube-bench-checks: "3.2.1"
+    policies.kyverno.io/validation-scope: "rbac-anonymous-bindings-with-kube-bench"
 spec:
   validationFailureAction: Audit
+  background: true
   rules:
-    - name: disallow-anonymous-role-binding
+    # Rule 1: Disallow anonymous user bindings in RBAC
+    - name: disallow-anonymous-user-binding
       match:
         resources:
           kinds:
             - RoleBinding
             - ClusterRoleBinding
       validate:
-        message: "RoleBindings and ClusterRoleBindings should not bind to system:anonymous."
+        message: |
+          RoleBindings and ClusterRoleBindings should not bind to system:anonymous user.
+          This complements CIS 3.2.1 kubelet --anonymous-auth=false setting validated by kube-bench.
+        deny:
+          conditions:
+            any:
+              - key: "{{ request.object.subjects[?name == 'system:anonymous'] | length(@) }}"
+                operator: GreaterThan
+                value: 0
+
+    # Rule 2: Disallow anonymous group bindings in RBAC
+    - name: disallow-anonymous-group-binding
+      match:
+        resources:
+          kinds:
+            - RoleBinding
+            - ClusterRoleBinding
+      validate:
+        message: |
+          RoleBindings and ClusterRoleBindings should not bind to system:unauthenticated group.
+          This prevents anonymous access at the RBAC level, complementing kubelet anonymous-auth controls.
+        deny:
+          conditions:
+            any:
+              - key: "{{ request.object.subjects[?name == 'system:unauthenticated'] | length(@) }}"
+                operator: GreaterThan
+                value: 0
+
+    # Rule 3: Validate pods don't override authentication settings
+    - name: validate-pod-authentication-config
+      match:
+        any:
+        - resources:
+            kinds:
+              - Pod
+      validate:
+        message: |
+          Pods should not contain configuration that could enable anonymous authentication.
+          This works with kube-bench validation of kubelet --anonymous-auth=false setting.
+        deny:
+          conditions:
+            any:
+              # Check for environment variables that might enable anonymous auth
+              - key: "{{ request.object.spec.containers[?env[?name == 'ANONYMOUS_AUTH' && value == 'true']] | length(@) }}"
+                operator: GreaterThan
+                value: 0
+              # Check for args that might enable anonymous auth
+              - key: "{{ request.object.spec.containers[?args[?contains(@, '--anonymous-auth=true')]] | length(@) }}"
+                operator: GreaterThan
+                value: 0
+
+    # Rule 4: Validate kube-bench DaemonSets for CIS 3.2.1 scanning
+    - name: validate-kube-bench-kubelet-scan
+      match:
+        any:
+        - resources:
+            kinds:
+              - DaemonSet
+            names:
+              - "kube-bench*"
+            namespaces:
+              - kube-system
+              - kube-bench
+      validate:
+        message: |
+          Kube-bench DaemonSets must be configured to scan kubelet configuration for CIS 3.2.1.
+          This ensures validation of kubelet --anonymous-auth=false setting on all nodes.
         pattern:
-          subjects:
-            - kind: "User"
-              name: "!system:anonymous"
+          spec:
+            template:
+              spec:
+                serviceAccountName: "kube-bench"
+                hostPID: true
+                containers:
+                - name: "*"
+                  image: "aquasec/kube-bench:*"
+                  securityContext:
+                    privileged: true
+                  volumeMounts:
+                  - name: "*kubelet*"
+                    mountPath: "/var/lib/kubelet"
+                    readOnly: true
+                  - name: "*kubernetes*"
+                    mountPath: "/etc/kubernetes"
+                    readOnly: true
+                volumes:
+                - name: "*kubelet*"
+                  hostPath:
+                    path: "/var/lib/kubelet"
+                - name: "*kubernetes*"
+                  hostPath:
+                    path: "/etc/kubernetes"
+
+    # Rule 5: Validate kube-bench Jobs include kubelet checks
+    - name: validate-kube-bench-kubelet-job
+      match:
+        any:
+        - resources:
+            kinds:
+              - Job
+            names:
+              - "kube-bench*"
+            namespaces:
+              - kube-system
+              - kube-bench
+      validate:
+        message: |
+          Kube-bench Jobs must include node/kubelet scanning for CIS 3.2.1 validation.
+          This ensures kubelet --anonymous-auth configuration is properly checked.
+        pattern:
+          spec:
+            template:
+              spec:
+                containers:
+                - name: "*"
+                  args:
+                  - "node"
+                  volumeMounts:
+                  - mountPath: "/var/lib/kubelet"
+                    readOnly: true
+
+    # Rule 6: Ensure ClusterRoles don't grant excessive anonymous permissions
+    - name: validate-clusterrole-anonymous-permissions
+      match:
+        any:
+        - resources:
+            kinds:
+              - ClusterRole
+      validate:
+        message: |
+          ClusterRoles should not grant broad permissions that could be exploited via anonymous access.
+          This complements CIS 3.2.1 kubelet anonymous-auth controls.
+        deny:
+          conditions:
+            any:
+              # Deny ClusterRoles that allow * verbs on * resources (overly permissive)
+              - key: "{{ request.object.rules[?apiGroups[?@ == '*'] && resources[?@ == '*'] && verbs[?@ == '*']] | length(@) }}"
+                operator: GreaterThan
+                value: 0
+
+    # Rule 7: Validate ServiceAccount token automounting settings
+    - name: validate-serviceaccount-token-automount-security
+      match:
+        any:
+        - resources:
+            kinds:
+              - ServiceAccount
+      validate:
+        message: |
+          ServiceAccounts should explicitly configure automountServiceAccountToken to prevent 
+          potential anonymous token usage. This works with CIS 3.2.1 anonymous-auth prevention.
+        pattern:
+          =(automountServiceAccountToken): "false | true"
+
+    # Rule 8: Validate ConfigMaps don't contain authentication overrides
+    - name: validate-configmap-auth-settings
+      match:
+        any:
+        - resources:
+            kinds:
+              - ConfigMap
+            names:
+              - "*kubelet*"
+              - "*auth*"
+      validate:
+        message: |
+          ConfigMaps should not contain settings that could override kubelet anonymous-auth configuration.
+          This prevents bypassing CIS 3.2.1 controls validated by kube-bench.
+        deny:
+          conditions:
+            any:
+              - key: "{{ contains(to_string(request.object.data), 'anonymous-auth: true') || contains(to_string(request.object.data), 'anonymous.enabled: true') }}"
+                operator: Equals
+                value: true

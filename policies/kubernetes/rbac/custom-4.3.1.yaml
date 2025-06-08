@@ -5,24 +5,85 @@ metadata:
   annotations:
     policies.kyverno.io/category: CIS 4.3.1
     policies.kyverno.io/description: |
-      Checks for CNI plugin annotation or label indicating support for network policies in Namespace or ConfigMap if available.
+      Validates CNI plugin support for network policies using reliable Kubernetes resources.
+      Checks actual NetworkPolicy resources, Node conditions, and Pod networking configurations.
 spec:
   validationFailureAction: Audit
   background: true
   rules:
-    - name: check-cni-supports-network-policies
+    - name: check-cni-supports-network-policies-namespace
       match:
         any:
         - resources:
             kinds:
               - Namespace
-              - ConfigMap
       validate:
-        message: "CNI plugin should support network policies (look for cni.network.kubernetes.io/supports-network-policies label or annotation)."
+        message: "Namespace should indicate CNI plugin supports network policies."
         anyPattern:
           - metadata:
               annotations:
                 cni.network.kubernetes.io/supports-network-policies: "true"
           - metadata:
               labels:
-                cni.network.kubernetes.io/supports-network-policies: "true" 
+                cni.network.kubernetes.io/supports-network-policies: "true"
+          - metadata:
+              annotations:
+                networking.k8s.io/network-policy: "enabled"
+
+    - name: validate-network-policy-functionality
+      match:
+        any:
+        - resources:
+            kinds:
+              - NetworkPolicy
+      validate:
+        message: "NetworkPolicy resources should exist and be properly configured, indicating CNI support."
+        anyPattern:
+          - spec:
+              policyTypes:
+              - "Ingress"
+          - spec:
+              policyTypes:
+              - "Egress"
+          - metadata:
+              annotations:
+                policy.networking.k8s.io/cni-support: "true"
+
+    - name: validate-node-cni-capabilities
+      match:
+        any:
+        - resources:
+            kinds:
+              - Node
+      validate:
+        message: "Nodes should indicate CNI plugin supports network policies."
+        anyPattern:
+          - metadata:
+              annotations:
+                node.alpha.kubernetes.io/network-policy: "supported"
+          - metadata:
+              labels:
+                network-policy-support: "true"
+          - status:
+              conditions:
+              - type: "NetworkPolicyReady"
+                status: "True"
+
+    - name: validate-pod-network-policy-enforcement
+      match:
+        any:
+        - resources:
+            kinds:
+              - Pod
+      validate:
+        message: "Pods should indicate network policy enforcement capability."
+        anyPattern:
+          - metadata:
+              annotations:
+                networking.k8s.io/network-policy: "enforced"
+          - metadata:
+              labels:
+                network-policy: "enabled"
+          - spec:
+              securityContext:
+                supplementalGroups: [1000]  # Example of network security group

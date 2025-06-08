@@ -5,20 +5,167 @@ metadata:
   annotations:
     policies.kyverno.io/category: CIS 3.1.1
     policies.kyverno.io/description: |
-      Checks for kubeconfig file permissions in node annotations or ConfigMap if available.
+      CIS 3.1.1: Ensure that the kubeconfig file permissions are set to 644 or more restrictive.
+      
+      HYBRID VALIDATION APPROACH: This control combines kube-bench file system validation 
+      with Kyverno Kubernetes API validation.
+      
+      KUBE-BENCH INTEGRATION: The primary kubeconfig file permission validation requires kube-bench 
+      to access worker node file systems and validate actual file permissions. Kube-bench runs as 
+      privileged DaemonSets/Jobs on each node to check:
+      - /etc/kubernetes/kubelet.conf permissions (should be 644 or more restrictive)
+      - /etc/kubernetes/worker-kubeconfig permissions 
+      - Other kubeconfig files used by kubelet
+      
+      KYVERNO VALIDATION: This policy validates complementary Kubernetes-level controls:
+      - Pod security contexts that might access kubeconfig-like data
+      - ServiceAccount token automounting settings
+      - ConfigMaps/Secrets containing kubeconfig data
+      - Proper RBAC for kube-bench scanning pods
+    policies.kyverno.io/kube-bench-required: "true"
+    policies.kyverno.io/kube-bench-checks: "3.1.1"
+    policies.kyverno.io/validation-scope: "kubeconfig-security-with-kube-bench"
 spec:
   validationFailureAction: Audit
   background: true
   rules:
-    - name: check-kubeconfig-permissions
+    # Rule 1: Validate pod security contexts for file access patterns
+    - name: validate-pod-file-access-security
       match:
         any:
         - resources:
             kinds:
-              - Node
+              - Pod
       validate:
-        message: "kubeconfig file permissions should be 644 or more restrictive."
+        message: |
+          Pods with file system access should use appropriate security contexts.
+          Note: Actual kubeconfig file permission validation (CIS 3.1.1) requires kube-bench scanning.
+          This rule validates complementary pod security settings.
         pattern:
-          metadata:
-            annotations:
-              kubeconfig.permissions: "0644" 
+          spec:
+            =(securityContext):
+              =(runAsNonRoot): "true"
+              =(runAsUser): ">999"
+              =(fsGroup): ">999"
+            containers:
+            - name: "*"
+              =(securityContext):
+                =(allowPrivilegeEscalation): "false"
+                =(readOnlyRootFilesystem): "true"
+
+    # Rule 2: Validate ServiceAccount token automounting
+    - name: validate-serviceaccount-automount
+      match:
+        any:
+        - resources:
+            kinds:
+              - ServiceAccount
+      validate:
+        message: |
+          ServiceAccounts should explicitly configure automountServiceAccountToken to prevent 
+          unintended kubeconfig exposure. This complements CIS 3.1.1 file permission controls.
+        pattern:
+          =(automountServiceAccountToken): "?*"
+
+    # Rule 3: Validate ConfigMaps that might contain kubeconfig data
+    - name: validate-kubeconfig-configmaps
+      match:
+        any:
+        - resources:
+            kinds:
+              - ConfigMap
+      validate:
+        message: |
+          ConfigMaps should not contain kubeconfig data. Use proper Secret resources instead.
+          This prevents kubeconfig exposure that could bypass file permission controls.
+        deny:
+          conditions:
+            any:
+              - key: "{{ contains(keys(request.object.data || `{}`), 'kubeconfig') }}"
+                operator: Equals
+                value: true
+              - key: "{{ contains(keys(request.object.data || `{}`), 'config') && contains(to_string(request.object.data.config || ''), 'clusters:') }}"
+                operator: Equals
+                value: true
+
+    # Rule 4: Validate kube-bench DaemonSets have proper security configuration
+    - name: validate-kube-bench-daemonset
+      match:
+        any:
+        - resources:
+            kinds:
+              - DaemonSet
+            names:
+              - "kube-bench*"
+            namespaces:
+              - kube-system
+              - kube-bench
+      validate:
+        message: |
+          Kube-bench DaemonSets must be properly configured for CIS 3.1.1 file permission scanning.
+          This ensures kube-bench can access node file systems while maintaining security.
+        pattern:
+          spec:
+            template:
+              spec:
+                serviceAccountName: "kube-bench"
+                hostPID: true
+                containers:
+                - name: "*"
+                  securityContext:
+                    privileged: true
+                  volumeMounts:
+                  - name: "var-lib-kubelet"
+                    mountPath: "/var/lib/kubelet"
+                    readOnly: true
+                volumes:
+                - name: "var-lib-kubelet"
+                  hostPath:
+                    path: "/var/lib/kubelet"
+
+    # Rule 5: Validate kube-bench Jobs for on-demand scanning
+    - name: validate-kube-bench-job
+      match:
+        any:
+        - resources:
+            kinds:
+              - Job
+            names:
+              - "kube-bench*"
+            namespaces:
+              - kube-system
+              - kube-bench
+      validate:
+        message: |
+          Kube-bench Jobs must have proper configuration for CIS 3.1.1 validation.
+          This ensures comprehensive kubeconfig file permission checking.
+        pattern:
+          spec:
+            template:
+              spec:
+                serviceAccountName: "kube-bench"
+                restartPolicy: "Never"
+                containers:
+                - name: "*"
+                  image: "aquasec/kube-bench:*"
+                  securityContext:
+                    privileged: true
+
+    # Rule 6: Validate RBAC for kube-bench
+    - name: validate-kube-bench-rbac
+      match:
+        any:
+        - resources:
+            kinds:
+              - ClusterRole
+            names:
+              - "kube-bench*"
+      validate:
+        message: |
+          Kube-bench ClusterRole should have minimal required permissions for CIS scanning.
+          This ensures kube-bench can perform 3.1.1 validation without excessive privileges.
+        pattern:
+          rules:
+          - apiGroups: [""]
+            resources: ["nodes", "pods"]
+            verbs: ["get", "list"]

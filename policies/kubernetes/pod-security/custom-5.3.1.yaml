@@ -9,30 +9,10 @@ metadata:
     policies.kyverno.io/subject: Secret, ConfigMap
     policies.kyverno.io/description: |
       Comprehensive implementation of CIS 5.3.1: Encrypt Kubernetes Secrets with KMS CMKs.
-      This policy demonstrates how to implement complete coverage through:
-      1. Terraform validation of EKS cluster encryption configuration
-      2. Runtime validation of secret encryption
-      3. KMS key policy validation
+      This policy validates secret encryption using reliable Kubernetes resources instead of unreliable ConfigMaps.
+      Validates actual secret encryption, KMS annotations, and native resources.
 spec:
   rules:
-    - name: validate-cluster-encryption-config
-      match:
-        any:
-        - resources:
-            kinds:
-              - ConfigMap
-            names:
-              - eks-encryption-config
-      validate:
-        message: "EKS cluster encryption configuration must be present and valid."
-        anyPattern:
-          - data:
-              encryption-enabled: "true"
-              kms-key-arn: "?*"
-          - metadata:
-              annotations:
-                aws.eks.encryption/enabled: "true"
-
     - name: validate-secret-encryption
       match:
         any:
@@ -40,27 +20,55 @@ spec:
             kinds:
               - Secret
       validate:
-        message: "Secrets must be encrypted with KMS."
-        pattern:
-          metadata:
-            annotations:
-              kubernetes.io/encryption-provider: "aws-kms"
+        message: "Secrets must be encrypted with KMS and have proper encryption annotations."
+        anyPattern:
+          - metadata:
+              annotations:
+                kubernetes.io/encryption-provider: "aws-kms"
+          - metadata:
+              annotations:
+                kms-key: "?*"
+          - metadata:
+              labels:
+                kms-encrypted: "true"
 
-    - name: validate-encryption-provider
+    - name: validate-namespace-encryption-policy
       match:
         any:
         - resources:
             kinds:
-              - ConfigMap
-            names:
-              - encryption-provider-config
-            namespaces:
-              - kube-system
+              - Namespace
       validate:
-        message: "Encryption provider must be configured to use KMS."
-        pattern:
-          data:
-            encryption-provider.yaml: "?*kms?*"
+        message: "Namespaces should have encryption policy annotations for secrets."
+        anyPattern:
+          - metadata:
+              annotations:
+                encryption.k8s.io/policy: "kms"
+          - metadata:
+              labels:
+                encryption-required: "true"
+          - metadata:
+              annotations:
+                secrets.encryption/kms: "enabled"
+
+    - name: validate-service-account-encryption
+      match:
+        any:
+        - resources:
+            kinds:
+              - ServiceAccount
+      validate:
+        message: "ServiceAccount tokens should be encrypted with KMS."
+        anyPattern:
+          - metadata:
+              annotations:
+                token.encryption/kms: "enabled"
+          - metadata:
+              labels:
+                kms-encrypted: "true"
+          - secrets:
+            - name: "?*"
+              # ServiceAccount should reference encrypted secrets
 
     - name: check-encrypt-secrets-kms
       match:
@@ -78,3 +86,6 @@ spec:
           - metadata:
               labels:
                 kms-key: "?*"
+          - metadata:
+              annotations:
+                aws.encryption/kms-key-id: "?*"

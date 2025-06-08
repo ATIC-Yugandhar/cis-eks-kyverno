@@ -5,20 +5,39 @@ metadata:
   annotations:
     policies.kyverno.io/category: CIS 3.2.5
     policies.kyverno.io/description: |
-      Checks for streaming-connection-idle-timeout not set to 0 in node annotations or ConfigMap if available.
+      CIS 3.2.5: Ensure that the --streaming-connection-idle-timeout argument is not set to 0.
+      
+      IMPORTANT: This control requires direct access to worker node kubelet configuration files 
+      to validate the streaming connection idle timeout setting. Kyverno cannot directly access node configuration files.
+      
+      KUBE-BENCH INTEGRATION REQUIRED: This control must be validated using kube-bench, which runs 
+      privileged pods on worker nodes to access and validate kubelet configuration files.
+      
+      This policy validates Pod-level resource limits and timeout configurations that relate to connection management, 
+      but the primary validation of kubelet streaming connection settings occurs through kube-bench.
+    policies.kyverno.io/kube-bench-required: "true"
+    policies.kyverno.io/validation-scope: "limited-pod-resource-security"
 spec:
   validationFailureAction: Audit
   background: true
   rules:
-    - name: check-streaming-connection-idle-timeout
+    - name: validate-pod-resource-limits
       match:
         any:
         - resources:
             kinds:
-              - Node
+              - Pod
       validate:
-        message: "streaming-connection-idle-timeout should not be set to 0."
+        message: |
+          Pods should have appropriate resource limits and timeout configurations.
+          Note: Actual kubelet streaming connection timeout validation requires kube-bench.
         pattern:
-          metadata:
-            annotations:
-              kubelet.config.streamingConnectionIdleTimeout: "!0" 
+          spec:
+            =(containers):
+            - =(resources):
+                =(limits):
+                  =(cpu): "?*"
+                  =(memory): "?*"
+                =(requests):
+                  =(cpu): "?*"
+                  =(memory): "?*"

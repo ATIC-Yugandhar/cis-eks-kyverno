@@ -1,0 +1,77 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kube-bench-node
+  namespace: kube-system
+  labels:
+    app: kube-bench
+    component: node
+spec:
+  template:
+    metadata:
+      labels:
+        app: kube-bench
+        component: node
+    spec:
+      hostPID: true
+      nodeSelector:
+        kubernetes.io/os: linux
+      tolerations:
+        - key: node-role.kubernetes.io/master
+          operator: Exists
+          effect: NoSchedule
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+      restartPolicy: Never
+      serviceAccountName: kube-bench
+      containers:
+        - name: kube-bench
+          image: aquasec/kube-bench:latest
+          command: ["kube-bench"]
+          args: 
+            - "run"
+            - "--targets"
+            - "node"
+            - "--version"
+            - "1.28"
+            - "--json"
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: var-lib-kubelet
+              mountPath: /var/lib/kubelet
+              readOnly: true
+            - name: etc-kubernetes
+              mountPath: /etc/kubernetes
+              readOnly: true
+            - name: etc-systemd
+              mountPath: /etc/systemd
+              readOnly: true
+            - name: etc-cni-netd
+              mountPath: /etc/cni/net.d/
+              readOnly: true
+            - name: opt-cni-bin
+              mountPath: /opt/cni/bin/
+              readOnly: true
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+      volumes:
+        - name: var-lib-kubelet
+          hostPath:
+            path: "/var/lib/kubelet"
+        - name: etc-kubernetes
+          hostPath:
+            path: "/etc/kubernetes"
+        - name: etc-systemd
+          hostPath:
+            path: "/etc/systemd"
+        - name: etc-cni-netd
+          hostPath:
+            path: "/etc/cni/net.d"
+        - name: opt-cni-bin
+          hostPath:
+            path: "/opt/cni/bin"

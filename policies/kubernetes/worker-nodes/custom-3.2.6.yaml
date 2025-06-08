@@ -5,20 +5,40 @@ metadata:
   annotations:
     policies.kyverno.io/category: CIS 3.2.6
     policies.kyverno.io/description: |
-      Checks for make-iptables-util-chains set to true in node annotations or ConfigMap if available.
+      CIS 3.2.6: Ensure that the --make-iptables-util-chains argument is set to true.
+      
+      IMPORTANT: This control requires direct access to worker node kubelet configuration files 
+      to validate the iptables util chains setting. Kyverno cannot directly access node configuration files.
+      
+      KUBE-BENCH INTEGRATION REQUIRED: This control must be validated using kube-bench, which runs 
+      privileged pods on worker nodes to access and validate kubelet configuration files.
+      
+      This policy validates Pod-level network security configurations that relate to iptables usage, 
+      but the primary validation of kubelet iptables settings occurs through kube-bench.
+    policies.kyverno.io/kube-bench-required: "true"
+    policies.kyverno.io/validation-scope: "limited-pod-network-security"
 spec:
   validationFailureAction: Audit
   background: true
   rules:
-    - name: check-make-iptables-util-chains
+    - name: validate-pod-network-security
       match:
         any:
         - resources:
             kinds:
-              - Node
+              - Pod
       validate:
-        message: "make-iptables-util-chains should be set to true."
+        message: |
+          Pods should use secure networking configurations and avoid privileged network access.
+          Note: Actual kubelet iptables util chains validation requires kube-bench.
         pattern:
-          metadata:
-            annotations:
-              kubelet.config.makeIPTablesUtilChains: "true" 
+          spec:
+            =(securityContext):
+              =(runAsNonRoot): "true"
+            =(containers):
+            - =(securityContext):
+                =(allowPrivilegeEscalation): "false"
+                =(capabilities):
+                  =(drop):
+                  - "NET_ADMIN"
+                  - "NET_RAW"

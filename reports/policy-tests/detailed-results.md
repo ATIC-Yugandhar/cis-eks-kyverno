@@ -1,6 +1,6 @@
 # Detailed Policy Test Results
 
-Generated: Thu Jun  5 18:26:05 IST 2025
+Generated: Sun Jun  8 10:37:27 IST 2025
 
 ## Kubernetes Policies
 
@@ -130,7 +130,7 @@ Generated: Thu Jun  5 18:26:05 IST 2025
 - ✅ custom-3.2.9 - noncompliant: PASS (rejected)
 
 
-## Terraform Policies
+## OpenTofu Policies
 
 ### cluster-config
 

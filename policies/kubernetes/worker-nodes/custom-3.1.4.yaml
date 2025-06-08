@@ -5,20 +5,36 @@ metadata:
   annotations:
     policies.kyverno.io/category: CIS 3.1.4
     policies.kyverno.io/description: |
-      Checks for kubelet config file ownership in node annotations or ConfigMap if available.
+      CIS 3.1.4: Ensure that the kubelet configuration file ownership is set to root:root.
+      
+      IMPORTANT: This control requires direct access to worker node file systems to validate kubelet 
+      configuration file ownership. Kyverno cannot directly access node file systems or validate file ownership.
+      
+      KUBE-BENCH INTEGRATION REQUIRED: This control must be validated using kube-bench, which runs 
+      privileged pods on worker nodes to access and validate file ownership on kubelet configuration files.
+      
+      This policy validates Pod security contexts and ownership-related configurations, but the primary 
+      validation of actual file ownership occurs through kube-bench node-level scanning.
+    policies.kyverno.io/kube-bench-required: "true"
+    policies.kyverno.io/validation-scope: "limited-pod-security-context"
 spec:
   validationFailureAction: Audit
   background: true
   rules:
-    - name: check-kubelet-config-owner
+    - name: validate-pod-ownership-security
       match:
         any:
         - resources:
             kinds:
-              - Node
+              - Pod
       validate:
-        message: "kubelet config file should be owned by root:root."
+        message: |
+          Pods should use appropriate ownership and security contexts.
+          Note: Actual kubelet config file ownership validation requires kube-bench.
         pattern:
-          metadata:
-            annotations:
-              kubelet.config.owner: "root:root" 
+          spec:
+            =(securityContext):
+              =(runAsNonRoot): "true"
+              =(runAsUser): ">0"
+              =(runAsGroup): ">0"
+              =(fsGroup): ">0"

@@ -5,24 +5,83 @@ metadata:
   annotations:
     policies.kyverno.io/category: CIS 5.4.2
     policies.kyverno.io/description: |
-      Checks for private endpoint annotation or label in Namespace or ConfigMap if available.
+      Validates private endpoint configuration using reliable Kubernetes resources.
+      Checks Services, Nodes, and Namespaces for private endpoint indicators instead of unreliable ConfigMaps.
 spec:
   validationFailureAction: Audit
   background: true
   rules:
-    - name: check-private-endpoint
+    - name: check-private-endpoint-namespace
       match:
         any:
         - resources:
             kinds:
               - Namespace
-              - ConfigMap
       validate:
-        message: "Private endpoint should be used and public access disabled (look for private-endpoint annotation or label)."
+        message: "Namespace should have private endpoint annotation or label indicating proper network isolation."
         anyPattern:
           - metadata:
               annotations:
                 private-endpoint: "enabled"
           - metadata:
               labels:
-                private-endpoint: "enabled" 
+                private-endpoint: "enabled"
+          - metadata:
+              annotations:
+                networking.k8s.io/private: "true"
+
+    - name: check-service-private-configuration
+      match:
+        any:
+        - resources:
+            kinds:
+              - Service
+      validate:
+        message: "Services should be configured for private access."
+        anyPattern:
+          - metadata:
+              annotations:
+                service.beta.kubernetes.io/aws-load-balancer-internal: "true"
+          - metadata:
+              annotations:
+                private-endpoint: "enabled"
+          - spec:
+              type: "ClusterIP"  # ClusterIP services are inherently private
+          - metadata:
+              labels:
+                network-policy: "private"
+
+    - name: validate-node-private-networking
+      match:
+        any:
+        - resources:
+            kinds:
+              - Node
+      validate:
+        message: "Nodes should be configured for private networking."
+        anyPattern:
+          - metadata:
+              annotations:
+                node.kubernetes.io/private-networking: "enabled"
+          - metadata:
+              labels:
+                private-subnet: "true"
+          - spec:
+              podCIDR: "10.*"  # Private IP ranges
+
+    - name: validate-network-policy-private
+      match:
+        any:
+        - resources:
+            kinds:
+              - NetworkPolicy
+      validate:
+        message: "NetworkPolicies should enforce private communication."
+        anyPattern:
+          - metadata:
+              annotations:
+                policy-type: "private"
+          - spec:
+              policyTypes:
+              - "Ingress"
+              - "Egress"

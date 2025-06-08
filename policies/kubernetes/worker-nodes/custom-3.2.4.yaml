@@ -5,20 +5,37 @@ metadata:
   annotations:
     policies.kyverno.io/category: CIS 3.2.4
     policies.kyverno.io/description: |
-      Checks for readOnlyPort: 0 in node annotations or ConfigMap if available.
+      CIS 3.2.4: Ensure that the --read-only-port argument is set to 0.
+      
+      IMPORTANT: This control requires direct access to worker node kubelet configuration files 
+      to validate the read-only port setting. Kyverno cannot directly access node configuration files.
+      
+      KUBE-BENCH INTEGRATION REQUIRED: This control must be validated using kube-bench, which runs 
+      privileged pods on worker nodes to access and validate kubelet configuration files.
+      
+      This policy validates Pod-level port security configurations that relate to read-only access patterns, 
+      but the primary validation of kubelet read-only port settings occurs through kube-bench.
+    policies.kyverno.io/kube-bench-required: "true"
+    policies.kyverno.io/validation-scope: "limited-pod-port-security"
 spec:
   validationFailureAction: Audit
   background: true
   rules:
-    - name: check-read-only-port
+    - name: validate-pod-port-security
       match:
         any:
         - resources:
             kinds:
-              - Node
+              - Pod
       validate:
-        message: "readOnlyPort should be set to 0."
+        message: |
+          Pods should not expose unnecessary read-only ports or insecure port configurations.
+          Note: Actual kubelet read-only port validation requires kube-bench.
         pattern:
-          metadata:
-            annotations:
-              kubelet.config.readOnlyPort: "0" 
+          spec:
+            =(containers):
+            - =(ports):
+              - =(containerPort): ">1024"
+                =(protocol): "TCP"
+            =(securityContext):
+              =(runAsNonRoot): "true"

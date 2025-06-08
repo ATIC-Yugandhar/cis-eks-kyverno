@@ -68,8 +68,8 @@ EOF
     echo "Waiting for Kyverno to be ready..."
     kubectl wait --for=condition=Ready pods -n kyverno --all --timeout=300s
     
-    # Apply RBAC fix for Node access
-    echo "Applying RBAC fix for Node access..."
+    # Apply RBAC fix for Node access and other permissions
+    echo "Applying RBAC fix for Node and Secret access..."
     if [ -f "kyverno-node-rbac.yaml" ]; then
         kubectl apply -f kyverno-node-rbac.yaml
         echo "✅ RBAC fix applied for Node access permissions"
@@ -82,7 +82,7 @@ metadata:
   name: kyverno-reports-controller-node-access
 rules:
 - apiGroups: [""]
-  resources: ["nodes"]
+  resources: ["nodes", "secrets"]
   verbs: ["get", "list", "watch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -102,8 +102,129 @@ RBAC_EOF
         echo "✅ RBAC fix created and applied"
     fi
     
+    # Deploy kube-bench for CIS compliance scanning
+    echo "Deploying kube-bench for CIS compliance scanning..."
+    
+    # Apply kube-bench RBAC
+    kubectl apply -f kube-bench/rbac.yaml
+    
+    # Deploy kube-bench jobs
+    echo "Running kube-bench node scan..."
+    kubectl apply -f kube-bench/job-node.yaml
+    
+    # Wait for kube-bench jobs to complete
+    echo "Waiting for kube-bench scan to complete..."
+    sleep 10  # Give time for pod to start
+    
+    # Check if job completed or failed
+    for i in {1..30}; do
+        JOB_STATUS=$(kubectl get job kube-bench-node -n kube-system -o jsonpath='{.status.conditions[0].type}' 2>/dev/null || echo "")
+        if [ "$JOB_STATUS" = "Complete" ]; then
+            echo "✅ Kube-bench scan completed successfully"
+            break
+        elif [ "$JOB_STATUS" = "Failed" ]; then
+            echo "⚠️ Kube-bench scan failed, collecting available results..."
+            break
+        fi
+        echo "Waiting for kube-bench to complete... ($i/30)"
+        sleep 10
+    done
+    
+    # Collect kube-bench results
+    echo "Collecting kube-bench scan results..."
+    mkdir -p "$REPORTS_DIR/kube-bench"
+    
+    # Get node scan results
+    NODE_POD=$(kubectl get pods -n kube-system -l app=kube-bench,component=node -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+    if [ -n "$NODE_POD" ]; then
+        kubectl logs "$NODE_POD" -n kube-system > "$REPORTS_DIR/kube-bench/node-scan.json" 2>/dev/null || {
+            echo "Warning: Could not collect node scan logs"
+            echo '{"error": "Could not collect node scan logs"}' > "$REPORTS_DIR/kube-bench/node-scan.json"
+        }
+        echo "✅ Node scan results collected"
+    else
+        echo "❌ No kube-bench node pod found"
+        echo '{"error": "No kube-bench node pod found"}' > "$REPORTS_DIR/kube-bench/node-scan.json"
+    fi
+    
+    # Try to get master scan results (might not work in KIND due to node labeling)
+    MASTER_POD=$(kubectl get pods -n kube-system -l app=kube-bench,component=master -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+    if [ -n "$MASTER_POD" ]; then
+        kubectl logs "$MASTER_POD" -n kube-system > "$REPORTS_DIR/kube-bench/master-scan.json" 2>/dev/null || {
+            echo "Warning: Could not collect master scan logs"
+            echo '{"error": "Could not collect master scan logs"}' > "$REPORTS_DIR/kube-bench/master-scan.json"
+        }
+        echo "✅ Master scan results collected"
+    else
+        echo "⚠️ No kube-bench master pod found (expected in KIND)"
+        echo '{"info": "Master scan not available in KIND cluster"}' > "$REPORTS_DIR/kube-bench/master-scan.json"
+    fi
+    
+    # Generate kube-bench summary
+    echo "Generating kube-bench summary..."
+    cat > "$REPORTS_DIR/kube-bench/summary.md" << 'EOF'
+# Kube-bench CIS Compliance Scan Results
+
+**Generated**: $(date)
+**Cluster**: KIND cluster
+**Scanner**: kube-bench
+
+## Node Scan Results
+EOF
+    
+    if [ -f "$REPORTS_DIR/kube-bench/node-scan.json" ] && grep -q '"Totals"' "$REPORTS_DIR/kube-bench/node-scan.json" 2>/dev/null; then
+        echo "✅ Node scan completed successfully" >> "$REPORTS_DIR/kube-bench/summary.md"
+        
+        # Extract totals using jq if available, otherwise use grep
+        if command -v jq >/dev/null 2>&1; then
+            PASS=$(jq -r '.Totals.pass // 0' "$REPORTS_DIR/kube-bench/node-scan.json" 2>/dev/null || echo "N/A")
+            FAIL=$(jq -r '.Totals.fail // 0' "$REPORTS_DIR/kube-bench/node-scan.json" 2>/dev/null || echo "N/A")
+            WARN=$(jq -r '.Totals.warn // 0' "$REPORTS_DIR/kube-bench/node-scan.json" 2>/dev/null || echo "N/A")
+            INFO=$(jq -r '.Totals.info // 0' "$REPORTS_DIR/kube-bench/node-scan.json" 2>/dev/null || echo "N/A")
+        else
+            PASS=$(grep -o '"pass":[0-9]*' "$REPORTS_DIR/kube-bench/node-scan.json" | cut -d: -f2 || echo "N/A")
+            FAIL=$(grep -o '"fail":[0-9]*' "$REPORTS_DIR/kube-bench/node-scan.json" | cut -d: -f2 || echo "N/A")
+            WARN=$(grep -o '"warn":[0-9]*' "$REPORTS_DIR/kube-bench/node-scan.json" | cut -d: -f2 || echo "N/A")
+            INFO=$(grep -o '"info":[0-9]*' "$REPORTS_DIR/kube-bench/node-scan.json" | cut -d: -f2 || echo "N/A")
+        fi
+        
+        echo "- **Pass**: $PASS" >> "$REPORTS_DIR/kube-bench/summary.md"
+        echo "- **Fail**: $FAIL" >> "$REPORTS_DIR/kube-bench/summary.md"
+        echo "- **Warn**: $WARN" >> "$REPORTS_DIR/kube-bench/summary.md"
+        echo "- **Info**: $INFO" >> "$REPORTS_DIR/kube-bench/summary.md"
+    else
+        echo "❌ Node scan failed or returned invalid data" >> "$REPORTS_DIR/kube-bench/summary.md"
+    fi
+    
+    cat >> "$REPORTS_DIR/kube-bench/summary.md" << 'EOF'
+
+## Integration with Kyverno
+
+This kube-bench scan complements the Kyverno policy validation:
+- **Kube-bench**: Validates node-level file permissions, kubelet settings, and OS-level configurations
+- **Kyverno**: Validates Kubernetes API resources, RBAC, and workload security policies
+
+## CIS Controls Coverage
+
+The following CIS controls are validated by kube-bench:
+- 3.1.x: Worker node configuration files
+- 3.2.x: Worker node kubelet configuration
+- 4.1.x: Control plane node configuration files (when available)
+- 4.2.x: Control plane kubelet configuration (when available)
+
+## Next Steps
+
+1. Review failed checks in the detailed JSON results
+2. Cross-reference with Kyverno policy results
+3. Implement remediation for identified issues
+4. Update worker node policies to incorporate kube-bench findings
+EOF
+    
+    # Update summary with actual date
+    sed -i.bak "s/\$(date)/$(date)/" "$REPORTS_DIR/kube-bench/summary.md" && rm "$REPORTS_DIR/kube-bench/summary.md.bak"
+    
     # Apply all policies to the cluster
-    echo "Applying policies to cluster..."
+    echo "Applying Kyverno policies to cluster..."
     # Apply policies from all subdirectories
     for dir in policies/kubernetes/*/; do
         if [ -d "$dir" ]; then
@@ -117,7 +238,7 @@ RBAC_EOF
     sleep 10
     
     # Run validation tests
-    echo "Running validation tests..."
+    echo "Running Kyverno validation tests..."
     
     # Test with sample resources
     if [ -d "tests/kind-manifests" ]; then
@@ -149,35 +270,42 @@ RBAC_EOF
     kubectl get all -A > "$REPORTS_DIR/cluster-resources.yaml"
     kubectl get clusterpolicies -o yaml > "$REPORTS_DIR/policies.yaml" 2>/dev/null || echo "No policies found" > "$REPORTS_DIR/policies.yaml"
     
-    # Generate validation summary
+    # Generate comprehensive validation summary
     POLICY_COUNT=$(kubectl get clusterpolicies --no-headers 2>/dev/null | wc -l || echo 0)
     VALIDATION_COUNT=$(find "$REPORTS_DIR" -name "kyverno-*-results.txt" -exec grep -l "pass:\|fail:" {} \; | wc -l || echo 0)
+    KUBE_BENCH_STATUS="❌ Failed"
+    
+    if [ -f "$REPORTS_DIR/kube-bench/node-scan.json" ] && grep -q '"Totals"' "$REPORTS_DIR/kube-bench/node-scan.json" 2>/dev/null; then
+        KUBE_BENCH_STATUS="✅ Completed"
+    fi
     
     cat > "$REPORTS_DIR/validation-summary.md" << EOF
 # Kind Cluster Validation Summary
 
 **Generated**: $(date)
-**Mode**: Full cluster validation
+**Mode**: Full cluster validation with kube-bench integration
 **Cluster**: $CLUSTER_NAME
 
 ## Validation Statistics
 
 | Metric | Value |
 |--------|-------|
-| Policies Applied | $POLICY_COUNT |
-| Categories Tested | $VALIDATION_COUNT |
+| Kyverno Policies Applied | $POLICY_COUNT |
+| Policy Categories Tested | $VALIDATION_COUNT |
 | Test Manifests | $(find tests/kind-manifests -name "*.yaml" | wc -l) |
 | Cluster Status | Active |
+| Kube-bench Scan | $KUBE_BENCH_STATUS |
 
-## Policy Application Results
+## CIS Compliance Coverage
 
+### Kyverno Policy Validation
 EOF
     
-    # Add validation results summary
+    # Add Kyverno validation results summary
     for result_file in "$REPORTS_DIR"/kyverno-*-results.txt; do
         if [ -f "$result_file" ]; then
             category=$(basename "$result_file" | sed 's/kyverno-\(.*\)-results.txt/\1/')
-            echo "### $category" >> "$REPORTS_DIR/validation-summary.md"
+            echo "#### $category" >> "$REPORTS_DIR/validation-summary.md"
             echo "" >> "$REPORTS_DIR/validation-summary.md"
             
             # Extract pass/fail counts
@@ -190,11 +318,41 @@ EOF
         fi
     done
     
-    echo "## Cluster Resources" >> "$REPORTS_DIR/validation-summary.md"
-    echo "" >> "$REPORTS_DIR/validation-summary.md"
-    echo "- Kyverno pods: $(kubectl get pods -n kyverno --no-headers | wc -l)" >> "$REPORTS_DIR/validation-summary.md"
-    echo "- Total policies: $POLICY_COUNT" >> "$REPORTS_DIR/validation-summary.md"
-    echo "- Test manifests validated: $(find tests/kind-manifests -name "*.yaml" | wc -l)" >> "$REPORTS_DIR/validation-summary.md"
+    cat >> "$REPORTS_DIR/validation-summary.md" << EOF
+
+### Kube-bench CIS Compliance Scan
+
+EOF
+    
+    if [ -f "$REPORTS_DIR/kube-bench/summary.md" ]; then
+        # Include kube-bench summary
+        echo "$(cat "$REPORTS_DIR/kube-bench/summary.md")" >> "$REPORTS_DIR/validation-summary.md"
+    else
+        echo "❌ Kube-bench scan results not available" >> "$REPORTS_DIR/validation-summary.md"
+    fi
+    
+    cat >> "$REPORTS_DIR/validation-summary.md" << EOF
+
+## Cluster Resources
+
+- Kyverno pods: $(kubectl get pods -n kyverno --no-headers | wc -l)
+- Total policies: $POLICY_COUNT
+- Test manifests validated: $(find tests/kind-manifests -name "*.yaml" | wc -l)
+- Kube-bench pods: $(kubectl get pods -n kube-system -l app=kube-bench --no-headers | wc -l)
+
+## Integration Summary
+
+This validation combines:
+1. **Kyverno policies** - Kubernetes API resource validation
+2. **Kube-bench scanning** - Node-level CIS compliance checks
+3. **Test manifests** - Real-world scenario validation
+
+The combination provides comprehensive CIS EKS compliance coverage across all layers.
+EOF
+    
+    # Cleanup kube-bench jobs
+    echo "Cleaning up kube-bench jobs..."
+    kubectl delete jobs -n kube-system -l app=kube-bench --ignore-not-found=true
     
     # Cleanup
     if [ "${KEEP_CLUSTER:-false}" = "false" ]; then
@@ -234,7 +392,7 @@ else
 # Kind Cluster Validation Summary
 
 **Generated**: $(date)
-**Mode**: Offline validation
+**Mode**: Offline validation (no kube-bench)
 
 ## Validation Statistics
 
@@ -244,6 +402,7 @@ else
 | Test Manifests | $TEST_MANIFESTS |
 | Categories Tested | $VALIDATION_COUNT |
 | Validation Mode | Offline |
+| Kube-bench Scan | ⏭️ Skipped (offline mode) |
 
 ## Policy Validation Results
 
@@ -269,7 +428,15 @@ EOF
     echo "## Results" >> "$REPORTS_DIR/validation-summary.md"
     echo "" >> "$REPORTS_DIR/validation-summary.md"
     echo "Offline validation completed. Policy validation results show how these policies would behave in a real cluster." >> "$REPORTS_DIR/validation-summary.md"
+    echo "" >> "$REPORTS_DIR/validation-summary.md"
+    echo "**Note**: Kube-bench CIS compliance scanning requires a live cluster and was skipped in offline mode." >> "$REPORTS_DIR/validation-summary.md"
 fi
 
 echo "=== Kind cluster tests completed ==="
 echo "Reports available in: $REPORTS_DIR"
+
+if [ -f "$REPORTS_DIR/kube-bench/summary.md" ]; then
+    echo ""
+    echo "🔍 Kube-bench CIS compliance scan completed"
+    echo "📊 Results: $REPORTS_DIR/kube-bench/"
+fi

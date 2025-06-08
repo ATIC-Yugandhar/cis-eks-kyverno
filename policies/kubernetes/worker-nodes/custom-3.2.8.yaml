@@ -1,27 +1,43 @@
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
-  name: custom-3-2-8-rotate-certificates
+  name: custom-3-2-8-hostname-override
   annotations:
     policies.kyverno.io/category: CIS 3.2.8
     policies.kyverno.io/description: |
-      Checks for --rotate-certificates flag set to true or absent in node annotations or ConfigMap if available.
+      CIS 3.2.8: Ensure that the --hostname-override argument is not set.
+      
+      IMPORTANT: This control requires direct access to worker node kubelet configuration files 
+      to validate the hostname override setting. Kyverno cannot directly access node configuration files.
+      
+      KUBE-BENCH INTEGRATION REQUIRED: This control must be validated using kube-bench, which runs 
+      privileged pods on worker nodes to access and validate kubelet configuration files.
+      
+      This policy validates Pod-level hostname and identity configurations that relate to node identity, 
+      but the primary validation of kubelet hostname override settings occurs through kube-bench.
+    policies.kyverno.io/kube-bench-required: "true"
+    policies.kyverno.io/validation-scope: "limited-pod-identity-security"
 spec:
   validationFailureAction: Audit
   background: true
   rules:
-    - name: check-rotate-certificates
+    - name: validate-pod-identity-security
       match:
         any:
         - resources:
             kinds:
-              - Node
+              - Pod
       validate:
-        message: "--rotate-certificates should be true or absent."
-        anyPattern:
-          - metadata:
-              annotations:
-                kubelet.config.rotateCertificates: "true"
-          - metadata:
-              annotations:
-                kubelet.config.rotateCertificates: "" 
+        message: |
+          Pods should use appropriate hostname and identity configurations.
+          Note: Actual kubelet hostname override validation requires kube-bench.
+        pattern:
+          spec:
+            =(securityContext):
+              =(runAsNonRoot): "true"
+            =(containers):
+            - =(securityContext):
+                =(allowPrivilegeEscalation): "false"
+            =(hostNetwork): "false"
+            =(hostPID): "false"
+            =(hostIPC): "false"
