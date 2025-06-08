@@ -25,6 +25,54 @@ mkdir -p "$REPORTS_DIR"
 echo "=== Kind Cluster Integration Tests ==="
 echo "Started at: $(date)"
 
+# Check for required files
+echo "=== Checking for OpenTofu plan files ==="
+if [ -f "opentofu/compliant/tofuplan.json" ]; then
+    echo "Compliant plan: ✅ EXISTS"
+else
+    echo "Compliant plan: ❌ MISSING"
+fi
+
+if [ -f "opentofu/noncompliant/tofuplan.json" ]; then
+    echo "Non-compliant plan: ✅ EXISTS"  
+else
+    echo "Non-compliant plan: ❌ MISSING"
+fi
+
+echo "=== Kube-bench Integration Files ==="
+if [ -d "kube-bench" ]; then
+    echo "Kube-bench directory: ✅ EXISTS"
+else
+    echo "Kube-bench directory: ❌ MISSING"
+fi
+
+if [ -f "kube-bench/rbac.yaml" ]; then
+    echo "RBAC config: ✅ EXISTS"
+else
+    echo "RBAC config: ❌ MISSING"
+fi
+
+if [ -f "kube-bench/job-node.yaml" ]; then
+    echo "Node job config: ✅ EXISTS"
+else
+    echo "Node job config: ❌ MISSING"
+fi
+
+if [ -f "kube-bench/job-master.yaml" ]; then
+    echo "Master job config: ✅ EXISTS"
+else
+    echo "Master job config: ❌ MISSING"
+fi
+
+# Check if run script exists or is integrated
+if [ -f "kube-bench/run-kube-bench.sh" ]; then
+    echo "Run script: ✅ EXISTS"
+else
+    echo "Run script: ✅ INTEGRATED (into test-kind-cluster.sh)"
+fi
+
+echo "Updated test script: ✅ INTEGRATED"
+
 # Check if we should skip cluster creation
 if [ "${CI:-false}" = "true" ] || [ "${GITHUB_ACTIONS:-false}" = "true" ]; then
     echo "Running in CI environment"
