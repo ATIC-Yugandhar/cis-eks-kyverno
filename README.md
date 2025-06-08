@@ -123,6 +123,7 @@ This framework implements a comprehensive **"defense-in-depth"** approach using 
 - **Tool**: OpenTofu/Terraform + Kyverno
 - Validate Infrastructure as Code before deployment
 - Catch misconfigurations early in development
+- Policies scan Infrastructure as Code for CIS compliance
 - **Location**: `policies/opentofu/` (OpenTofu/Terraform compatible)
 
 ### 2. **Runtime Validation** (Detection)

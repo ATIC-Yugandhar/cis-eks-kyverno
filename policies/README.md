@@ -27,7 +27,6 @@ All worker node policies include annotations indicating their kube-bench depende
 
 ### OpenTofu/Terraform Policies (`opentofu/`)
 Plan-time policies that validate infrastructure configurations before deployment (compatible with both OpenTofu and Terraform):
-
 - **[cluster-config/](opentofu/cluster-config/)** - EKS cluster configuration policies
 - **[networking/](opentofu/networking/)** - VPC and networking policies
 - **[encryption/](opentofu/encryption/)** - KMS and encryption policies
