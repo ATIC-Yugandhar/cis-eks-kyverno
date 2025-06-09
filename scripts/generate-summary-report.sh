@@ -291,7 +291,7 @@ This compliance framework provides **multi-layer security validation**:
    - Control plane security settings
    - Node-level system configurations
 
-3. **🛠️ Infrastructure Compliance** - OpenTofu validation
+3. **🛠️ Infrastructure Compliance** - OpenTofu/Terraform validation
    - EKS cluster security configurations
    - VPC and networking security
    - IAM roles and policies

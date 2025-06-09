@@ -38,7 +38,7 @@ Our automated testing includes:
 
 ### Prerequisites
 - AWS CLI configured with appropriate permissions
-- OpenTofu >= 1.6.0
+- OpenTofu >= 1.6.0 (or Terraform >= 1.0 for legacy support)
 - Kyverno CLI >= 1.11
 - kubectl configured
 - **RBAC permissions**: Cluster-admin access (for RBAC setup)
