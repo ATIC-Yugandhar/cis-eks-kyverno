@@ -1,0 +1,15 @@
+apiVersion: json.kyverno.io/v1alpha1
+kind: ValidatingPolicy
+metadata:
+  name: cis-2-1-2-audit-log-destinations
+spec:
+  rules:
+    - name: eks-audit-log-destinations
+      assert:
+        all:
+          - message: "EKS cluster audit logs must be configured with proper destinations (CloudWatch Logs)."
+            check:
+              (length(planned_values.root_module.resources[?type=='aws_cloudwatch_log_group' && contains(values.name, 'eks')]) > `0`): true
+          - message: "CloudWatch log group must have retention period configured for audit logs."
+            check:
+              (length(planned_values.root_module.resources[?type=='aws_cloudwatch_log_group' && values.retention_in_days]) > `0`): true

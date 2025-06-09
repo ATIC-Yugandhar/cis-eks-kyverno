@@ -1,6 +1,6 @@
 # CIS-Compliant EKS Automation (Compliant Cluster)
 
-**This stack provisions a reference CIS-compliant EKS cluster for validating plan-level Kyverno JSON policies. It is used as the gold standard for passing all enforceable CIS controls at the OpenTofu/Terraform plan stage.**
+**This stack provisions a reference CIS-compliant EKS cluster for validating plan-level Kyverno JSON policies. It is used as the gold standard for passing all enforceable CIS controls at the OpenTofu plan stage.**
 
 - Automated validation is performed using `scripts/test-opentofu-policies.sh`.
 - See `policies/README.md` for policy organization and structure.
@@ -17,7 +17,7 @@ This module provisions a CIS-compliant EKS cluster, Kyverno, policies, and a pri
 ## Workflow
 
 1. **Provision Infrastructure**
-   - Run `tofu apply` (or `terraform apply`) from your local machine or CI/CD to create the VPC, EKS, S3 bucket, and the SSM-enabled automation EC2 instance in a private subnet.
+   - Run `tofu apply` from your local machine or CI/CD to create the VPC, EKS, S3 bucket, and the SSM-enabled automation EC2 instance in a private subnet.
 
 2. **Connect to the Automation Instance (via SSM)**
    - After `tofu apply`, get the SSM connect command:

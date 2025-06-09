@@ -25,8 +25,8 @@ Runtime policies that validate live Kubernetes resources in EKS clusters:
 
 All worker node policies include annotations indicating their kube-bench dependency and validation scope limitations.
 
-### OpenTofu/Terraform Policies (`opentofu/`)
-Plan-time policies that validate infrastructure configurations before deployment (compatible with both OpenTofu and Terraform):
+### OpenTofu Policies (`opentofu/`)
+Plan-time policies that validate infrastructure configurations before deployment:
 - **[cluster-config/](opentofu/cluster-config/)** - EKS cluster configuration policies
 - **[networking/](opentofu/networking/)** - VPC and networking policies
 - **[encryption/](opentofu/encryption/)** - KMS and encryption policies
@@ -49,12 +49,12 @@ Achieving comprehensive CIS EKS Benchmark compliance requires multiple validatio
 
 1. **Kyverno** - Validates Kubernetes resources and API-level configurations
 2. **Kube-bench** - Validates node-level configurations and file system checks
-3. **OpenTofu/Terraform** - Validates infrastructure configuration at plan-time
+3. **OpenTofu** - Validates infrastructure configuration at plan-time
 
 ### Tool Capabilities and Boundaries
 
-| Validation Type | Kyverno | Kube-bench | OpenTofu/Terraform |
-|----------------|---------|------------|-------------------|
+| Validation Type | Kyverno | Kube-bench | OpenTofu |
+|----------------|---------|------------|----------|
 | Pod Security Contexts | ✅ | ❌ | ❌ |
 | RBAC Configurations | ✅ | ❌ | ❌ |
 | File Permissions | ❌ | ✅ | ❌ |

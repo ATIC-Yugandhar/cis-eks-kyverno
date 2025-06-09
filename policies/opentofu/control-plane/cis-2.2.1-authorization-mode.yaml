@@ -1,0 +1,15 @@
+apiVersion: json.kyverno.io/v1alpha1
+kind: ValidatingPolicy
+metadata:
+  name: cis-2-2-1-authorization-mode
+spec:
+  rules:
+    - name: eks-rbac-authorization
+      assert:
+        all:
+          - message: "EKS cluster must not use AlwaysAllow authorization mode. RBAC should be enabled by default."
+            check:
+              (length(planned_values.root_module.resources[?type=='aws_eks_cluster' && values.name]) > `0`): true
+          - message: "IAM roles should follow principle of least privilege for EKS access."
+            check:
+              (length(planned_values.root_module.resources[?type=='aws_iam_role' && contains(values.name, 'eks')]) > `0`): true

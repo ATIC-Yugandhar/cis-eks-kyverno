@@ -88,6 +88,29 @@ resource "aws_iam_role_policy_attachment" "eks_cluster_policy" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
 }
 
+# CIS 4.1.3 compliant policy - specific permissions only
+resource "aws_iam_role_policy" "compliant_eks_logging_policy" {
+  name = "eks-logging-policy"
+  role = aws_iam_role.eks.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ]
+        Resource = [
+          "arn:aws:logs:${var.region}:*:log-group:/aws/eks/${var.cluster_name}/*"
+        ]
+      }
+    ]
+  })
+}
+
 resource "aws_iam_role" "eks_node_group" {
   name = "${var.cluster_name}-node-group-role"
   assume_role_policy = jsonencode({
@@ -165,12 +188,63 @@ resource "aws_eks_node_group" "main" {
   subnet_ids      = aws_subnet.private[*].id
   instance_types  = [var.node_instance_type]
   capacity_type   = "ON_DEMAND"
+  ami_type        = "AL2_x86_64"  # Specify secure AMI type for CIS 3.1.1
+  
   scaling_config {
     desired_size = 1
     min_size     = 1
     max_size     = 1
   }
   depends_on = [aws_security_group.nodes]
+  
+  tags = {
+    Environment = "production"
+    Owner       = "platform-team"
+  }
+}
+
+# CloudWatch Log Group for EKS audit logs (CIS 2.1.2, 2.1.3)
+resource "aws_cloudwatch_log_group" "eks_cluster" {
+  name              = "/aws/eks/${var.cluster_name}/cluster"
+  retention_in_days = 90
+  
+  tags = {
+    Environment = "production"
+    Owner       = "platform-team"
+  }
+}
+
+# ECR repository with image scanning enabled (CIS 5.1.1)
+resource "aws_ecr_repository" "app" {
+  name                 = "${var.cluster_name}-app"
+  image_tag_mutability = "MUTABLE"
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+  
+  tags = {
+    Environment = "production"
+    Owner       = "platform-team"
+  }
+}
+
+# Secrets Manager secret with KMS encryption (CIS 5.3.2)
+resource "aws_secretsmanager_secret" "app_secrets" {
+  name        = "${var.cluster_name}-app-secrets"
+  description = "Application secrets for EKS cluster"
+  kms_key_id  = aws_kms_key.eks.arn
+  
+  tags = {
+    Environment = "production"
+    Owner       = "platform-team"
+  }
+}
+
+# EKS Add-on for VPC CNI (CIS 4.3.1)
+resource "aws_eks_addon" "vpc_cni" {
+  cluster_name = aws_eks_cluster.main.name
+  addon_name   = "vpc-cni"
   
   tags = {
     Environment = "production"

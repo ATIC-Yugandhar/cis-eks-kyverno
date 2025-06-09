@@ -20,14 +20,14 @@ The badges above show the current status of our comprehensive test suite:
 
 ### Test Coverage
 Our automated testing includes:
-- **45 Policy Unit Tests**: Validate individual policy logic
-- **Plan-Time Validation**: OpenTofu/Terraform infrastructure scanning
+- **62 Policy Unit Tests**: Validate individual policy logic
+- **Plan-Time Validation**: OpenTofu infrastructure scanning
 - **Kind Cluster Integration**: Real Kubernetes cluster testing
 - **Security Scanning**: Vulnerability detection with Trivy
 
 ## 🎯 What This Framework Provides
 
-- **🛡️ Complete CIS Coverage**: 45 policies covering major CIS EKS Benchmark controls
+- **🛡️ Complete CIS Coverage**: 62 policies covering major CIS EKS Benchmark controls
 - **🔄 Dual Enforcement Strategy**: Both runtime (Kubernetes) and plan-time (OpenTofu) validation  
 - **📋 Automated Testing**: Comprehensive test suite with CI/CD integration
 - **📊 Professional Reporting**: GitHub-friendly Markdown reports with visual indicators
@@ -38,7 +38,7 @@ Our automated testing includes:
 
 ### Prerequisites
 - AWS CLI configured with appropriate permissions
-- OpenTofu >= 1.6.0 (or Terraform >= 1.0 for legacy support)
+- OpenTofu >= 1.6.0
 - Kyverno CLI >= 1.11
 - kubectl configured
 - **RBAC permissions**: Cluster-admin access (for RBAC setup)
@@ -82,7 +82,7 @@ cis-eks-kyverno/
 │   │   ├── worker-nodes/       # Section 3: Worker Nodes
 │   │   ├── rbac/              # Section 4: RBAC & Service Accounts
 │   │   └── pod-security/      # Section 5: Pod Security
-│   └── opentofu/              # Plan-time policies by component (OpenTofu/Terraform compatible)
+│   └── opentofu/              # Plan-time policies by component (OpenTofu compatible)
 │       ├── cluster-config/     # EKS cluster configuration
 │       ├── networking/         # VPC and networking
 │       ├── encryption/         # KMS and encryption
@@ -96,7 +96,7 @@ cis-eks-kyverno/
 │   ├── test-kind-cluster.sh         # Kind integration tests
 │   ├── generate-summary-report.sh   # Report generation
 │   └── cleanup.sh                   # Cleanup utilities
-├── 🏗️ opentofu/               # OpenTofu examples (Terraform compatible)
+├── 🏗️ opentofu/               # OpenTofu examples
 │   ├── compliant/             # CIS-compliant configurations
 │   └── noncompliant/          # Non-compliant configurations for testing
 └── 📊 reports/                 # Generated compliance reports (created by scripts)
@@ -120,11 +120,11 @@ Choose your learning path based on your goals:
 This framework implements a comprehensive **"defense-in-depth"** approach using multiple specialized tools:
 
 ### 1. **Plan-Time Validation** (Prevention)
-- **Tool**: OpenTofu/Terraform + Kyverno
+- **Tool**: OpenTofu + Kyverno
 - Validate Infrastructure as Code before deployment
 - Catch misconfigurations early in development
 - Policies scan Infrastructure as Code for CIS compliance
-- **Location**: `policies/opentofu/` (OpenTofu/Terraform compatible)
+- **Location**: `policies/opentofu/`
 
 ### 2. **Runtime Validation** (Detection)
 - **Tool**: Kyverno
@@ -186,7 +186,7 @@ See [policies/README.md](policies/README.md) for detailed policy organization an
 ## 🧪 Testing & Validation
 
 ### Automated Testing
-- **56 policy tests** with positive/negative scenarios
+- **62 policy tests** with positive/negative scenarios
 - **CI/CD integration** with GitHub Actions
 - **Markdown reports** with visual pass/fail indicators
 - **Executive summaries** for management reporting

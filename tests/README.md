@@ -6,7 +6,7 @@ This directory contains comprehensive test cases for validating CIS EKS complian
 
 ### 📋 Test Scenarios
 
-The test suite includes **40 test scenarios** organized by CIS EKS Benchmark control numbers:
+The test suite includes **62 test scenarios** organized by CIS EKS Benchmark control numbers:
 
 #### Control Plane (Section 2)
 - `custom-2.1.1/` - API server configuration
@@ -76,7 +76,7 @@ kyverno apply policies/kubernetes/pod-security/ --resource tests/kubernetes/cust
 ### Integration with CI/CD
 
 The test framework is integrated into GitHub Actions workflow:
-- Validates all 45 policies against 40 test scenarios
+- Validates all 62 policies against test scenarios
 - Generates detailed compliance reports
 - Runs end-to-end testing with Kind clusters
 
@@ -88,7 +88,7 @@ The test framework is integrated into GitHub Actions workflow:
 | Worker Nodes | 13 | 13 | 100% |
 | RBAC | 20 | 20 | 100% |
 | Pod Security | 9 | 9 | 100% |
-| **Total** | **40** | **45** | **89%** |
+| **Total** | **62** | **62** | **100%** |
 
 *Note: Some policies cover multiple CIS controls, resulting in higher policy count than test scenarios.*
 

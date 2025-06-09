@@ -1,0 +1,18 @@
+apiVersion: json.kyverno.io/v1alpha1
+kind: ValidatingPolicy
+metadata:
+  name: cis-3-1-1-worker-node-security
+spec:
+  rules:
+    - name: worker-node-security-configuration
+      assert:
+        all:
+          - message: "EKS worker nodes should use appropriate AMI types with security hardening."
+            check:
+              (length(planned_values.root_module.resources[?type=='aws_eks_node_group' && values.ami_type != null]) > `0`): true
+          - message: "Worker nodes should be deployed in private subnets for security."
+            check:
+              (length(configuration.root_module.resources[?type=='aws_eks_node_group' && contains(expressions.subnet_ids.references[*], 'aws_subnet.private')]) > `0`): true
+          - message: "Worker node security groups should be properly configured."
+            check:
+              (length(planned_values.root_module.resources[?type=='aws_security_group' && contains(values.name, 'node')]) > `0`): true

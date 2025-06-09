@@ -20,8 +20,8 @@ This directory contains official documentation and compliance benchmarks for the
 
 ## 🏗️ Framework Components
 
-- **Policies**: 45 Kyverno policies organized by CIS control sections
-- **Tests**: 40 test scenarios for comprehensive validation
+- **Policies**: 62 Kyverno policies organized by CIS control sections
+- **Tests**: 62 test scenarios for comprehensive validation
 - **Scripts**: 5 automation tools for testing and reporting
 - **OpenTofu**: Example configurations for compliant and non-compliant clusters
 - **Kube-bench**: CIS node-level compliance scanning integration

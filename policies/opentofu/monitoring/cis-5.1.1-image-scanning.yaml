@@ -1,0 +1,15 @@
+apiVersion: json.kyverno.io/v1alpha1
+kind: ValidatingPolicy
+metadata:
+  name: cis-5-1-1-image-scanning
+spec:
+  rules:
+    - name: ecr-image-scanning-enabled
+      assert:
+        all:
+          - message: "ECR repositories must have image scanning enabled."
+            check:
+              (length(planned_values.root_module.resources[?type=='aws_ecr_repository' && values.image_scanning_configuration && values.image_scanning_configuration[0].scan_on_push == `true`]) > `0`): true
+          - message: "ECR repositories should be created for container image management."
+            check:
+              (length(planned_values.root_module.resources[?type=='aws_ecr_repository']) > `0`): true

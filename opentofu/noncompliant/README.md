@@ -19,7 +19,7 @@ This stack is configured to violate key CIS EKS controls, including:
 - No Kubernetes network policies present
 
 ## Purpose
-This stack is used to demonstrate that Kyverno JSON policies can detect and fail noncompliant infrastructure at the OpenTofu/Terraform plan stage.
+This stack is used to demonstrate that Kyverno JSON policies can detect and fail noncompliant infrastructure at the OpenTofu plan stage.
 
 ---
 

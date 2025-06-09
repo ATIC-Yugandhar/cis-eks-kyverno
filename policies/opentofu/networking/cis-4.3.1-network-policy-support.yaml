@@ -1,0 +1,15 @@
+apiVersion: json.kyverno.io/v1alpha1
+kind: ValidatingPolicy
+metadata:
+  name: cis-4-3-1-network-policy-support
+spec:
+  rules:
+    - name: eks-cni-network-policy-support
+      assert:
+        all:
+          - message: "EKS cluster should have CNI that supports network policies (e.g., Calico, Cilium)."
+            check:
+              (length(planned_values.root_module.resources[?type=='aws_eks_addon' && (contains(values.addon_name, 'aws-vpc-cni') || contains(values.addon_name, 'vpc-cni'))]) > `0`): true
+          - message: "VPC should be configured to support network policies."
+            check:
+              (length(planned_values.root_module.resources[?type=='aws_vpc' && values.enable_dns_support == `true`]) > `0`): true
