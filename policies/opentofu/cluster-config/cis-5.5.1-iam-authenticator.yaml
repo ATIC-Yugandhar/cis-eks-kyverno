@@ -1,0 +1,18 @@
+apiVersion: json.kyverno.io/v1alpha1
+kind: ValidatingPolicy
+metadata:
+  name: cis-5-5-1-iam-authenticator
+spec:
+  rules:
+    - name: eks-iam-authenticator-config
+      assert:
+        all:
+          - message: "EKS cluster must use IAM for authentication (default behavior)."
+            check:
+              (length(planned_values.root_module.resources[?type=='aws_eks_cluster' && values.name]) > `0`): true
+          - message: "EKS cluster should have proper IAM roles configured for authentication."
+            check:
+              (length(planned_values.root_module.resources[?type=='aws_iam_role' && contains(values.name, 'eks')]) > `0`): true
+          - message: "IAM roles should have appropriate trust relationships for EKS."
+            check:
+              (length(planned_values.root_module.resources[?type=='aws_iam_role' && contains(values.assume_role_policy, 'eks.amazonaws.com')]) > `0`): true

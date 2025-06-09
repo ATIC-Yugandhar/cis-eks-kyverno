@@ -1,0 +1,12 @@
+apiVersion: json.kyverno.io/v1alpha1
+kind: ValidatingPolicy
+metadata:
+  name: cis-2-1-3-audit-log-retention
+spec:
+  rules:
+    - name: eks-audit-log-retention
+      assert:
+        all:
+          - message: "CloudWatch log groups for EKS audit logs must have retention period of at least 90 days."
+            check:
+              (length(planned_values.root_module.resources[?type=='aws_cloudwatch_log_group' && contains(values.name, 'eks') && values.retention_in_days && values.retention_in_days >= `90`]) > `0`): true

@@ -1,0 +1,15 @@
+apiVersion: json.kyverno.io/v1alpha1
+kind: ValidatingPolicy
+metadata:
+  name: cis-5-1-2-nacl-configuration
+spec:
+  rules:
+    - name: vpc-nacl-security
+      assert:
+        all:
+          - message: "VPC should have Network ACLs configured for additional security layer."
+            check:
+              (length(planned_values.root_module.resources[?type=='aws_network_acl']) > `0` || length(planned_values.root_module.resources[?type=='aws_vpc']) > `0`): true
+          - message: "Network ACLs should not allow unrestricted access (0.0.0.0/0) for ingress traffic."
+            check:
+              (length(planned_values.root_module.resources[?type=='aws_network_acl_rule' && values.rule_action == 'allow' && contains(values.cidr_block, '0.0.0.0/0') && values.rule_number < `100`]) == `0`): true

@@ -1,0 +1,12 @@
+apiVersion: json.kyverno.io/v1alpha1
+kind: ValidatingPolicy
+metadata:
+  name: cis-4-1-3-minimize-wildcard-permissions
+spec:
+  rules:
+    - name: no-wildcard-iam-policies
+      assert:
+        all:
+          - message: "IAM policies should not use wildcard (*) permissions for resources or actions."
+            check:
+              (length(planned_values.root_module.resources[?type=='aws_iam_role_policy' && (contains(values.policy, '"Resource":"*"') || contains(values.policy, '"Resource": "*"') || contains(values.policy, '"Action":"*"') || contains(values.policy, '"Action": "*"'))]) == `0`): true

@@ -5,10 +5,10 @@ metadata:
 policies:
   - ../../../../policies/kubernetes/pod-security/custom-5.3.1.yaml
 resources:
-  - terraform.json
+  - opentofu.json
 results:
   - policy: cis-5.3.1-kms-secret-encryption-comprehensive
-    rule: validate-terraform-eks-encryption
+    rule: validate-opentofu-eks-encryption
     resources:
       - json.kyverno.io/v1alpha1
     kind: json.kyverno.io/v1alpha1

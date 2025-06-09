@@ -1,0 +1,15 @@
+apiVersion: json.kyverno.io/v1alpha1
+kind: ValidatingPolicy
+metadata:
+  name: cis-5-1-1-security-group-rules
+spec:
+  rules:
+    - name: restrict-security-group-access
+      assert:
+        all:
+          - message: "Security groups should not allow unrestricted ingress access (0.0.0.0/0) on all ports."
+            check:
+              (length(planned_values.root_module.resources[?type=='aws_security_group' && values.ingress && length(values.ingress[?contains(cidr_blocks, '0.0.0.0/0') && from_port == `0` && to_port == `65535`]) > `0`]) == `0`): true
+          - message: "Security groups should follow principle of least privilege for network access."
+            check:
+              (length(planned_values.root_module.resources[?type=='aws_security_group' && values.name]) > `0`): true

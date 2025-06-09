@@ -49,12 +49,12 @@ Achieving comprehensive CIS EKS Benchmark compliance requires multiple validatio
 
 1. **Kyverno** - Validates Kubernetes resources and API-level configurations
 2. **Kube-bench** - Validates node-level configurations and file system checks
-3. **OpenTofu/Terraform** - Validates infrastructure configuration at plan-time
+3. **OpenTofu** - Validates infrastructure configuration at plan-time
 
 ### Tool Capabilities and Boundaries
 
-| Validation Type | Kyverno | Kube-bench | OpenTofu/Terraform |
-|----------------|---------|------------|-------------------|
+| Validation Type | Kyverno | Kube-bench | OpenTofu |
+|----------------|---------|------------|----------|
 | Pod Security Contexts | ✅ | ❌ | ❌ |
 | RBAC Configurations | ✅ | ❌ | ❌ |
 | File Permissions | ❌ | ✅ | ❌ |

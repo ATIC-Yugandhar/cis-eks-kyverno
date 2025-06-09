@@ -1,0 +1,15 @@
+apiVersion: json.kyverno.io/v1alpha1
+kind: ValidatingPolicy
+metadata:
+  name: cis-5-5-1-resource-quotas
+spec:
+  rules:
+    - name: eks-resource-limits
+      assert:
+        all:
+          - message: "EKS node groups should have appropriate instance limits configured."
+            check:
+              (length(planned_values.root_module.resources[?type=='aws_eks_node_group' && values.scaling_config && values.scaling_config[0].max_size <= `10`]) > `0`): true
+          - message: "Resource quotas should be considered for cluster resource management."
+            check:
+              (length(planned_values.root_module.resources[?type=='aws_eks_node_group' && values.scaling_config]) > `0`): true

@@ -1,0 +1,15 @@
+apiVersion: json.kyverno.io/v1alpha1
+kind: ValidatingPolicy
+metadata:
+  name: cis-5-1-2-ecr-access-minimization
+spec:
+  rules:
+    - name: minimize-ecr-iam-permissions
+      assert:
+        all:
+          - message: "Node group IAM roles should only have ECR read-only access."
+            check:
+              (length(planned_values.root_module.resources[?type=='aws_iam_role_policy_attachment' && contains(values.role, 'node') && values.policy_arn == 'arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly']) > `0`): true
+          - message: "IAM roles should not have excessive ECR permissions."
+            check:
+              (length(planned_values.root_module.resources[?type=='aws_iam_role_policy_attachment' && contains(values.policy_arn, 'ECRFullAccess')]) == `0`): true
