@@ -163,6 +163,15 @@ See our [Worker Node Policy Documentation](policies/README.md#important-worker-n
 | **4. RBAC & Service Accounts** | 15 | ✅ | ❌ | ⚠️ | Complete |
 | **5. Pod Security** | 9 | ✅ | ❌ | ✅ | Complete |
 
+## 🛡️ Multi-Layer Validation
+
+| Validation Layer | Policies      | Coverage                | Purpose                                     |
+|------------------|---------------|--------------------------|---------------------------------------------|
+| 🌀 **Plan-Time**  | 23 policies   | Infrastructure security  | Prevent misconfigurations before deployment |
+| ⚡ **Runtime**    | 40 policies   | Kubernetes resources     | Continuous compliance monitoring            |
+| 🔍 **Node-Level** | 13 controls   | File system validation   | Deep worker node inspection                 |
+
+
 **Legend**:
 - ✅ Fully Supported
 - ⚠️ Partially Supported
