@@ -119,6 +119,9 @@ Choose your learning path based on your goals:
 
 This framework implements a comprehensive **"defense-in-depth"** approach using multiple specialized tools:
 
+![Kyverno-CIS-v2](https://github.com/user-attachments/assets/714292b5-0eb3-4c8a-8113-930610d41e8d)
+
+
 ### 1. **Plan-Time Validation** (Prevention)
 - **Tool**: OpenTofu + Kyverno
 - Validate Infrastructure as Code before deployment
