@@ -72,18 +72,8 @@ kubectl apply -f kyverno-node-rbac.yaml
 
 Achieving complete CIS EKS compliance requires multiple specialized tools working together. Here's why:
 
-graph TD
-    A[CIS EKS Benchmark] --> B[Runtime Validation]
-    A --> C[Plan-time Validation] 
-    A --> D[Node-level Validation]
-    
-    B --> E[Kyverno<br/>✅ RBAC, Pods, Network Policies<br/>❌ File permissions, Kubelet config]
-    C --> F[OpenTofu<br/>✅ Infrastructure config<br/>❌ Runtime behavior]
-    D --> G[Kube-bench<br/>✅ File systems, Kubelet<br/>❌ Kubernetes API resources]
-    
-    E --> H[Complete Coverage]
-    F --> H
-    G --> H
+![image](https://github.com/user-attachments/assets/c349bfc0-4d92-422f-9e65-ca3278e5e8e2)
+
 
 
 
