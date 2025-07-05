@@ -1,22 +1,30 @@
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
-  name: cis-4-5-1-use-namespaces-for-boundaries
+  name: custom-4.5.1
   annotations:
     policies.kyverno.io/category: CIS 4.5.1
-    policies.kyverno.io/description: |
-      Validate that resources are not created in the "default" namespace, enforcing namespace-based resource boundaries.
+    policies.kyverno.io/description: 'Validate that resources are not created in the
+      "default" namespace, enforcing namespace-based resource boundaries.
+
+      '
+    policies.kyverno.io/cel: 'true'
 spec:
   validationFailureAction: Enforce
   background: false
   rules:
-    - name: disallow-default-namespace
-      match:
-        resources:
-          kinds:
-            - "*"
-          namespaces:
-            - default
-      validate:
-        message: "Resources should not be created in the 'default' namespace. Use dedicated namespaces for resource boundaries."
-        deny: {}
+  - name: disallow-default-namespace
+    match:
+      resources:
+        kinds:
+        - '*'
+        namespaces:
+        - default
+    validate:
+      message: Resources should not be created in the 'default' namespace. Use dedicated
+        namespaces for resource boundaries.
+      cel:
+        expressions:
+        - expression: object.metadata.namespace != "default"
+          message: Resources should not be created in the 'default' namespace. Use
+            dedicated namespaces for resource boundaries.

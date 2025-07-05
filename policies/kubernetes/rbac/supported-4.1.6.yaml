@@ -7,20 +7,22 @@ metadata:
     policies.kyverno.io/category: Pod Security
     policies.kyverno.io/severity: high
     policies.kyverno.io/subject: Pod
-    policies.kyverno.io/description: >-
-      Ensure that service account tokens are not mounted by default unless necessary.
+    policies.kyverno.io/description: Ensure that service account tokens are not mounted
+      by default unless necessary.
+    policies.kyverno.io/cel: 'true'
 spec:
   validationFailureAction: Audit
   background: true
   rules:
-    - name: restrict-automount-sa-token
-      match:
-        any:
-        - resources:
-            kinds:
-              - Pod
-      validate:
-        message: "Service account tokens should not be mounted unless necessary."
-        pattern:
-          spec:
-            automountServiceAccountToken: false 
+  - name: restrict-automount-sa-token
+    match:
+      any:
+      - resources:
+          kinds:
+          - Pod
+    validate:
+      message: Service account tokens should not be mounted unless necessary.
+      cel:
+        expressions:
+        - expression: object.spec.automountServiceAccountToken == false
+          message: Service account tokens should not be mounted unless necessary.

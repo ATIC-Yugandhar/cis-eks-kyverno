@@ -7,8 +7,8 @@ policies:
 resources:
   - namespace.yaml
 results:
-  - policy: custom-5-4-1-restrict-control-plane-endpoint
-    rule: check-restrict-control-plane-endpoint
+  - policy: custom-5.4.1
+    rule: check-restrict-control-plane-endpoint-namespace
     resources:
       - compliant-ns
     kind: Namespace

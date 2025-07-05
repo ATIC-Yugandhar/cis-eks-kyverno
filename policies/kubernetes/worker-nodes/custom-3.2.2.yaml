@@ -1,49 +1,65 @@
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
-  name: cis-3-2-2-authorization-mode-not-alwaysallow
+  name: custom-3.2.2
   annotations:
     policies.kyverno.io/category: CIS 3.2.2
-    policies.kyverno.io/description: |
-      CIS 3.2.2: Ensure that the --authorization-mode argument is not set to AlwaysAllow.
-      
-      HYBRID VALIDATION APPROACH: This control has both kubelet configuration aspects (validated by kube-bench) 
-      and Kubernetes RBAC aspects (validated by Kyverno).
-      
-      KUBE-BENCH INTEGRATION: The primary kubelet --authorization-mode flag validation requires kube-bench 
-      to access kubelet configuration files on worker nodes.
-      
-      KYVERNO VALIDATION: This policy validates RBAC configurations that could indicate overly permissive 
-      authorization patterns, complementing the kubelet-level authorization mode checks.
-    policies.kyverno.io/kube-bench-required: "true"
-    policies.kyverno.io/validation-scope: "rbac-authorization-bindings"
+    policies.kyverno.io/description: "CIS 3.2.2: Ensure that the --authorization-mode\
+      \ argument is not set to AlwaysAllow.\n\nHYBRID VALIDATION APPROACH: This control\
+      \ has both kubelet configuration aspects (validated by kube-bench) \nand Kubernetes\
+      \ RBAC aspects (validated by Kyverno).\n\nKUBE-BENCH INTEGRATION: The primary\
+      \ kubelet --authorization-mode flag validation requires kube-bench \nto access\
+      \ kubelet configuration files on worker nodes.\n\nKYVERNO VALIDATION: This policy\
+      \ validates RBAC configurations that could indicate overly permissive \nauthorization\
+      \ patterns, complementing the kubelet-level authorization mode checks.\n"
+    policies.kyverno.io/kube-bench-required: 'true'
+    policies.kyverno.io/validation-scope: rbac-authorization-bindings
+    policies.kyverno.io/cel: 'true'
 spec:
   validationFailureAction: Audit
   background: true
   rules:
-    - name: disallow-cluster-admin-binding
-      match:
-        resources:
-          kinds:
-            - ClusterRoleBinding
-      validate:
-        message: |
-          ClusterRoleBindings should not grant cluster-admin permissions except when explicitly required.
-          Note: Actual kubelet authorization mode validation requires kube-bench.
-        pattern:
-          roleRef:
-            name: "!cluster-admin"
-    - name: audit-wildcard-permissions
-      match:
-        resources:
-          kinds:
-            - ClusterRole
-            - Role
-      validate:
-        message: |
-          Roles should avoid wildcard permissions which can indicate overly permissive authorization.
-          Note: Actual kubelet authorization mode validation requires kube-bench.
-        pattern:
-          rules:
-            - resources: "!*"
-              verbs: "!*"
+  - name: disallow-cluster-admin-binding
+    match:
+      resources:
+        kinds:
+        - ClusterRoleBinding
+    validate:
+      message: 'ClusterRoleBindings should not grant cluster-admin permissions except
+        when explicitly required.
+
+        Note: Actual kubelet authorization mode validation requires kube-bench.
+
+        '
+      cel:
+        expressions:
+        - expression: object.roleRef.name != 'cluster-admin'
+          message: 'ClusterRoleBindings should not grant cluster-admin permissions
+            except when explicitly required.
+
+            Note: Actual kubelet authorization mode validation requires kube-bench.
+
+            '
+  - name: audit-wildcard-permissions
+    match:
+      resources:
+        kinds:
+        - ClusterRole
+        - Role
+    validate:
+      message: 'Roles should avoid wildcard permissions which can indicate overly
+        permissive authorization.
+
+        Note: Actual kubelet authorization mode validation requires kube-bench.
+
+        '
+      cel:
+        expressions:
+        - expression: object.rules.all(item, item.resources != '*' && item.verbs !=
+            '*')
+          message: 'Roles should avoid wildcard permissions which can indicate overly
+            permissive authorization.
+
+            Note: Actual kubelet authorization mode validation requires kube-bench.
+
+            '

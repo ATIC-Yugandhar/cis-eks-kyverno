@@ -1,93 +1,85 @@
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
-  name: custom-5-4-1-restrict-control-plane-endpoint
+  name: custom-5.4.1
   annotations:
     policies.kyverno.io/category: CIS 5.4.1
-    policies.kyverno.io/description: |
-      Validates control plane endpoint restrictions using reliable Kubernetes resources.
+    policies.kyverno.io/description: 'Validates control plane endpoint restrictions
+      using reliable Kubernetes resources.
+
       Checks Services, NetworkPolicies, and Namespaces for endpoint restriction indicators.
+
+      '
+    policies.kyverno.io/cel: 'true'
 spec:
   validationFailureAction: Audit
   background: true
   rules:
-    - name: check-restrict-control-plane-endpoint-namespace
-      match:
-        any:
-        - resources:
-            kinds:
-              - Namespace
-      validate:
-        message: "Namespace should have control plane endpoint restriction annotation or label."
-        anyPattern:
-          - metadata:
-              annotations:
-                endpoint-restriction: "enabled"
-          - metadata:
-              labels:
-                endpoint-restriction: "enabled"
-          - metadata:
-              annotations:
-                networking.k8s.io/control-plane-access: "restricted"
-
-    - name: validate-service-endpoint-restrictions
-      match:
-        any:
-        - resources:
-            kinds:
-              - Service
-            namespaces:
-              - kube-system
-      validate:
-        message: "Control plane services should have endpoint access restrictions."
-        anyPattern:
-          - metadata:
-              annotations:
-                service.beta.kubernetes.io/aws-load-balancer-internal: "true"
-          - spec:
-              type: "ClusterIP"
-          - metadata:
-              labels:
-                access-control: "restricted"
-
-    - name: validate-network-policy-endpoint-restrictions
-      match:
-        any:
-        - resources:
-            kinds:
-              - NetworkPolicy
-            namespaces:
-              - kube-system
-      validate:
-        message: "NetworkPolicies should restrict control plane endpoint access."
-        anyPattern:
-          - spec:
-              policyTypes:
-              - "Ingress"
-          - metadata:
-              annotations:
-                policy-purpose: "control-plane-restriction"
-          - spec:
-              ingress:
-              - from:
-                - namespaceSelector: {}
-
-    - name: validate-pod-security-context
-      match:
-        any:
-        - resources:
-            kinds:
-              - Pod
-            namespaces:
-              - kube-system
-      validate:
-        message: "Control plane pods should have security restrictions."
-        anyPattern:
-          - spec:
-              securityContext:
-                runAsNonRoot: true
-          - metadata:
-              annotations:
-                endpoint-access: "restricted"
-          - spec:
-              hostNetwork: false
+  - name: check-restrict-control-plane-endpoint-namespace
+    match:
+      any:
+      - resources:
+          kinds:
+          - Namespace
+    validate:
+      message: Namespace should have control plane endpoint restriction annotation
+        or label.
+      cel:
+        expressions:
+        - expression: |
+            (has(object.metadata.annotations) && "endpoint-restriction" in object.metadata.annotations && object.metadata.annotations["endpoint-restriction"] == 'enabled') ||
+            (has(object.metadata.labels) && "endpoint-restriction" in object.metadata.labels && object.metadata.labels["endpoint-restriction"] == 'enabled') ||
+            (has(object.metadata.annotations) && "networking.k8s.io/control-plane-access" in object.metadata.annotations && object.metadata.annotations["networking.k8s.io/control-plane-access"] == 'restricted')
+          message: Namespace should have control plane endpoint restriction annotation
+            or label.
+  - name: validate-service-endpoint-restrictions
+    match:
+      any:
+      - resources:
+          kinds:
+          - Service
+          namespaces:
+          - kube-system
+    validate:
+      message: Control plane services should have endpoint access restrictions.
+      cel:
+        expressions:
+        - expression: |
+            (has(object.metadata.annotations) && "service.beta.kubernetes.io/aws-load-balancer-internal" in object.metadata.annotations && object.metadata.annotations["service.beta.kubernetes.io/aws-load-balancer-internal"] == 'true') ||
+            (object.spec.type == 'ClusterIP') ||
+            (has(object.metadata.labels) && "access-control" in object.metadata.labels && object.metadata.labels["access-control"] == 'restricted')
+          message: Control plane services should have endpoint access restrictions.
+  - name: validate-network-policy-endpoint-restrictions
+    match:
+      any:
+      - resources:
+          kinds:
+          - NetworkPolicy
+          namespaces:
+          - kube-system
+    validate:
+      message: NetworkPolicies should restrict control plane endpoint access.
+      cel:
+        expressions:
+        - expression: |
+            (has(object.spec.policyTypes) && object.spec.policyTypes == ['Ingress']) ||
+            (has(object.metadata.annotations) && "policy-purpose" in object.metadata.annotations && object.metadata.annotations["policy-purpose"] == 'control-plane-restriction') ||
+            (has(object.spec.ingress) && object.spec.ingress.all(item, has(item.from) && item.from.all(source, true)))
+          message: NetworkPolicies should restrict control plane endpoint access.
+  - name: validate-pod-security-context
+    match:
+      any:
+      - resources:
+          kinds:
+          - Pod
+          namespaces:
+          - kube-system
+    validate:
+      message: Control plane pods should have security restrictions.
+      cel:
+        expressions:
+        - expression: |
+            (has(object.spec.securityContext) && has(object.spec.securityContext.runAsNonRoot) && object.spec.securityContext.runAsNonRoot == true) ||
+            (has(object.metadata.annotations) && "endpoint-access" in object.metadata.annotations && object.metadata.annotations["endpoint-access"] == 'restricted') ||
+            (!has(object.spec.hostNetwork) || object.spec.hostNetwork == false)
+          message: Control plane pods should have security restrictions.

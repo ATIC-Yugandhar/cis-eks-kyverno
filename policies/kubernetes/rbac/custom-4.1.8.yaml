@@ -1,22 +1,27 @@
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
-  name: cis-4-1-8-limit-bind-impersonate-escalate
+  name: custom-4.1.8
   annotations:
     policies.kyverno.io/category: CIS 4.1.8
-    policies.kyverno.io/description: |
-      Audit for roles or bindings that grant bind, impersonate, or escalate permissions. Partial coverage, as some escalation paths are outside Kyverno's scope.
+    policies.kyverno.io/description: 'Audit for roles or bindings that grant bind,
+      impersonate, or escalate permissions. Partial coverage, as some escalation paths
+      are outside Kyverno''s scope.
+
+      '
+    policies.kyverno.io/cel: 'true'
 spec:
   validationFailureAction: Audit
   rules:
-    - name: restrict-sensitive-verbs
-      match:
-        resources:
-          kinds:
-            - Role
-            - ClusterRole
-      validate:
-        message: "Roles should not grant bind, impersonate, or escalate permissions."
-        pattern:
-          rules:
-            - verbs: "!['bind', 'impersonate', 'escalate']"
+  - name: restrict-sensitive-verbs
+    match:
+      resources:
+        kinds:
+        - Role
+        - ClusterRole
+    validate:
+      message: Roles should not grant bind, impersonate, or escalate permissions.
+      cel:
+        expressions:
+        - expression: "object.rules.all(item, !('bind' in item.verbs || 'impersonate' in item.verbs || 'escalate' in item.verbs))"
+          message: Roles should not grant bind, impersonate, or escalate permissions.

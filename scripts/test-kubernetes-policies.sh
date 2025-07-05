@@ -69,12 +69,7 @@ for category_dir in "$POLICIES_DIR/kubernetes"/*; do
                 if [ -d "$TESTS_DIR/kubernetes/$policy_name" ]; then
                     # Test compliant resources
                     if [ -d "$TESTS_DIR/kubernetes/$policy_name/compliant" ]; then
-                        if [[ "$policy_name" == "custom-4.5.1" ]]; then
-                            echo -n "[skip] "
-                            result_line+="- ⏭️ $policy_name - compliant: SKIPPED (namespace policy)"
-                            echo "- ⏭️ $policy_name - compliant: SKIPPED (namespace policy)" >> "$DETAILED_FILE"
-                            ((SKIPPED++))
-                        elif ls "$TESTS_DIR/kubernetes/$policy_name/compliant"/*.json >/dev/null 2>&1; then
+                        if ls "$TESTS_DIR/kubernetes/$policy_name/compliant"/*.json >/dev/null 2>&1; then
                             echo -n "[skip] "
                             result_line+="- ⏭️ $policy_name - compliant: SKIPPED (JSON test)"
                             echo "- ⏭️ $policy_name - compliant: SKIPPED (JSON test)" >> "$DETAILED_FILE"

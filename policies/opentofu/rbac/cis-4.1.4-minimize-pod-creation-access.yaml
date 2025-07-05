@@ -9,7 +9,7 @@ spec:
         all:
           - message: "IAM roles should not have unnecessary EC2 instance creation permissions."
             check:
-              (length(planned_values.root_module.resources[?type=='aws_iam_role_policy' && contains(values.policy, 'ec2:RunInstances')]) == `0`): true
+              "(length(planned_values.root_module.resources[?type=='aws_iam_role_policy' && (contains(values.policy, '\"ec2:RunInstances\"') || contains(values.policy, '\"ec2:*\"') || contains(values.policy, '\"Action\":\"*\"'))]) == `0`)": true
           - message: "EKS node group IAM roles should use AWS managed policies for compute access."
             check:
-              (length(planned_values.root_module.resources[?type=='aws_iam_role_policy_attachment' && contains(values.role, 'node') && values.policy_arn == 'arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy']) > `0`): true
+              "(length(planned_values.root_module.resources[?type=='aws_iam_role_policy_attachment' && contains(values.role, 'node') && values.policy_arn == 'arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy']) > `0`)": true

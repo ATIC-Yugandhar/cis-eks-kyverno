@@ -7,7 +7,7 @@ policies:
 resources:
   - pod.yaml
 results:
-  - policy: cis-4-5-1-use-namespaces-for-boundaries
+  - policy: custom-4.5.1
     rule: disallow-default-namespace
     resources:
       - compliant-pod

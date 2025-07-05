@@ -1,28 +1,31 @@
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
-  name: custom-5-4-3-private-nodes
+  name: custom-5.4.3
   annotations:
     policies.kyverno.io/category: CIS 5.4.3
-    policies.kyverno.io/description: |
-      Checks for private node annotation or label in Node or Namespace if available.
+    policies.kyverno.io/description: 'Checks for private node annotation or label
+      in Node or Namespace if available.
+
+      '
+    policies.kyverno.io/cel: 'true'
 spec:
   validationFailureAction: Audit
   background: true
   rules:
-    - name: check-private-nodes
-      match:
-        any:
-        - resources:
-            kinds:
-              - Node
-              - Namespace
-      validate:
-        message: "Nodes should be private (look for private-node annotation or label)."
-        anyPattern:
-          - metadata:
-              annotations:
-                private-node: "true"
-          - metadata:
-              labels:
-                private-node: "true" 
+  - name: check-private-nodes
+    match:
+      any:
+      - resources:
+          kinds:
+          - Node
+          - Namespace
+    validate:
+      message: Nodes should be private (look for private-node annotation or label).
+      cel:
+        expressions:
+        - expression: (has(object.metadata.annotations) && "private-node" in object.metadata.annotations
+            && (object.metadata.annotations["private-node"] == 'true')) || (has(object.metadata.labels)
+            && "private-node" in object.metadata.labels && (object.metadata.labels["private-node"]
+            == 'true'))
+          message: Nodes should be private (look for private-node annotation or label).

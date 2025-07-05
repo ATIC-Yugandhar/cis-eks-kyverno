@@ -1,28 +1,36 @@
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
-  name: custom-5-1-1-image-scanning
+  name: custom-5.1.1
   annotations:
     policies.kyverno.io/category: CIS 5.1.1
-    policies.kyverno.io/description: |
-      Checks for image scanning annotation or label in Namespace or Pod if available.
+    policies.kyverno.io/description: 'Checks for image scanning annotation or label
+      in Namespace or Pod if available.
+
+      '
+    policies.kyverno.io/cel: 'true'
 spec:
   validationFailureAction: Audit
   background: true
   rules:
-    - name: check-image-scanning
-      match:
-        any:
-        - resources:
-            kinds:
-              - Namespace
-              - Pod
-      validate:
-        message: "Image scanning should be enabled (look for image-scanning annotation or label)."
-        anyPattern:
-          - metadata:
-              annotations:
-                image-scanning: "enabled"
-          - metadata:
-              labels:
-                image-scanning: "enabled" 
+  - name: check-image-scanning
+    match:
+      any:
+      - resources:
+          kinds:
+          - Namespace
+          - Pod
+    validate:
+      message: Image scanning should be enabled (look for image-scanning annotation
+        or label).
+      cel:
+        expressions:
+        - expression: '(has(object.metadata.annotations) && "image-scanning" in object.metadata.annotations
+            && object.metadata.annotations["image-scanning"] == "enabled") ||
+
+            (has(object.metadata.labels) && "image-scanning" in object.metadata.labels
+            && object.metadata.labels["image-scanning"] == "enabled")
+
+            '
+          message: Image scanning should be enabled (look for image-scanning annotation
+            or label).

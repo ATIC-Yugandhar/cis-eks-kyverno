@@ -1,43 +1,45 @@
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
-  name: custom-3-2-8-hostname-override
+  name: custom-3.2.8
   annotations:
     policies.kyverno.io/category: CIS 3.2.8
-    policies.kyverno.io/description: |
-      CIS 3.2.8: Ensure that the --hostname-override argument is not set.
-      
-      IMPORTANT: This control requires direct access to worker node kubelet configuration files 
-      to validate the hostname override setting. Kyverno cannot directly access node configuration files.
-      
-      KUBE-BENCH INTEGRATION REQUIRED: This control must be validated using kube-bench, which runs 
-      privileged pods on worker nodes to access and validate kubelet configuration files.
-      
-      This policy validates Pod-level hostname and identity configurations that relate to node identity, 
-      but the primary validation of kubelet hostname override settings occurs through kube-bench.
-    policies.kyverno.io/kube-bench-required: "true"
-    policies.kyverno.io/validation-scope: "limited-pod-identity-security"
+    policies.kyverno.io/description: "CIS 3.2.8: Ensure that the --hostname-override\
+      \ argument is not set.\n\nIMPORTANT: This control requires direct access to\
+      \ worker node kubelet configuration files \nto validate the hostname override\
+      \ setting. Kyverno cannot directly access node configuration files.\n\nKUBE-BENCH\
+      \ INTEGRATION REQUIRED: This control must be validated using kube-bench, which\
+      \ runs \nprivileged pods on worker nodes to access and validate kubelet configuration\
+      \ files.\n\nThis policy validates Pod-level hostname and identity configurations\
+      \ that relate to node identity, \nbut the primary validation of kubelet hostname\
+      \ override settings occurs through kube-bench.\n"
+    policies.kyverno.io/kube-bench-required: 'true'
+    policies.kyverno.io/validation-scope: limited-pod-identity-security
+    policies.kyverno.io/cel: 'true'
 spec:
   validationFailureAction: Audit
   background: true
   rules:
-    - name: validate-pod-identity-security
-      match:
-        any:
-        - resources:
-            kinds:
-              - Pod
-      validate:
-        message: |
-          Pods should use appropriate hostname and identity configurations.
-          Note: Actual kubelet hostname override validation requires kube-bench.
-        pattern:
-          spec:
-            =(securityContext):
-              =(runAsNonRoot): "true"
-            =(containers):
-            - =(securityContext):
-                =(allowPrivilegeEscalation): "false"
-            =(hostNetwork): "false"
-            =(hostPID): "false"
-            =(hostIPC): "false"
+  - name: validate-pod-identity-security
+    match:
+      any:
+      - resources:
+          kinds:
+          - Pod
+    validate:
+      message: 'Pods should use appropriate hostname and identity configurations.
+
+        Note: Actual kubelet hostname override validation requires kube-bench.
+
+        '
+      cel:
+        expressions:
+        - expression: (!has(object.spec.securityContext) || (!has(object.spec.securityContext.runAsNonRoot)
+            || true)) && (!has(object.spec.containers) || true) && (!has(object.spec.hostNetwork)
+            || true) && (!has(object.spec.hostPID) || true) && (!has(object.spec.hostIPC)
+            || true)
+          message: 'Pods should use appropriate hostname and identity configurations.
+
+            Note: Actual kubelet hostname override validation requires kube-bench.
+
+            '

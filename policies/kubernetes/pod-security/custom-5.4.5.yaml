@@ -1,28 +1,33 @@
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
-  name: custom-5-4-5-tls-load-balancer
+  name: custom-5.4.5
   annotations:
     policies.kyverno.io/category: CIS 5.4.5
-    policies.kyverno.io/description: |
-      Checks for TLS annotation or label in Service or Namespace if available.
+    policies.kyverno.io/description: 'Checks for TLS annotation or label in Service
+      or Namespace if available.
+
+      '
+    policies.kyverno.io/cel: 'true'
 spec:
   validationFailureAction: Audit
   background: true
   rules:
-    - name: check-tls-load-balancer
-      match:
-        any:
-        - resources:
-            kinds:
-              - Service
-              - Namespace
-      validate:
-        message: "Load balancer traffic should be encrypted with TLS (look for tls annotation or label)."
-        anyPattern:
-          - metadata:
-              annotations:
-                tls: "enabled"
-          - metadata:
-              labels:
-                tls: "enabled" 
+  - name: check-tls-load-balancer
+    match:
+      any:
+      - resources:
+          kinds:
+          - Service
+          - Namespace
+    validate:
+      message: Load balancer traffic should be encrypted with TLS (look for tls annotation
+        or label).
+      cel:
+        expressions:
+        - expression: (has(object.metadata.annotations) && "tls" in object.metadata.annotations
+            && (object.metadata.annotations["tls"] == 'enabled')) || (has(object.metadata.labels)
+            && "tls" in object.metadata.labels && (object.metadata.labels["tls"] ==
+            'enabled'))
+          message: Load balancer traffic should be encrypted with TLS (look for tls
+            annotation or label).

@@ -7,20 +7,22 @@ metadata:
     policies.kyverno.io/category: ServiceAccount
     policies.kyverno.io/severity: high
     policies.kyverno.io/subject: ServiceAccount
-    policies.kyverno.io/description: >-
-      Ensure that the default service account is not used in any namespace.
+    policies.kyverno.io/description: Ensure that the default service account is not
+      used in any namespace.
+    policies.kyverno.io/cel: 'true'
 spec:
   validationFailureAction: Audit
   background: true
   rules:
-    - name: restrict-default-sa
-      match:
-        any:
-        - resources:
-            kinds:
-              - Pod
-      validate:
-        message: "Default service account should not be used."
-        pattern:
-          spec:
-            serviceAccountName: '!default' 
+  - name: restrict-default-sa
+    match:
+      any:
+      - resources:
+          kinds:
+          - Pod
+    validate:
+      message: Default service account should not be used.
+      cel:
+        expressions:
+        - expression: object.spec.serviceAccountName != 'default'
+          message: Default service account should not be used.

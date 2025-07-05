@@ -1,45 +1,44 @@
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
-  name: custom-3-2-9-event-qps
+  name: custom-3.2.9
   annotations:
     policies.kyverno.io/category: CIS 3.2.9
-    policies.kyverno.io/description: |
-      CIS 3.2.9: Ensure that the --event-qps argument is set to 0 or a level which ensures appropriate event capture.
-      
-      IMPORTANT: This control requires direct access to worker node kubelet configuration files 
-      to validate the event QPS setting. Kyverno cannot directly access node configuration files.
-      
-      KUBE-BENCH INTEGRATION REQUIRED: This control must be validated using kube-bench, which runs 
-      privileged pods on worker nodes to access and validate kubelet configuration files.
-      
-      This policy validates Pod-level resource and event configurations that relate to event handling, 
-      but the primary validation of kubelet event QPS settings occurs through kube-bench.
-    policies.kyverno.io/kube-bench-required: "true"
-    policies.kyverno.io/validation-scope: "limited-pod-event-security"
+    policies.kyverno.io/description: "CIS 3.2.9: Ensure that the --event-qps argument\
+      \ is set to 0 or a level which ensures appropriate event capture.\n\nIMPORTANT:\
+      \ This control requires direct access to worker node kubelet configuration files\
+      \ \nto validate the event QPS setting. Kyverno cannot directly access node configuration\
+      \ files.\n\nKUBE-BENCH INTEGRATION REQUIRED: This control must be validated\
+      \ using kube-bench, which runs \nprivileged pods on worker nodes to access and\
+      \ validate kubelet configuration files.\n\nThis policy validates Pod-level resource\
+      \ and event configurations that relate to event handling, \nbut the primary\
+      \ validation of kubelet event QPS settings occurs through kube-bench.\n"
+    policies.kyverno.io/kube-bench-required: 'true'
+    policies.kyverno.io/validation-scope: limited-pod-event-security
+    policies.kyverno.io/cel: 'true'
 spec:
   validationFailureAction: Audit
   background: true
   rules:
-    - name: validate-pod-event-security
-      match:
-        any:
-        - resources:
-            kinds:
-              - Pod
-      validate:
-        message: |
-          Pods should have appropriate resource limits to prevent event flooding.
-          Note: Actual kubelet event QPS validation requires kube-bench.
-        pattern:
-          spec:
-            =(containers):
-            - =(resources):
-                =(limits):
-                  =(cpu): "?*"
-                  =(memory): "?*"
-                =(requests):
-                  =(cpu): "?*"
-                  =(memory): "?*"
-            =(securityContext):
-              =(runAsNonRoot): "true"
+  - name: validate-pod-event-security
+    match:
+      any:
+      - resources:
+          kinds:
+          - Pod
+    validate:
+      message: 'Pods should have appropriate resource limits to prevent event flooding.
+
+        Note: Actual kubelet event QPS validation requires kube-bench.
+
+        '
+      cel:
+        expressions:
+        - expression: (!has(object.spec.containers) || true) && (!has(object.spec.securityContext)
+            || (!has(object.spec.securityContext.runAsNonRoot) || true))
+          message: 'Pods should have appropriate resource limits to prevent event
+            flooding.
+
+            Note: Actual kubelet event QPS validation requires kube-bench.
+
+            '

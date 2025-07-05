@@ -9,4 +9,4 @@ spec:
         all:
           - message: "IAM policies should not use wildcard (*) permissions for resources or actions."
             check:
-              (length(planned_values.root_module.resources[?type=='aws_iam_role_policy' && (contains(values.policy, '"Resource":"*"') || contains(values.policy, '"Resource": "*"') || contains(values.policy, '"Action":"*"') || contains(values.policy, '"Action": "*"'))]) == `0`): true
+              "(length(planned_values.root_module.resources[?type=='aws_iam_role_policy' && (contains(values.policy, '\"Action\":\"*\"') || contains(values.policy, '\"Resource\":\"*\"'))]) == `0`)": true

@@ -7,22 +7,27 @@ metadata:
     policies.kyverno.io/category: RBAC
     policies.kyverno.io/severity: medium
     policies.kyverno.io/subject: Role, ClusterRole
-    policies.kyverno.io/description: >-
-      Ensure that wildcards are not used in roles. This policy checks for roles that use '*' in resources or verbs.
+    policies.kyverno.io/description: Ensure that wildcards are not used in roles.
+      This policy checks for roles that use '*' in resources or verbs.
+    policies.kyverno.io/cel: 'true'
 spec:
   validationFailureAction: Audit
   background: true
   rules:
-    - name: restrict-wildcard-use
-      match:
-        any:
-        - resources:
-            kinds:
-              - Role
-              - ClusterRole
-      validate:
-        message: "Wildcards should not be used in resources or verbs."
-        pattern:
-          rules:
-            - resources: '!*'
-              verbs: '!*' 
+  - name: restrict-wildcard-use
+    match:
+      any:
+      - resources:
+          kinds:
+          - Role
+          - ClusterRole
+    validate:
+      message: Wildcards should not be used in resources or verbs.
+      cel:
+        expressions:
+        - expression: >-
+            object.rules.all(rule,
+              !rule.resources.exists(r, r == '*') &&
+              !rule.verbs.exists(v, v == '*')
+            )
+          message: Wildcards should not be used in resources or verbs.

@@ -1,25 +1,31 @@
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
-  name: custom-4-1-7-cluster-access-manager
+  name: custom-4.1.7
   annotations:
     policies.kyverno.io/category: CIS 4.1.7
-    policies.kyverno.io/description: |
-      Checks for usage of Cluster Access Manager API or annotation in RBAC resources if available.
+    policies.kyverno.io/description: 'Checks for usage of Cluster Access Manager API
+      or annotation in RBAC resources if available.
+
+      '
+    policies.kyverno.io/cel: 'true'
 spec:
   validationFailureAction: Audit
   background: true
   rules:
-    - name: check-cluster-access-manager
-      match:
-        any:
-        - resources:
-            kinds:
-              - Role
-              - ClusterRole
-      validate:
-        message: "Cluster Access Manager API should be used (look for annotation or label)."
-        pattern:
-          metadata:
-            annotations:
-              cluster-access-manager: "?*" 
+  - name: check-cluster-access-manager
+    match:
+      any:
+      - resources:
+          kinds:
+          - Role
+          - ClusterRole
+    validate:
+      message: Cluster Access Manager API should be used (look for annotation or label).
+      cel:
+        expressions:
+        - expression: |
+            (has(object.metadata.annotations) && "cluster-access-manager" in object.metadata.annotations && object.metadata.annotations["cluster-access-manager"] != "") ||
+            (has(object.metadata.labels) && "cluster-access-manager" in object.metadata.labels && object.metadata.labels["cluster-access-manager"] != "")
+          message: Cluster Access Manager API should be used (look for annotation
+            or label).

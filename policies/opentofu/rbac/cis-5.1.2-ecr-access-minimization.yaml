@@ -7,9 +7,27 @@ spec:
     - name: minimize-ecr-iam-permissions
       assert:
         all:
-          - message: "Node group IAM roles should only have ECR read-only access."
+          # Check node groups have ECR read-only access
+          - message: "EKS node group roles must have ECR read-only policy attached."
             check:
-              (length(planned_values.root_module.resources[?type=='aws_iam_role_policy_attachment' && contains(values.role, 'node') && values.policy_arn == 'arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly']) > `0`): true
-          - message: "IAM roles should not have excessive ECR permissions."
+              planned_values.root_module.resources[?type=='aws_iam_role_policy_attachment' && contains(values.policy_arn, 'AmazonEC2ContainerRegistryReadOnly')] | length(@) > `0`: true
+          
+          # Verify no ECR full access policies attached
+          - message: "IAM roles must not have ECR full access permissions."
             check:
-              (length(planned_values.root_module.resources[?type=='aws_iam_role_policy_attachment' && contains(values.policy_arn, 'ECRFullAccess')]) == `0`): true
+              planned_values.root_module.resources[?type=='aws_iam_role_policy_attachment' && contains(values.policy_arn, 'ContainerRegistryFullAccess')] | length(@) == `0`: true
+          
+          # Check for inline policies with excessive ECR permissions
+          - message: "IAM roles must not have inline policies with ecr:* permissions."
+            check:
+              planned_values.root_module.resources[?type=='aws_iam_role_policy' && contains(values.policy, 'ecr:*')] | length(@) == `0`: true
+          
+          # Verify no policies allowing ECR write operations
+          - message: "IAM roles should not have ECR write permissions (PutImage, InitiateLayerUpload, etc)."
+            check:
+              planned_values.root_module.resources[?type=='aws_iam_role_policy' && contains(values.policy, 'ecr:PutImage')] | length(@) == `0`: true
+          
+          # Check managed policies don't grant excessive ECR permissions
+          - message: "Custom managed policies should not grant excessive ECR permissions."
+            check:
+              planned_values.root_module.resources[?type=='aws_iam_policy' && contains(values.policy, 'ecr:*')] | length(@) == `0`: true

@@ -1,41 +1,43 @@
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
-  name: custom-3-1-2-kubelet-kubeconfig-owner
+  name: custom-3.1.2
   annotations:
     policies.kyverno.io/category: CIS 3.1.2
-    policies.kyverno.io/description: |
-      CIS 3.1.2: Ensure that the kubelet kubeconfig file ownership is set to root:root.
-      
-      IMPORTANT: This control requires direct access to worker node file systems to validate kubelet 
-      kubeconfig file ownership. Kyverno cannot directly access node file systems or validate file ownership.
-      
-      KUBE-BENCH INTEGRATION REQUIRED: This control must be validated using kube-bench, which runs 
-      privileged pods on worker nodes to access and validate file ownership on kubelet kubeconfig files.
-      
-      This policy validates Pod security contexts and root user restrictions, but the primary 
-      validation of actual file ownership occurs through kube-bench node-level scanning.
-    policies.kyverno.io/kube-bench-required: "true"
-    policies.kyverno.io/validation-scope: "limited-pod-security-context"
+    policies.kyverno.io/description: "CIS 3.1.2: Ensure that the kubelet kubeconfig\
+      \ file ownership is set to root:root.\n\nIMPORTANT: This control requires direct\
+      \ access to worker node file systems to validate kubelet \nkubeconfig file ownership.\
+      \ Kyverno cannot directly access node file systems or validate file ownership.\n\
+      \nKUBE-BENCH INTEGRATION REQUIRED: This control must be validated using kube-bench,\
+      \ which runs \nprivileged pods on worker nodes to access and validate file ownership\
+      \ on kubelet kubeconfig files.\n\nThis policy validates Pod security contexts\
+      \ and root user restrictions, but the primary \nvalidation of actual file ownership\
+      \ occurs through kube-bench node-level scanning.\n"
+    policies.kyverno.io/kube-bench-required: 'true'
+    policies.kyverno.io/validation-scope: limited-pod-security-context
+    policies.kyverno.io/cel: 'true'
 spec:
   validationFailureAction: Audit
   background: true
   rules:
-    - name: validate-pod-root-user-restrictions
-      match:
-        any:
-        - resources:
-            kinds:
-              - Pod
-      validate:
-        message: |
-          Pods should not run as root unless specifically required and justified.
-          Note: Actual kubelet kubeconfig file ownership validation requires kube-bench.
-        pattern:
-          spec:
-            =(securityContext):
-              =(runAsNonRoot): "true"
-            =(containers):
-            - =(securityContext):
-                =(runAsNonRoot): "true"
-                =(allowPrivilegeEscalation): "false"
+  - name: validate-pod-root-user-restrictions
+    match:
+      any:
+      - resources:
+          kinds:
+          - Pod
+    validate:
+      message: 'Pods should not run as root unless specifically required and justified.
+
+        Note: Actual kubelet kubeconfig file ownership validation requires kube-bench.
+
+        '
+      cel:
+        expressions:
+        - expression: (!has(object.spec.securityContext) || (!has(object.spec.securityContext.runAsNonRoot)
+            || true)) && (!has(object.spec.containers) || true)
+          message: 'Pods should not run as root unless specifically required and justified.
+
+            Note: Actual kubelet kubeconfig file ownership validation requires kube-bench.
+
+            '
