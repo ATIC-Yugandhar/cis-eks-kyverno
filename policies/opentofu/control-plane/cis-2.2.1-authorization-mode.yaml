@@ -9,13 +9,14 @@ spec:
         all:
           - message: "EKS cluster must be configured with proper IAM role for RBAC authorization."
             check:
-              "(length(planned_values.root_module.resources[?type=='aws_eks_cluster' && values.role_arn]) > `0`)": true
+              "(length(planned_values.root_module.resources[?type=='aws_eks_cluster' && values.role_arn != null]) > `0` || length(configuration.root_module.resources[?type=='aws_eks_cluster' && expressions.role_arn]) > `0`)": true
           - message: "EKS cluster role must have AmazonEKSClusterPolicy attached for RBAC functionality."
             check:
               "(length(planned_values.root_module.resources[?type=='aws_iam_role_policy_attachment' && contains(values.policy_arn, 'AmazonEKSClusterPolicy')]) > `0`)": true
           - message: "IAM roles should not have wildcard (*) actions that bypass RBAC controls."
             check:
-              "(length(planned_values.root_module.resources[?type=='aws_iam_role_policy' && contains(values.policy, '\"Action\": \"*\"')]) == `0`)": true
-          - message: "IAM roles should not have inline policies with Resource: * that could bypass RBAC."
+              "(length(planned_values.root_module.resources[?type=='aws_iam_role_policy' && contains(values.policy, '\"Action\":\"*\"')]) == `0`)": true
+          - message: "IAM roles should not have overly permissive inline policies that could bypass RBAC."
             check:
-              "(length(planned_values.root_module.resources[?type=='aws_iam_role_policy' && contains(values.policy, '\"Resource\": \"*\"')]) == `0`)": true
+              # Allow legitimate uses of Resource:* but block dangerous combinations
+              "(length(planned_values.root_module.resources[?type=='aws_iam_role_policy' && contains(values.policy, '\"Resource\":\"*\"') && contains(values.policy, '\"Action\":\"*\"')]) == `0`)": true

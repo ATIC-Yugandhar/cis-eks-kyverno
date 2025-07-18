@@ -10,24 +10,29 @@ spec:
           # Check that node groups have scaling configs defined
           - message: "EKS node groups must have scaling configuration defined."
             check:
-              planned_values.root_module.resources[?type=='aws_eks_node_group'].values.scaling_config | length(@) > `0`: true
+              (length(planned_values.root_module.resources[?type=='aws_eks_node_group' && length(values.scaling_config) > `0`]) > `0`): true
           
           # Verify max_size is not excessively large (reasonable limit is 100 nodes per group)
           - message: "EKS node group max_size should not exceed 100 nodes to prevent resource exhaustion."
             check:
-              planned_values.root_module.resources[?type=='aws_eks_node_group'].values.scaling_config[?max_size > `100`] | length(@) == `0`: true
+              (length(planned_values.root_module.resources[?type=='aws_eks_node_group' && values.scaling_config[0].max_size > `100`]) == `0`): true
           
           # Check that min_size is not 0 (at least 1 node for availability)
           - message: "EKS node group min_size should be at least 1 for availability."
             check:
-              planned_values.root_module.resources[?type=='aws_eks_node_group'].values.scaling_config[?min_size < `1`] | length(@) == `0`: true
+              (length(planned_values.root_module.resources[?type=='aws_eks_node_group' && values.scaling_config[0].min_size < `1`]) == `0`): true
           
           # Verify desired_size is between min and max
           - message: "EKS node group desired_size must be between min_size and max_size."
             check:
-              planned_values.root_module.resources[?type=='aws_eks_node_group'].values.scaling_config[?desired_size < min_size || desired_size > max_size] | length(@) == `0`: true
+              (length(planned_values.root_module.resources[?type=='aws_eks_node_group' && (values.scaling_config[0].desired_size < values.scaling_config[0].min_size || values.scaling_config[0].desired_size > values.scaling_config[0].max_size)]) == `0`): true
           
           # Check for reasonable scaling ratio (max should not be more than 10x min)
           - message: "EKS node group max_size should not be more than 10x the min_size for controlled scaling."
             check:
-              planned_values.root_module.resources[?type=='aws_eks_node_group'].values.scaling_config[?max_size > (min_size * `10`)] | length(@) == `0`: true
+              (length(planned_values.root_module.resources[?type=='aws_eks_node_group' && values.scaling_config[0].max_size > (values.scaling_config[0].min_size * `10`)]) == `0`): true
+          
+          # Check for proper tags to indicate resource management awareness
+          - message: "Resources should be properly tagged to indicate ownership and resource management."
+            check:
+              (length(planned_values.root_module.resources[?type=='aws_eks_cluster' && values.tags != null && contains(keys(values.tags), 'Owner')]) > `0` || length(planned_values.root_module.resources[?type=='aws_eks_node_group' && values.tags != null && contains(keys(values.tags), 'Owner')]) > `0`): true

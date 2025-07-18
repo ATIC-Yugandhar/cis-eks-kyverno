@@ -9,7 +9,7 @@ spec:
         all:
           - message: "VPC should have custom Network ACLs configured for additional security layer."
             check:
-              (length(planned_values.root_module.resources[?type=='aws_network_acl' && values.vpc_id]) > `0`): true
+              (length(planned_values.root_module.resources[?type=='aws_network_acl']) > `0` || length(configuration.root_module.resources[?type=='aws_network_acl' && expressions.vpc_id]) > `0`): true
           - message: "Network ACL rules should not allow unrestricted SSH access (port 22) from 0.0.0.0/0 for ingress traffic."
             check:
               (length(planned_values.root_module.resources[?type=='aws_network_acl_rule' && values.egress == `false` && values.rule_action == 'allow' && values.cidr_block == '0.0.0.0/0' && values.from_port == `22` && values.to_port == `22`]) == `0`): true
