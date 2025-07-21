@@ -1,28 +1,32 @@
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
-  name: custom-4-4-2-external-secret-storage
+  name: custom-4.4.2
   annotations:
     policies.kyverno.io/category: CIS 4.4.2
-    policies.kyverno.io/description: |
-      Checks for usage of external secret storage annotation or label in Secret or Namespace if available.
+    policies.kyverno.io/description: 'Checks for usage of external secret storage
+      annotation or label in Secret or Namespace if available.
+
+      '
+    policies.kyverno.io/cel: 'true'
 spec:
   validationFailureAction: Audit
   background: true
   rules:
-    - name: check-external-secret-storage
-      match:
-        any:
-        - resources:
-            kinds:
-              - Secret
-              - Namespace
-      validate:
-        message: "External secret storage should be used (look for external-secrets.io annotation or label)."
-        anyPattern:
-          - metadata:
-              annotations:
-                external-secrets.io/provider: "?*"
-          - metadata:
-              labels:
-                external-secrets.io/provider: "?*" 
+  - name: check-external-secret-storage
+    match:
+      any:
+      - resources:
+          kinds:
+          - Secret
+          - Namespace
+    validate:
+      message: External secret storage should be used (look for external-secrets.io
+        annotation or label).
+      cel:
+        expressions:
+        - expression: |
+            (has(object.metadata.annotations) && object.metadata.annotations.exists(k, k.startsWith("external-secrets"))) ||
+            (has(object.metadata.labels) && object.metadata.labels.exists(k, k.startsWith("external-secrets")))
+          message: External secret storage should be used (look for external-secrets.io
+            annotation or label).

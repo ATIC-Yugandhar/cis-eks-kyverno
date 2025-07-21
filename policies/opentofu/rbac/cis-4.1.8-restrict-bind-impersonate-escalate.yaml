@@ -9,7 +9,7 @@ spec:
         all:
           - message: "IAM policies should not allow privilege escalation through sts:AssumeRole on wildcard resources."
             check:
-              (length(planned_values.root_module.resources[?type=='aws_iam_role_policy' && contains(values.policy, 'sts:AssumeRole') && contains(values.policy, '"Resource": "*"')]) == `0`): true
+              "(length(planned_values.root_module.resources[?type=='aws_iam_role_policy' && (contains(values.policy, '\"sts:AssumeRole\"') || contains(values.policy, '\"sts:*\"') || contains(values.policy, '\"Action\":\"*\"'))]) == `0`)": true
           - message: "IAM roles should not have iam:PassRole permissions on wildcard resources."
             check:
-              (length(planned_values.root_module.resources[?type=='aws_iam_role_policy' && contains(values.policy, 'iam:PassRole') && contains(values.policy, '"Resource": "*"')]) == `0`): true
+              "(length(planned_values.root_module.resources[?type=='aws_iam_role_policy' && (contains(values.policy, '\"iam:PassRole\"') || contains(values.policy, '\"iam:*\"') || contains(values.policy, '\"Action\":\"*\"'))]) == `0`)": true

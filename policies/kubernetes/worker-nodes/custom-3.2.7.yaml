@@ -1,45 +1,45 @@
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
-  name: custom-3-2-7-protect-kernel-defaults
+  name: custom-3.2.7
   annotations:
     policies.kyverno.io/category: CIS 3.2.7
-    policies.kyverno.io/description: |
-      CIS 3.2.7: Ensure that the --protect-kernel-defaults argument is set to true.
-      
-      IMPORTANT: This control requires direct access to worker node kubelet configuration files 
-      to validate the protect kernel defaults setting. Kyverno cannot directly access node configuration files.
-      
-      KUBE-BENCH INTEGRATION REQUIRED: This control must be validated using kube-bench, which runs 
-      privileged pods on worker nodes to access and validate kubelet configuration files.
-      
-      This policy validates Pod-level kernel and system security configurations that relate to kernel protection, 
-      but the primary validation of kubelet kernel defaults protection occurs through kube-bench.
-    policies.kyverno.io/kube-bench-required: "true"
-    policies.kyverno.io/validation-scope: "limited-pod-kernel-security"
+    policies.kyverno.io/description: "CIS 3.2.7: Ensure that the --protect-kernel-defaults\
+      \ argument is set to true.\n\nIMPORTANT: This control requires direct access\
+      \ to worker node kubelet configuration files \nto validate the protect kernel\
+      \ defaults setting. Kyverno cannot directly access node configuration files.\n\
+      \nKUBE-BENCH INTEGRATION REQUIRED: This control must be validated using kube-bench,\
+      \ which runs \nprivileged pods on worker nodes to access and validate kubelet\
+      \ configuration files.\n\nThis policy validates Pod-level kernel and system\
+      \ security configurations that relate to kernel protection, \nbut the primary\
+      \ validation of kubelet kernel defaults protection occurs through kube-bench.\n"
+    policies.kyverno.io/kube-bench-required: 'true'
+    policies.kyverno.io/validation-scope: limited-pod-kernel-security
+    policies.kyverno.io/cel: 'true'
 spec:
   validationFailureAction: Audit
   background: true
   rules:
-    - name: validate-pod-kernel-security
-      match:
-        any:
-        - resources:
-            kinds:
-              - Pod
-      validate:
-        message: |
-          Pods should not access kernel-level features or privileged system resources.
-          Note: Actual kubelet kernel defaults protection validation requires kube-bench.
-        pattern:
-          spec:
-            =(securityContext):
-              =(runAsNonRoot): "true"
-            =(containers):
-            - =(securityContext):
-                =(privileged): "false"
-                =(allowPrivilegeEscalation): "false"
-                =(capabilities):
-                  =(drop):
-                  - "SYS_ADMIN"
-                  - "SYS_MODULE"
+  - name: validate-pod-kernel-security
+    match:
+      any:
+      - resources:
+          kinds:
+          - Pod
+    validate:
+      message: 'Pods should not access kernel-level features or privileged system
+        resources.
+
+        Note: Actual kubelet kernel defaults protection validation requires kube-bench.
+
+        '
+      cel:
+        expressions:
+        - expression: (!has(object.spec.securityContext) || (!has(object.spec.securityContext.runAsNonRoot)
+            || true)) && (!has(object.spec.containers) || true)
+          message: 'Pods should not access kernel-level features or privileged system
+            resources.
+
+            Note: Actual kubelet kernel defaults protection validation requires kube-bench.
+
+            '

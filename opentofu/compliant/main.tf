@@ -2,6 +2,12 @@ provider "aws" {
   region = var.region
 }
 
+provider "kubernetes" {
+  host                   = data.aws_eks_cluster.main.endpoint
+  cluster_ca_certificate = base64decode(data.aws_eks_cluster.main.certificate_authority[0].data)
+  token                  = data.aws_eks_cluster_auth.main.token
+}
+
 resource "aws_vpc" "main" {
   cidr_block           = var.vpc_cidr
   enable_dns_support   = true
@@ -21,6 +27,101 @@ resource "aws_subnet" "private" {
   tags = {
     "kubernetes.io/cluster/${var.cluster_name}" = "owned"
     "kubernetes.io/role/internal-elb" = "1"
+    Environment = "production"
+    Owner       = "platform-team"
+  }
+}
+
+# Custom Network ACL for CIS 5.1.2-nacl-configuration
+resource "aws_network_acl" "custom" {
+  vpc_id = aws_vpc.main.id
+  subnet_ids = aws_subnet.private[*].id
+
+  # Ingress rules
+  ingress {
+    protocol   = "tcp"
+    rule_no    = 100
+    action     = "allow"
+    cidr_block = var.vpc_cidr
+    from_port  = 443
+    to_port    = 443
+  }
+
+  ingress {
+    protocol   = "tcp"
+    rule_no    = 110
+    action     = "allow"
+    cidr_block = var.vpc_cidr
+    from_port  = 10250
+    to_port    = 10250
+  }
+
+  ingress {
+    protocol   = "tcp"
+    rule_no    = 120
+    action     = "allow"
+    cidr_block = var.vpc_cidr
+    from_port  = 53
+    to_port    = 53
+  }
+
+  ingress {
+    protocol   = "udp"
+    rule_no    = 130
+    action     = "allow"
+    cidr_block = var.vpc_cidr
+    from_port  = 53
+    to_port    = 53
+  }
+
+  ingress {
+    protocol   = "tcp"
+    rule_no    = 140
+    action     = "allow"
+    cidr_block = var.vpc_cidr
+    from_port  = 1024
+    to_port    = 65535
+  }
+
+  # Egress rules
+  egress {
+    protocol   = "tcp"
+    rule_no    = 100
+    action     = "allow"
+    cidr_block = "0.0.0.0/0"
+    from_port  = 443
+    to_port    = 443
+  }
+
+  egress {
+    protocol   = "tcp"
+    rule_no    = 110
+    action     = "allow"
+    cidr_block = var.vpc_cidr
+    from_port  = 0
+    to_port    = 65535
+  }
+
+  egress {
+    protocol   = "udp"
+    rule_no    = 120
+    action     = "allow"
+    cidr_block = var.vpc_cidr
+    from_port  = 0
+    to_port    = 65535
+  }
+
+  egress {
+    protocol   = "tcp"
+    rule_no    = 130
+    action     = "allow"
+    cidr_block = "0.0.0.0/0"
+    from_port  = 80
+    to_port    = 80
+  }
+
+  tags = {
+    Name        = "${var.cluster_name}-custom-nacl"
     Environment = "production"
     Owner       = "platform-team"
   }
@@ -83,6 +184,32 @@ resource "aws_iam_role" "eks" {
   }
 }
 
+# IAM role for EKS authentication (CIS 5.5.1-iam-authenticator and CIS 2.2.1-authorization-mode)
+resource "aws_iam_role" "eks_auth" {
+  name = "${var.cluster_name}-eks-auth-role"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Principal = {
+          AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
+        },
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+  
+  tags = {
+    Environment = "production"
+    Owner       = "platform-team"
+    Purpose     = "EKS IAM Authentication"
+  }
+}
+
+# Data source for current AWS account
+data "aws_caller_identity" "current" {}
+
 resource "aws_iam_role_policy_attachment" "eks_cluster_policy" {
   role       = aws_iam_role.eks.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
@@ -143,6 +270,37 @@ resource "aws_iam_role_policy_attachment" "ec2_container_registry" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
 }
 
+# Explicit ECR read-only policy for CIS 5.1.2-ecr-access-minimization
+resource "aws_iam_role_policy" "ecr_read_only" {
+  name = "${var.cluster_name}-ecr-read-only"
+  role = aws_iam_role.eks_node_group.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "ecr:GetAuthorizationToken",
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:BatchGetImage"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "ecr:DescribeRepositories",
+          "ecr:ListImages",
+          "ecr:DescribeImages"
+        ]
+        Resource = "arn:aws:ecr:${var.region}:${data.aws_caller_identity.current.account_id}:repository/*"
+      }
+    ]
+  })
+}
+
 resource "aws_eks_cluster" "main" {
   name     = var.cluster_name
   role_arn = aws_iam_role.eks.arn
@@ -191,9 +349,9 @@ resource "aws_eks_node_group" "main" {
   ami_type        = "AL2_x86_64"  # Specify secure AMI type for CIS 3.1.1
   
   scaling_config {
-    desired_size = 1
-    min_size     = 1
-    max_size     = 1
+    desired_size = var.desired_capacity
+    min_size     = var.min_size
+    max_size     = min(var.max_size, 100)  # CIS 5.5.1-resource-quotas: max_size must be <= 100
   }
   depends_on = [aws_security_group.nodes]
   
@@ -260,5 +418,33 @@ resource "kubernetes_network_policy" "default_deny_all" {
   spec {
     pod_selector {}
     policy_types = ["Ingress", "Egress"]
+  }
+}
+
+# Configure IAM identity mapping for EKS authentication
+resource "aws_eks_identity_provider_config" "oidc" {
+  cluster_name = aws_eks_cluster.main.name
+
+  oidc {
+    client_id                     = "sts.amazonaws.com"
+    identity_provider_config_name = "oidc-provider"
+    issuer_url                    = aws_eks_cluster.main.identity[0].oidc[0].issuer
+  }
+  
+  tags = {
+    Environment = "production"
+    Owner       = "platform-team"
+  }
+}
+
+# IAM OIDC provider for EKS
+resource "aws_iam_openid_connect_provider" "eks" {
+  client_id_list  = ["sts.amazonaws.com"]
+  thumbprint_list = ["9e99a48a9960b14926bb7f3b02e22da2b0ab7280"]
+  url             = aws_eks_cluster.main.identity[0].oidc[0].issuer
+  
+  tags = {
+    Environment = "production"
+    Owner       = "platform-team"
   }
 } 

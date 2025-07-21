@@ -1,87 +1,85 @@
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
-  name: custom-5-4-2-private-endpoint
+  name: custom-5.4.2
   annotations:
     policies.kyverno.io/category: CIS 5.4.2
-    policies.kyverno.io/description: |
-      Validates private endpoint configuration using reliable Kubernetes resources.
-      Checks Services, Nodes, and Namespaces for private endpoint indicators instead of unreliable ConfigMaps.
+    policies.kyverno.io/description: 'Validates private endpoint configuration using
+      reliable Kubernetes resources.
+
+      Checks Services, Nodes, and Namespaces for private endpoint indicators instead
+      of unreliable ConfigMaps.
+
+      '
+    policies.kyverno.io/cel: 'true'
 spec:
   validationFailureAction: Audit
   background: true
   rules:
-    - name: check-private-endpoint-namespace
-      match:
-        any:
-        - resources:
-            kinds:
-              - Namespace
-      validate:
-        message: "Namespace should have private endpoint annotation or label indicating proper network isolation."
-        anyPattern:
-          - metadata:
-              annotations:
-                private-endpoint: "enabled"
-          - metadata:
-              labels:
-                private-endpoint: "enabled"
-          - metadata:
-              annotations:
-                networking.k8s.io/private: "true"
-
-    - name: check-service-private-configuration
-      match:
-        any:
-        - resources:
-            kinds:
-              - Service
-      validate:
-        message: "Services should be configured for private access."
-        anyPattern:
-          - metadata:
-              annotations:
-                service.beta.kubernetes.io/aws-load-balancer-internal: "true"
-          - metadata:
-              annotations:
-                private-endpoint: "enabled"
-          - spec:
-              type: "ClusterIP"  # ClusterIP services are inherently private
-          - metadata:
-              labels:
-                network-policy: "private"
-
-    - name: validate-node-private-networking
-      match:
-        any:
-        - resources:
-            kinds:
-              - Node
-      validate:
-        message: "Nodes should be configured for private networking."
-        anyPattern:
-          - metadata:
-              annotations:
-                node.kubernetes.io/private-networking: "enabled"
-          - metadata:
-              labels:
-                private-subnet: "true"
-          - spec:
-              podCIDR: "10.*"  # Private IP ranges
-
-    - name: validate-network-policy-private
-      match:
-        any:
-        - resources:
-            kinds:
-              - NetworkPolicy
-      validate:
-        message: "NetworkPolicies should enforce private communication."
-        anyPattern:
-          - metadata:
-              annotations:
-                policy-type: "private"
-          - spec:
-              policyTypes:
-              - "Ingress"
-              - "Egress"
+  - name: check-private-endpoint-namespace
+    match:
+      any:
+      - resources:
+          kinds:
+          - Namespace
+    validate:
+      message: Namespace should have private endpoint annotation or label indicating
+        proper network isolation.
+      cel:
+        expressions:
+        - expression: (has(object.metadata.annotations) && "networking" in object.metadata.annotations
+            && (object.metadata.annotations["private-endpoint"] == 'enabled')) ||
+            (has(object.metadata.labels) && "private-endpoint" in object.metadata.labels
+            && (object.metadata.labels["private-endpoint"] == 'enabled')) || (has(object.metadata.annotations)
+            && "networking" in object.metadata.annotations && (object.metadata.annotations["networking"].k8s.io/private
+            == 'true'))
+          message: Namespace should have private endpoint annotation or label indicating
+            proper network isolation.
+  - name: check-service-private-configuration
+    match:
+      any:
+      - resources:
+          kinds:
+          - Service
+    validate:
+      message: Services should be configured for private access.
+      cel:
+        expressions:
+        - expression: (has(object.metadata.annotations) && "private-endpoint" in object.metadata.annotations
+            && (object.metadata.annotations["service"].beta.kubernetes.io/aws-load-balancer-internal
+            == 'true')) || (has(object.metadata.annotations) && "private-endpoint"
+            in object.metadata.annotations && (object.metadata.annotations["private-endpoint"]
+            == 'enabled')) || (object.spec.type == 'ClusterIP') || (has(object.metadata.labels)
+            && "network-policy" in object.metadata.labels && (object.metadata.labels["network-policy"]
+            == 'private'))
+          message: Services should be configured for private access.
+  - name: validate-node-private-networking
+    match:
+      any:
+      - resources:
+          kinds:
+          - Node
+    validate:
+      message: Nodes should be configured for private networking.
+      cel:
+        expressions:
+        - expression: (has(object.metadata.annotations) && "node" in object.metadata.annotations
+            && (object.metadata.annotations["node"].kubernetes.io/private-networking
+            == 'enabled')) || (has(object.metadata.labels) && "private-subnet" in
+            object.metadata.labels && (object.metadata.labels["private-subnet"] ==
+            'true')) || (object.spec.podCIDR == '10.*')
+          message: Nodes should be configured for private networking.
+  - name: validate-network-policy-private
+    match:
+      any:
+      - resources:
+          kinds:
+          - NetworkPolicy
+    validate:
+      message: NetworkPolicies should enforce private communication.
+      cel:
+        expressions:
+        - expression: (has(object.metadata.annotations) && "policy-type" in object.metadata.annotations
+            && (object.metadata.annotations["policy-type"] == 'private')) || (object.spec.policyTypes
+            == ['Ingress', 'Egress'])
+          message: NetworkPolicies should enforce private communication.

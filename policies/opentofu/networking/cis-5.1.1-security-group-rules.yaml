@@ -7,9 +7,15 @@ spec:
     - name: restrict-security-group-access
       assert:
         all:
-          - message: "Security groups should not allow unrestricted ingress access (0.0.0.0/0) on all ports."
+          - message: "Security groups should not allow unrestricted SSH access (port 22) from 0.0.0.0/0."
             check:
-              (length(planned_values.root_module.resources[?type=='aws_security_group' && values.ingress && length(values.ingress[?contains(cidr_blocks, '0.0.0.0/0') && from_port == `0` && to_port == `65535`]) > `0`]) == `0`): true
+              (length(planned_values.root_module.resources[?type=='aws_security_group' && values.ingress && length(values.ingress[?from_port == `22` && to_port == `22` && contains(cidr_blocks, '0.0.0.0/0')]) > `0`]) == `0`): true
+          - message: "Security groups should not allow unrestricted HTTPS access (port 443) from 0.0.0.0/0."
+            check:
+              (length(planned_values.root_module.resources[?type=='aws_security_group' && values.ingress && length(values.ingress[?from_port == `443` && to_port == `443` && contains(cidr_blocks, '0.0.0.0/0')]) > `0`]) == `0`): true
+          - message: "Security groups should not allow unrestricted access on all ports from 0.0.0.0/0."
+            check:
+              (length(planned_values.root_module.resources[?type=='aws_security_group' && values.ingress && length(values.ingress[?protocol == '-1' && contains(cidr_blocks, '0.0.0.0/0')]) > `0`]) == `0`): true
           - message: "Security groups should follow principle of least privilege for network access."
             check:
               (length(planned_values.root_module.resources[?type=='aws_security_group' && values.name]) > `0`): true

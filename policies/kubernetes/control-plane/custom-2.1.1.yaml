@@ -1,66 +1,70 @@
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
-  name: custom-2-1-1-enable-audit-logs
+  name: custom-2.1.1
   annotations:
     policies.kyverno.io/category: CIS 2.1.1
-    policies.kyverno.io/description: |
-      Validates audit logging configuration using reliable Kubernetes resources.
-      Checks Node conditions, Pod security contexts, and native resources instead of unreliable ConfigMaps.
+    policies.kyverno.io/description: 'Validates audit logging configuration using
+      reliable Kubernetes resources.
+
+      Checks Node conditions, Pod security contexts, and native resources instead
+      of unreliable ConfigMaps.
+
+      '
+    policies.kyverno.io/cel: 'true'
 spec:
   validationFailureAction: Audit
   background: true
   rules:
-    - name: validate-audit-logging-events
-      match:
-        any:
-        - resources:
-            kinds:
-              - Event
-            namespaces:
-              - kube-system
-      validate:
-        message: "Cluster should generate audit events indicating logging is enabled."
-        anyPattern:
-          - reason: "AuditEnabled"
-          - reason: "PolicyLoaded"
-          - metadata:
-              annotations:
-                audit.k8s.io/level: "?*"
-
-    - name: validate-node-audit-config
-      match:
-        any:
-        - resources:
-            kinds:
-              - Node
-      validate:
-        message: "Node should have audit configuration annotation indicating proper audit setup."
-        anyPattern:
-          - metadata:
-              annotations:
-                audit-config: "enabled"
-          - metadata:
-              labels:
-                audit-enabled: "true"
-
-    - name: validate-api-server-annotations
-      match:
-        any:
-        - resources:
-            kinds:
-              - Pod
-            namespaces:
-              - kube-system
-      validate:
-        message: "kube-apiserver pods should have audit logging annotations."
-        anyPattern:
-          - metadata:
-              annotations:
-                audit.alpha.kubernetes.io/policy: "?*"
-          - metadata:
-              labels:
-                audit-enabled: "true"
-          - metadata:
-              annotations:
-                kubernetes.io/audit-enabled: "true"
+  - name: validate-audit-logging-events
+    match:
+      any:
+      - resources:
+          kinds:
+          - Event
+          namespaces:
+          - kube-system
+    validate:
+      message: Cluster should generate audit events indicating logging is enabled.
+      cel:
+        expressions:
+        - expression: (object.reason == 'AuditEnabled') || (object.reason == 'PolicyLoaded')
+            || (has(object.metadata.annotations) && "audit" in object.metadata.annotations
+            && (object.metadata.annotations["audit"].k8s.io/level == '?*'))
+          message: Cluster should generate audit events indicating logging is enabled.
+  - name: validate-node-audit-config
+    match:
+      any:
+      - resources:
+          kinds:
+          - Node
+    validate:
+      message: Node should have audit configuration annotation indicating proper audit
+        setup.
+      cel:
+        expressions:
+        - expression: (has(object.metadata.annotations) && "audit-config" in object.metadata.annotations
+            && (object.metadata.annotations["audit-config"] == 'enabled')) || (has(object.metadata.labels)
+            && "audit-enabled" in object.metadata.labels && (object.metadata.labels["audit-enabled"]
+            == 'true'))
+          message: Node should have audit configuration annotation indicating proper
+            audit setup.
+  - name: validate-api-server-annotations
+    match:
+      any:
+      - resources:
+          kinds:
+          - Pod
+          namespaces:
+          - kube-system
+    validate:
+      message: kube-apiserver pods should have audit logging annotations.
+      cel:
+        expressions:
+        - expression: (has(object.metadata.annotations) && "kubernetes" in object.metadata.annotations
+            && (object.metadata.annotations["audit"].alpha.kubernetes.io/policy ==
+            '?*')) || (has(object.metadata.labels) && "audit-enabled" in object.metadata.labels
+            && (object.metadata.labels["audit-enabled"] == 'true')) || (has(object.metadata.annotations)
+            && "kubernetes" in object.metadata.annotations && (object.metadata.annotations["kubernetes"].io/audit-enabled
+            == 'true'))
+          message: kube-apiserver pods should have audit logging annotations.

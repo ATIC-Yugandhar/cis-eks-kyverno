@@ -7,8 +7,8 @@ policies:
 resources:
   - namespace.yaml
 results:
-  - policy: custom-4-3-1-cni-supports-network-policies
-    rule: check-cni-supports-network-policies
+  - policy: custom-4.3.1
+    rule: check-cni-supports-network-policies-namespace
     resources:
       - compliant-ns
     kind: Namespace

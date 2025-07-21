@@ -7,22 +7,22 @@ metadata:
     policies.kyverno.io/category: Pod Security
     policies.kyverno.io/severity: high
     policies.kyverno.io/subject: Pod
-    policies.kyverno.io/description: >-
-      Ensure that privileged containers are not allowed.
+    policies.kyverno.io/description: Ensure that privileged containers are not allowed.
+    policies.kyverno.io/cel: 'true'
 spec:
   validationFailureAction: Audit
   background: true
   rules:
-    - name: restrict-privileged
-      match:
-        any:
-        - resources:
-            kinds:
-              - Pod
-      validate:
-        message: "Privileged containers are not allowed."
-        pattern:
-          spec:
-            containers:
-              - securityContext:
-                  privileged: false 
+  - name: restrict-privileged
+    match:
+      any:
+      - resources:
+          kinds:
+          - Pod
+    validate:
+      message: Privileged containers are not allowed.
+      cel:
+        expressions:
+        - expression: object.spec.containers.all(item, (has(item.securityContext)
+            && item.securityContext.privileged) == false)
+          message: Privileged containers are not allowed.

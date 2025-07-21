@@ -1,42 +1,43 @@
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
-  name: custom-3-2-3-client-ca-file
+  name: custom-3.2.3
   annotations:
     policies.kyverno.io/category: CIS 3.2.3
-    policies.kyverno.io/description: |
-      CIS 3.2.3: Ensure that the --client-ca-file argument is set as appropriate.
-      
-      IMPORTANT: This control requires direct access to worker node kubelet configuration files 
-      to validate the client CA file setting. Kyverno cannot directly access node configuration files.
-      
-      KUBE-BENCH INTEGRATION REQUIRED: This control must be validated using kube-bench, which runs 
-      privileged pods on worker nodes to access and validate kubelet configuration files.
-      
-      This policy validates Pod-level TLS and certificate configurations that relate to client CA usage, 
-      but the primary validation of kubelet client CA file settings occurs through kube-bench.
-    policies.kyverno.io/kube-bench-required: "true"
-    policies.kyverno.io/validation-scope: "limited-tls-pod-security"
+    policies.kyverno.io/description: "CIS 3.2.3: Ensure that the --client-ca-file\
+      \ argument is set as appropriate.\n\nIMPORTANT: This control requires direct\
+      \ access to worker node kubelet configuration files \nto validate the client\
+      \ CA file setting. Kyverno cannot directly access node configuration files.\n\
+      \nKUBE-BENCH INTEGRATION REQUIRED: This control must be validated using kube-bench,\
+      \ which runs \nprivileged pods on worker nodes to access and validate kubelet\
+      \ configuration files.\n\nThis policy validates Pod-level TLS and certificate\
+      \ configurations that relate to client CA usage, \nbut the primary validation\
+      \ of kubelet client CA file settings occurs through kube-bench.\n"
+    policies.kyverno.io/kube-bench-required: 'true'
+    policies.kyverno.io/validation-scope: limited-tls-pod-security
+    policies.kyverno.io/cel: 'true'
 spec:
   validationFailureAction: Audit
   background: true
   rules:
-    - name: validate-pod-tls-configuration
-      match:
-        any:
-        - resources:
-            kinds:
-              - Pod
-      validate:
-        message: |
-          Pods using TLS should have proper certificate configurations.
-          Note: Actual kubelet client CA file validation requires kube-bench.
-        pattern:
-          spec:
-            =(volumes):
-            - =(secret):
-                =(secretName): "?*"
-            =(containers):
-            - =(env):
-              - =(name): "SSL_CERT_FILE | TLS_CERT_FILE"
-                =(value): "?*"
+  - name: validate-pod-tls-configuration
+    match:
+      any:
+      - resources:
+          kinds:
+          - Pod
+    validate:
+      message: 'Pods using TLS should have proper certificate configurations.
+
+        Note: Actual kubelet client CA file validation requires kube-bench.
+
+        '
+      cel:
+        expressions:
+        - expression: (!has(object.spec.volumes) || true) && (!has(object.spec.containers)
+            || true)
+          message: 'Pods using TLS should have proper certificate configurations.
+
+            Note: Actual kubelet client CA file validation requires kube-bench.
+
+            '

@@ -7,12 +7,38 @@ spec:
     - name: eks-iam-authenticator-config
       assert:
         all:
-          - message: "EKS cluster must use IAM for authentication (default behavior)."
+          # Check that EKS cluster has IAM role configured (required for IAM authentication)
+          - message: "EKS cluster must have an IAM role ARN configured for authentication."
             check:
-              (length(planned_values.root_module.resources[?type=='aws_eks_cluster' && values.name]) > `0`): true
-          - message: "EKS cluster should have proper IAM roles configured for authentication."
+              # Check either planned values or configuration for role_arn
+              (length(planned_values.root_module.resources[?type=='aws_eks_cluster' && values.role_arn != null]) > `0` || length(configuration.root_module.resources[?type=='aws_eks_cluster' && expressions.role_arn]) > `0`): true
+          
+          # Verify the EKS cluster role exists and has proper trust policy
+          - message: "EKS cluster IAM role must have trust relationship with eks.amazonaws.com service."
             check:
-              (length(planned_values.root_module.resources[?type=='aws_iam_role' && contains(values.name, 'eks')]) > `0`): true
-          - message: "IAM roles should have appropriate trust relationships for EKS."
-            check:
+              # Check for IAM role with eks trust policy
               (length(planned_values.root_module.resources[?type=='aws_iam_role' && contains(values.assume_role_policy, 'eks.amazonaws.com')]) > `0`): true
+          
+          # Check that node group roles are configured for worker authentication
+          - message: "EKS node groups must have IAM roles configured for node authentication."
+            check:
+              # Check either planned values or configuration for node_role_arn
+              (length(planned_values.root_module.resources[?type=='aws_eks_node_group' && values.node_role_arn != null]) > `0` || length(configuration.root_module.resources[?type=='aws_eks_node_group' && expressions.node_role_arn]) > `0`): true
+          
+          # Verify node group roles have EC2 trust relationship
+          - message: "Node group IAM roles must have trust relationship with ec2.amazonaws.com service."
+            check:
+              # Check for IAM role with ec2 trust policy
+              (length(planned_values.root_module.resources[?type=='aws_iam_role' && contains(values.assume_role_policy, 'ec2.amazonaws.com')]) > `0`): true
+          
+          # Check for dedicated IAM authentication role (for user/role authentication)
+          - message: "EKS cluster should have a dedicated IAM role for user authentication (with AWS account trust)."
+            check:
+              # Check for IAM role with AWS account trust (indicates IAM auth role)
+              (length(planned_values.root_module.resources[?type=='aws_iam_role' && contains(values.assume_role_policy, 'arn:aws:iam::') && contains(values.assume_role_policy, ':root')]) > `0`): true
+          
+          # Check for OIDC provider configuration for service account authentication
+          - message: "EKS cluster should have OIDC provider configured for service account IAM roles."
+            check:
+              # Check for IAM OIDC provider existence
+              (length(planned_values.root_module.resources[?type=='aws_iam_openid_connect_provider']) > `0`): true

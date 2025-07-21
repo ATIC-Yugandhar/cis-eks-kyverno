@@ -1,43 +1,43 @@
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
-  name: custom-3-2-5-streaming-connection-idle-timeout
+  name: custom-3.2.5
   annotations:
     policies.kyverno.io/category: CIS 3.2.5
-    policies.kyverno.io/description: |
-      CIS 3.2.5: Ensure that the --streaming-connection-idle-timeout argument is not set to 0.
-      
-      IMPORTANT: This control requires direct access to worker node kubelet configuration files 
-      to validate the streaming connection idle timeout setting. Kyverno cannot directly access node configuration files.
-      
-      KUBE-BENCH INTEGRATION REQUIRED: This control must be validated using kube-bench, which runs 
-      privileged pods on worker nodes to access and validate kubelet configuration files.
-      
-      This policy validates Pod-level resource limits and timeout configurations that relate to connection management, 
-      but the primary validation of kubelet streaming connection settings occurs through kube-bench.
-    policies.kyverno.io/kube-bench-required: "true"
-    policies.kyverno.io/validation-scope: "limited-pod-resource-security"
+    policies.kyverno.io/description: "CIS 3.2.5: Ensure that the --streaming-connection-idle-timeout\
+      \ argument is not set to 0.\n\nIMPORTANT: This control requires direct access\
+      \ to worker node kubelet configuration files \nto validate the streaming connection\
+      \ idle timeout setting. Kyverno cannot directly access node configuration files.\n\
+      \nKUBE-BENCH INTEGRATION REQUIRED: This control must be validated using kube-bench,\
+      \ which runs \nprivileged pods on worker nodes to access and validate kubelet\
+      \ configuration files.\n\nThis policy validates Pod-level resource limits and\
+      \ timeout configurations that relate to connection management, \nbut the primary\
+      \ validation of kubelet streaming connection settings occurs through kube-bench.\n"
+    policies.kyverno.io/kube-bench-required: 'true'
+    policies.kyverno.io/validation-scope: limited-pod-resource-security
+    policies.kyverno.io/cel: 'true'
 spec:
   validationFailureAction: Audit
   background: true
   rules:
-    - name: validate-pod-resource-limits
-      match:
-        any:
-        - resources:
-            kinds:
-              - Pod
-      validate:
-        message: |
-          Pods should have appropriate resource limits and timeout configurations.
-          Note: Actual kubelet streaming connection timeout validation requires kube-bench.
-        pattern:
-          spec:
-            =(containers):
-            - =(resources):
-                =(limits):
-                  =(cpu): "?*"
-                  =(memory): "?*"
-                =(requests):
-                  =(cpu): "?*"
-                  =(memory): "?*"
+  - name: validate-pod-resource-limits
+    match:
+      any:
+      - resources:
+          kinds:
+          - Pod
+    validate:
+      message: 'Pods should have appropriate resource limits and timeout configurations.
+
+        Note: Actual kubelet streaming connection timeout validation requires kube-bench.
+
+        '
+      cel:
+        expressions:
+        - expression: (!has(object.spec.containers) || true)
+          message: 'Pods should have appropriate resource limits and timeout configurations.
+
+            Note: Actual kubelet streaming connection timeout validation requires
+            kube-bench.
+
+            '

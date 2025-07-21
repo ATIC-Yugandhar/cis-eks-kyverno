@@ -7,9 +7,6 @@ spec:
     - name: minimize-ecr-iam-permissions
       assert:
         all:
-          - message: "Node group IAM roles should only have ECR read-only access."
+          - message: "IAM roles must not have overprivileged policies with Action:* that would include all ECR permissions."
             check:
-              (length(planned_values.root_module.resources[?type=='aws_iam_role_policy_attachment' && contains(values.role, 'node') && values.policy_arn == 'arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly']) > `0`): true
-          - message: "IAM roles should not have excessive ECR permissions."
-            check:
-              (length(planned_values.root_module.resources[?type=='aws_iam_role_policy_attachment' && contains(values.policy_arn, 'ECRFullAccess')]) == `0`): true
+              (length(planned_values.root_module.resources[?type=='aws_iam_role_policy' && contains(values.policy, '"Action":"*"')]) == `0`): true

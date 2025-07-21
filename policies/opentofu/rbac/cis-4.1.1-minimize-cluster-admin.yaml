@@ -9,7 +9,13 @@ spec:
         all:
           - message: "IAM roles should not have overly broad permissions equivalent to cluster-admin."
             check:
-              (length(planned_values.root_module.resources[?type=='aws_iam_role_policy_attachment' && contains(values.policy_arn, 'AdministratorAccess')]) == `0`): true
+              "(length(planned_values.root_module.resources[?type=='aws_iam_role_policy_attachment' && contains(values.policy_arn, 'AdministratorAccess')]) == `0`)": true
+          - message: "IAM inline policies should not have wildcard Action permissions."
+            check:
+              "(length(planned_values.root_module.resources[?type=='aws_iam_role_policy' && contains(values.policy, '\"Action\":\"*\"')]) == `0`)": true
+          - message: "IAM inline policies with Resource:* should be limited to specific ECR/log operations only."
+            check:
+              "(length(planned_values.root_module.resources[?type=='aws_iam_role_policy' && contains(values.policy, '\"Resource\":\"*\"') && !contains(values.name, 'ecr')]) == `0`)": true
           - message: "IAM policies should follow principle of least privilege for EKS access."
             check:
-              (length(planned_values.root_module.resources[?type=='aws_iam_role' && contains(values.name, 'eks')]) > `0`): true
+              "(length(planned_values.root_module.resources[?type=='aws_iam_role' && contains(values.name, 'eks')]) > `0`)": true

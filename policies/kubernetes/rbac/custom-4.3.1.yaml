@@ -1,89 +1,79 @@
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
-  name: custom-4-3-1-cni-supports-network-policies
+  name: custom-4.3.1
   annotations:
     policies.kyverno.io/category: CIS 4.3.1
-    policies.kyverno.io/description: |
-      Validates CNI plugin support for network policies using reliable Kubernetes resources.
+    policies.kyverno.io/description: 'Validates CNI plugin support for network policies
+      using reliable Kubernetes resources.
+
       Checks actual NetworkPolicy resources, Node conditions, and Pod networking configurations.
+
+      '
+    policies.kyverno.io/cel: 'true'
 spec:
   validationFailureAction: Audit
   background: true
   rules:
-    - name: check-cni-supports-network-policies-namespace
-      match:
-        any:
-        - resources:
-            kinds:
-              - Namespace
-      validate:
-        message: "Namespace should indicate CNI plugin supports network policies."
-        anyPattern:
-          - metadata:
-              annotations:
-                cni.network.kubernetes.io/supports-network-policies: "true"
-          - metadata:
-              labels:
-                cni.network.kubernetes.io/supports-network-policies: "true"
-          - metadata:
-              annotations:
-                networking.k8s.io/network-policy: "enabled"
-
-    - name: validate-network-policy-functionality
-      match:
-        any:
-        - resources:
-            kinds:
-              - NetworkPolicy
-      validate:
-        message: "NetworkPolicy resources should exist and be properly configured, indicating CNI support."
-        anyPattern:
-          - spec:
-              policyTypes:
-              - "Ingress"
-          - spec:
-              policyTypes:
-              - "Egress"
-          - metadata:
-              annotations:
-                policy.networking.k8s.io/cni-support: "true"
-
-    - name: validate-node-cni-capabilities
-      match:
-        any:
-        - resources:
-            kinds:
-              - Node
-      validate:
-        message: "Nodes should indicate CNI plugin supports network policies."
-        anyPattern:
-          - metadata:
-              annotations:
-                node.alpha.kubernetes.io/network-policy: "supported"
-          - metadata:
-              labels:
-                network-policy-support: "true"
-          - status:
-              conditions:
-              - type: "NetworkPolicyReady"
-                status: "True"
-
-    - name: validate-pod-network-policy-enforcement
-      match:
-        any:
-        - resources:
-            kinds:
-              - Pod
-      validate:
-        message: "Pods should indicate network policy enforcement capability."
-        anyPattern:
-          - metadata:
-              annotations:
-                networking.k8s.io/network-policy: "enforced"
-          - metadata:
-              labels:
-                network-policy: "enabled"
-          - spec:
-              securityContext:
-                supplementalGroups: [1000]  # Example of network security group
+  - name: check-cni-supports-network-policies-namespace
+    match:
+      any:
+      - resources:
+          kinds:
+          - Namespace
+    validate:
+      message: Namespace should indicate CNI plugin supports network policies.
+      cel:
+        expressions:
+        - expression: |
+            (has(object.metadata.annotations) && "cni.network.kubernetes.io/supports-network-policies" in object.metadata.annotations && object.metadata.annotations["cni.network.kubernetes.io/supports-network-policies"] == 'true') ||
+            (has(object.metadata.labels) && "cni.network.kubernetes.io/supports-network-policies" in object.metadata.labels && object.metadata.labels["cni.network.kubernetes.io/supports-network-policies"] == 'true') ||
+            (has(object.metadata.annotations) && "networking.k8s.io/network-policy" in object.metadata.annotations && object.metadata.annotations["networking.k8s.io/network-policy"] == 'enabled')
+          message: Namespace should indicate CNI plugin supports network policies.
+  - name: validate-network-policy-functionality
+    match:
+      any:
+      - resources:
+          kinds:
+          - NetworkPolicy
+    validate:
+      message: NetworkPolicy resources should exist and be properly configured, indicating
+        CNI support.
+      cel:
+        expressions:
+        - expression: |
+            (has(object.spec.policyTypes) && object.spec.policyTypes == ['Ingress']) ||
+            (has(object.spec.policyTypes) && object.spec.policyTypes == ['Egress']) ||
+            (has(object.metadata.annotations) && "policy.networking.k8s.io/cni-support" in object.metadata.annotations && object.metadata.annotations["policy.networking.k8s.io/cni-support"] == 'true')
+          message: NetworkPolicy resources should exist and be properly configured,
+            indicating CNI support.
+  - name: validate-node-cni-capabilities
+    match:
+      any:
+      - resources:
+          kinds:
+          - Node
+    validate:
+      message: Nodes should indicate CNI plugin supports network policies.
+      cel:
+        expressions:
+        - expression: |
+            (has(object.metadata.annotations) && "node.alpha.kubernetes.io/network-policy" in object.metadata.annotations && object.metadata.annotations["node.alpha.kubernetes.io/network-policy"] == 'supported') ||
+            (has(object.metadata.labels) && "network-policy-support" in object.metadata.labels && object.metadata.labels["network-policy-support"] == 'true') ||
+            (has(object.status.conditions) && object.status.conditions.all(item, item.type == 'NetworkPolicyReady' && item.status == 'True'))
+          message: Nodes should indicate CNI plugin supports network policies.
+  - name: validate-pod-network-policy-enforcement
+    match:
+      any:
+      - resources:
+          kinds:
+          - Pod
+    validate:
+      message: Pods should indicate network policy enforcement capability.
+      cel:
+        expressions:
+        - expression: |
+            (has(object.metadata.annotations) && "networking.k8s.io/network-policy" in object.metadata.annotations && object.metadata.annotations["networking.k8s.io/network-policy"] == 'enforced') ||
+            (has(object.metadata.labels) && "network-policy" in object.metadata.labels && object.metadata.labels["network-policy"] == 'enabled') ||
+            (has(object.spec.securityContext) && has(object.spec.securityContext.supplementalGroups) && object.spec.securityContext.supplementalGroups == [1000])
+          message: Pods should indicate network policy enforcement capability.

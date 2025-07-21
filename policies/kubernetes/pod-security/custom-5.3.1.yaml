@@ -1,91 +1,84 @@
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
-  name: cis-5.3.1-kms-secret-encryption-comprehensive
+  name: custom-5.3.1
   annotations:
     policies.kyverno.io/title: KMS Encryption for Kubernetes Secrets
     policies.kyverno.io/category: CIS 5.3.1
     policies.kyverno.io/severity: high
     policies.kyverno.io/subject: Secret, ConfigMap
-    policies.kyverno.io/description: |
-      Comprehensive implementation of CIS 5.3.1: Encrypt Kubernetes Secrets with KMS CMKs.
-      This policy validates secret encryption using reliable Kubernetes resources instead of unreliable ConfigMaps.
+    policies.kyverno.io/description: 'Comprehensive implementation of CIS 5.3.1: Encrypt
+      Kubernetes Secrets with KMS CMKs.
+
+      This policy validates secret encryption using reliable Kubernetes resources
+      instead of unreliable ConfigMaps.
+
       Validates actual secret encryption, KMS annotations, and native resources.
+
+      '
+    policies.kyverno.io/cel: 'true'
 spec:
   rules:
-    - name: validate-secret-encryption
-      match:
-        any:
-        - resources:
-            kinds:
-              - Secret
-      validate:
-        message: "Secrets must be encrypted with KMS and have proper encryption annotations."
-        anyPattern:
-          - metadata:
-              annotations:
-                kubernetes.io/encryption-provider: "aws-kms"
-          - metadata:
-              annotations:
-                kms-key: "?*"
-          - metadata:
-              labels:
-                kms-encrypted: "true"
-
-    - name: validate-namespace-encryption-policy
-      match:
-        any:
-        - resources:
-            kinds:
-              - Namespace
-      validate:
-        message: "Namespaces should have encryption policy annotations for secrets."
-        anyPattern:
-          - metadata:
-              annotations:
-                encryption.k8s.io/policy: "kms"
-          - metadata:
-              labels:
-                encryption-required: "true"
-          - metadata:
-              annotations:
-                secrets.encryption/kms: "enabled"
-
-    - name: validate-service-account-encryption
-      match:
-        any:
-        - resources:
-            kinds:
-              - ServiceAccount
-      validate:
-        message: "ServiceAccount tokens should be encrypted with KMS."
-        anyPattern:
-          - metadata:
-              annotations:
-                token.encryption/kms: "enabled"
-          - metadata:
-              labels:
-                kms-encrypted: "true"
-          - secrets:
-            - name: "?*"
-              # ServiceAccount should reference encrypted secrets
-
-    - name: check-encrypt-secrets-kms
-      match:
-        any:
-        - resources:
-            kinds:
-              - Secret
-              - Namespace
-      validate:
-        message: "Secrets should be encrypted with KMS CMKs (look for kms-key annotation or label)."
-        anyPattern:
-          - metadata:
-              annotations:
-                kms-key: "?*"
-          - metadata:
-              labels:
-                kms-key: "?*"
-          - metadata:
-              annotations:
-                aws.encryption/kms-key-id: "?*"
+  - name: validate-secret-encryption
+    match:
+      any:
+      - resources:
+          kinds:
+          - Secret
+    validate:
+      message: Secrets must be encrypted with KMS and have proper encryption annotations.
+      cel:
+        expressions:
+        - expression: |
+            (has(object.metadata.annotations) && "kms-key" in object.metadata.annotations && object.metadata.annotations["kms-key"] != "") ||
+            (has(object.metadata.annotations) && "kubernetes.io/encryption-provider" in object.metadata.annotations && object.metadata.annotations["kubernetes.io/encryption-provider"] == 'aws-kms') ||
+            (has(object.metadata.labels) && "kms-encrypted" in object.metadata.labels && object.metadata.labels["kms-encrypted"] == 'true')
+          message: Secrets must be encrypted with KMS and have proper encryption annotations.
+  - name: validate-namespace-encryption-policy
+    match:
+      any:
+      - resources:
+          kinds:
+          - Namespace
+    validate:
+      message: Namespaces should have encryption policy annotations for secrets.
+      cel:
+        expressions:
+        - expression: |
+            (has(object.metadata.annotations) && "encryption.k8s.io/policy" in object.metadata.annotations && object.metadata.annotations["encryption.k8s.io/policy"] == 'kms') ||
+            (has(object.metadata.labels) && "encryption-required" in object.metadata.labels && object.metadata.labels["encryption-required"] == 'true') ||
+            (has(object.metadata.annotations) && "secrets.encryption/kms" in object.metadata.annotations && object.metadata.annotations["secrets.encryption/kms"] == 'enabled')
+          message: Namespaces should have encryption policy annotations for secrets.
+  - name: validate-service-account-encryption
+    match:
+      any:
+      - resources:
+          kinds:
+          - ServiceAccount
+    validate:
+      message: ServiceAccount tokens should be encrypted with KMS.
+      cel:
+        expressions:
+        - expression: |
+            (has(object.metadata.annotations) && "token.encryption/kms" in object.metadata.annotations && object.metadata.annotations["token.encryption/kms"] == 'enabled') ||
+            (has(object.metadata.labels) && "kms-encrypted" in object.metadata.labels && object.metadata.labels["kms-encrypted"] == 'true') ||
+            (has(object.secrets) && object.secrets.all(item, has(item.name) && item.name != ""))
+          message: ServiceAccount tokens should be encrypted with KMS.
+  - name: check-encrypt-secrets-kms
+    match:
+      any:
+      - resources:
+          kinds:
+          - Secret
+          - Namespace
+    validate:
+      message: Secrets should be encrypted with KMS CMKs (look for kms-key annotation
+        or label).
+      cel:
+        expressions:
+        - expression: |
+            (has(object.metadata.annotations) && "kms-key" in object.metadata.annotations && object.metadata.annotations["kms-key"] != "") ||
+            (has(object.metadata.labels) && "kms-key" in object.metadata.labels && object.metadata.labels["kms-key"] != "") ||
+            (has(object.metadata.annotations) && "aws.encryption/kms-key-id" in object.metadata.annotations && object.metadata.annotations["aws.encryption/kms-key-id"] != "")
+          message: Secrets should be encrypted with KMS CMKs (look for kms-key annotation
+            or label).

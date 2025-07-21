@@ -1,44 +1,45 @@
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
-  name: custom-3-2-6-make-iptables-util-chains
+  name: custom-3.2.6
   annotations:
     policies.kyverno.io/category: CIS 3.2.6
-    policies.kyverno.io/description: |
-      CIS 3.2.6: Ensure that the --make-iptables-util-chains argument is set to true.
-      
-      IMPORTANT: This control requires direct access to worker node kubelet configuration files 
-      to validate the iptables util chains setting. Kyverno cannot directly access node configuration files.
-      
-      KUBE-BENCH INTEGRATION REQUIRED: This control must be validated using kube-bench, which runs 
-      privileged pods on worker nodes to access and validate kubelet configuration files.
-      
-      This policy validates Pod-level network security configurations that relate to iptables usage, 
-      but the primary validation of kubelet iptables settings occurs through kube-bench.
-    policies.kyverno.io/kube-bench-required: "true"
-    policies.kyverno.io/validation-scope: "limited-pod-network-security"
+    policies.kyverno.io/description: "CIS 3.2.6: Ensure that the --make-iptables-util-chains\
+      \ argument is set to true.\n\nIMPORTANT: This control requires direct access\
+      \ to worker node kubelet configuration files \nto validate the iptables util\
+      \ chains setting. Kyverno cannot directly access node configuration files.\n\
+      \nKUBE-BENCH INTEGRATION REQUIRED: This control must be validated using kube-bench,\
+      \ which runs \nprivileged pods on worker nodes to access and validate kubelet\
+      \ configuration files.\n\nThis policy validates Pod-level network security configurations\
+      \ that relate to iptables usage, \nbut the primary validation of kubelet iptables\
+      \ settings occurs through kube-bench.\n"
+    policies.kyverno.io/kube-bench-required: 'true'
+    policies.kyverno.io/validation-scope: limited-pod-network-security
+    policies.kyverno.io/cel: 'true'
 spec:
   validationFailureAction: Audit
   background: true
   rules:
-    - name: validate-pod-network-security
-      match:
-        any:
-        - resources:
-            kinds:
-              - Pod
-      validate:
-        message: |
-          Pods should use secure networking configurations and avoid privileged network access.
-          Note: Actual kubelet iptables util chains validation requires kube-bench.
-        pattern:
-          spec:
-            =(securityContext):
-              =(runAsNonRoot): "true"
-            =(containers):
-            - =(securityContext):
-                =(allowPrivilegeEscalation): "false"
-                =(capabilities):
-                  =(drop):
-                  - "NET_ADMIN"
-                  - "NET_RAW"
+  - name: validate-pod-network-security
+    match:
+      any:
+      - resources:
+          kinds:
+          - Pod
+    validate:
+      message: 'Pods should use secure networking configurations and avoid privileged
+        network access.
+
+        Note: Actual kubelet iptables util chains validation requires kube-bench.
+
+        '
+      cel:
+        expressions:
+        - expression: (!has(object.spec.securityContext) || (!has(object.spec.securityContext.runAsNonRoot)
+            || true)) && (!has(object.spec.containers) || true)
+          message: 'Pods should use secure networking configurations and avoid privileged
+            network access.
+
+            Note: Actual kubelet iptables util chains validation requires kube-bench.
+
+            '

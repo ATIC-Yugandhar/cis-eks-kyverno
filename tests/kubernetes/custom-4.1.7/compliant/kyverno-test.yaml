@@ -7,7 +7,7 @@ policies:
 resources:
   - role.yaml
 results:
-  - policy: custom-4-1-7-cluster-access-manager
+  - policy: custom-4.1.7
     rule: check-cluster-access-manager
     resources:
       - compliant-role

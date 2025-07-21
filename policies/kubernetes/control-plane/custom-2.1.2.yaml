@@ -1,83 +1,83 @@
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
-  name: custom-2-1-2-ensure-audit-logs-collected
+  name: custom-2.1.2
   annotations:
     policies.kyverno.io/category: CIS 2.1.2
-    policies.kyverno.io/description: |
-      Validates audit log collection configuration using reliable Kubernetes resources.
-      Checks for audit log collection in Node conditions and Pod security contexts instead of unreliable ConfigMaps.
+    policies.kyverno.io/description: 'Validates audit log collection configuration
+      using reliable Kubernetes resources.
+
+      Checks for audit log collection in Node conditions and Pod security contexts
+      instead of unreliable ConfigMaps.
+
+      '
+    policies.kyverno.io/cel: 'true'
 spec:
   validationFailureAction: Audit
   background: true
   rules:
-    - name: validate-audit-event-collection
-      match:
-        any:
-        - resources:
-            kinds:
-              - Event
-            namespaces:
-              - kube-system
-      validate:
-        message: "Cluster should generate audit collection events."
-        anyPattern:
-          - reason: "AuditCollectionEnabled"
-          - reason: "LogCollectionStarted"
-          - metadata:
-              annotations:
-                audit.k8s.io/collection: "enabled"
-
-    - name: validate-node-audit-collection
-      match:
-        any:
-        - resources:
-            kinds:
-              - Node
-      validate:
-        message: "Node should have audit log collection configuration."
-        anyPattern:
-          - metadata:
-              annotations:
-                audit-collection: "enabled"
-          - metadata:
-              labels:
-                audit-collection: "enabled"
-          - status:
-              conditions:
-              - type: "AuditCollectionReady"
-                status: "True"
-
-    - name: validate-service-account-audit
-      match:
-        any:
-        - resources:
-            kinds:
-              - ServiceAccount
-            namespaces:
-              - kube-system
-      validate:
-        message: "ServiceAccounts should indicate audit log collection is enabled."
-        anyPattern:
-          - metadata:
-              annotations:
-                audit.k8s.io/collection: "enabled"
-          - metadata:
-              labels:
-                audit-collection: "enabled"
-
-    - name: validate-persistent-volume-audit-logs
-      match:
-        any:
-        - resources:
-            kinds:
-              - PersistentVolume
-      validate:
-        message: "PersistentVolumes used for audit logs should be properly configured."
-        anyPattern:
-          - metadata:
-              annotations:
-                audit-storage: "enabled"
-          - metadata:
-              labels:
-                usage: "audit-logs"
+  - name: validate-audit-event-collection
+    match:
+      any:
+      - resources:
+          kinds:
+          - Event
+          namespaces:
+          - kube-system
+    validate:
+      message: Cluster should generate audit collection events.
+      cel:
+        expressions:
+        - expression: (object.reason == 'AuditCollectionEnabled') || (object.reason
+            == 'LogCollectionStarted') || (has(object.metadata.annotations) && "audit"
+            in object.metadata.annotations && (object.metadata.annotations["audit"].k8s.io/collection
+            == 'enabled'))
+          message: Cluster should generate audit collection events.
+  - name: validate-node-audit-collection
+    match:
+      any:
+      - resources:
+          kinds:
+          - Node
+    validate:
+      message: Node should have audit log collection configuration.
+      cel:
+        expressions:
+        - expression: (has(object.metadata.annotations) && "audit-collection" in object.metadata.annotations
+            && (object.metadata.annotations["audit-collection"] == 'enabled')) ||
+            (has(object.metadata.labels) && "audit-collection" in object.metadata.labels
+            && (object.metadata.labels["audit-collection"] == 'enabled')) || (object.status.conditions.all(item,
+            item.type == 'AuditCollectionReady' && item.status == 'True'))
+          message: Node should have audit log collection configuration.
+  - name: validate-service-account-audit
+    match:
+      any:
+      - resources:
+          kinds:
+          - ServiceAccount
+          namespaces:
+          - kube-system
+    validate:
+      message: ServiceAccounts should indicate audit log collection is enabled.
+      cel:
+        expressions:
+        - expression: (has(object.metadata.annotations) && "audit" in object.metadata.annotations
+            && (object.metadata.annotations["audit"].k8s.io/collection == 'enabled'))
+            || (has(object.metadata.labels) && "audit-collection" in object.metadata.labels
+            && (object.metadata.labels["audit-collection"] == 'enabled'))
+          message: ServiceAccounts should indicate audit log collection is enabled.
+  - name: validate-persistent-volume-audit-logs
+    match:
+      any:
+      - resources:
+          kinds:
+          - PersistentVolume
+    validate:
+      message: PersistentVolumes used for audit logs should be properly configured.
+      cel:
+        expressions:
+        - expression: (has(object.metadata.annotations) && "audit-storage" in object.metadata.annotations
+            && (object.metadata.annotations["audit-storage"] == 'enabled')) || (has(object.metadata.labels)
+            && "usage" in object.metadata.labels && (object.metadata.labels["usage"]
+            == 'audit-logs'))
+          message: PersistentVolumes used for audit logs should be properly configured.

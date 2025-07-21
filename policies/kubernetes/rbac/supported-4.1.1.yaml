@@ -7,23 +7,24 @@ metadata:
     policies.kyverno.io/category: RBAC
     policies.kyverno.io/severity: high
     policies.kyverno.io/subject: RoleBinding, ClusterRoleBinding
-    policies.kyverno.io/description: >-
-      Ensure that the cluster-admin role is only used when absolutely necessary.
-      This policy checks for RoleBindings and ClusterRoleBindings that grant cluster-admin privileges.
+    policies.kyverno.io/description: Ensure that the cluster-admin role is only used
+      when absolutely necessary. This policy checks for RoleBindings and ClusterRoleBindings
+      that grant cluster-admin privileges.
+    policies.kyverno.io/cel: 'true'
 spec:
   validationFailureAction: Audit
   background: true
   rules:
-    - name: restrict-cluster-admin
-      match:
-        any:
-        - resources:
-            kinds:
-              - RoleBinding
-              - ClusterRoleBinding
-      validate:
-        message: "Use of cluster-admin role should be restricted."
-        pattern:
-          roleRef:
-            kind: ClusterRole
-            name: '!cluster-admin' 
+  - name: restrict-cluster-admin
+    match:
+      any:
+      - resources:
+          kinds:
+          - RoleBinding
+          - ClusterRoleBinding
+    validate:
+      message: Use of cluster-admin role should be restricted.
+      cel:
+        expressions:
+        - expression: "!(object.roleRef.kind == 'ClusterRole' && object.roleRef.name == 'cluster-admin')"
+          message: Use of cluster-admin role should be restricted.

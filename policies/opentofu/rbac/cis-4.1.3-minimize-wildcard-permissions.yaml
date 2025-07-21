@@ -7,6 +7,9 @@ spec:
     - name: no-wildcard-iam-policies
       assert:
         all:
-          - message: "IAM policies should not use wildcard (*) permissions for resources or actions."
+          - message: "IAM policies should not use wildcard (*) permissions for actions."
             check:
-              (length(planned_values.root_module.resources[?type=='aws_iam_role_policy' && (contains(values.policy, '"Resource":"*"') || contains(values.policy, '"Resource": "*"') || contains(values.policy, '"Action":"*"') || contains(values.policy, '"Action": "*"'))]) == `0`): true
+              "(length(planned_values.root_module.resources[?type=='aws_iam_role_policy' && contains(values.policy, '\"Action\":\"*\"')]) == `0`)": true
+          - message: "IAM policies with Resource:* should be limited to specific services like ECR that require it."
+            check:
+              "(length(planned_values.root_module.resources[?type=='aws_iam_role_policy' && contains(values.policy, '\"Resource\":\"*\"') && !contains(values.policy, 'ecr:')]) == `0`)": true

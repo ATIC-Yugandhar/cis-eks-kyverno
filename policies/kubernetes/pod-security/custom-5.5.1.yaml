@@ -1,28 +1,34 @@
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
-  name: custom-5-5-1-iam-authenticator
+  name: custom-5.5.1
   annotations:
     policies.kyverno.io/category: CIS 5.5.1
-    policies.kyverno.io/description: |
-      Checks for IAM annotation or label in ServiceAccount or Namespace if available.
+    policies.kyverno.io/description: 'Checks for IAM annotation or label in ServiceAccount
+      or Namespace if available.
+
+      '
+    policies.kyverno.io/cel: 'true'
 spec:
   validationFailureAction: Audit
   background: true
   rules:
-    - name: check-iam-authenticator
-      match:
-        any:
-        - resources:
-            kinds:
-              - ServiceAccount
-              - Namespace
-      validate:
-        message: "Users should be managed via IAM Authenticator or AWS CLI (look for iam-authenticator annotation or label)."
-        anyPattern:
-          - metadata:
-              annotations:
-                iam-authenticator: "enabled"
-          - metadata:
-              labels:
-                iam-authenticator: "enabled" 
+  - name: check-iam-authenticator
+    match:
+      any:
+      - resources:
+          kinds:
+          - ServiceAccount
+          - Namespace
+    validate:
+      message: Users should be managed via IAM Authenticator or AWS CLI (look for
+        iam-authenticator annotation or label).
+      cel:
+        expressions:
+        - expression: (has(object.metadata.annotations) && "iam-authenticator" in
+            object.metadata.annotations && (object.metadata.annotations["iam-authenticator"]
+            == 'enabled')) || (has(object.metadata.labels) && "iam-authenticator"
+            in object.metadata.labels && (object.metadata.labels["iam-authenticator"]
+            == 'enabled'))
+          message: Users should be managed via IAM Authenticator or AWS CLI (look
+            for iam-authenticator annotation or label).
