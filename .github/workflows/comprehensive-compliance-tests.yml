@@ -642,26 +642,23 @@ jobs:
         echo "Using cluster context: $CLUSTER_CONTEXT"
         
         # Run CIS compliance scan with JSON output
-        trivy k8s cluster \
+        trivy k8s "$CLUSTER_CONTEXT" \
           --kubeconfig ~/.kube/config \
-          --context "$CLUSTER_CONTEXT" \
           --compliance=k8s-cis-1.23 \
           --report all \
           --format json \
           --output reports/trivy-compliance/cis-compliance.json || echo "CIS scan completed with issues"
         
         # Generate summary report
-        trivy k8s cluster \
+        trivy k8s "$CLUSTER_CONTEXT" \
           --kubeconfig ~/.kube/config \
-          --context "$CLUSTER_CONTEXT" \
           --compliance=k8s-cis-1.23 \
           --report summary \
           --format table > reports/trivy-compliance/cis-summary.txt || echo "CIS summary completed"
         
         # Run NSA compliance scan
-        trivy k8s cluster \
+        trivy k8s "$CLUSTER_CONTEXT" \
           --kubeconfig ~/.kube/config \
-          --context "$CLUSTER_CONTEXT" \
           --compliance=k8s-nsa-1.0 \
           --report all \
           --format json \
