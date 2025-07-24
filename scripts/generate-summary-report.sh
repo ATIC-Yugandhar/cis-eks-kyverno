@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -uo pipefail
 
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
@@ -45,7 +45,7 @@ fi
 
 # Calculate completion rate
 if [ $TOTAL_REPORTS -gt 0 ]; then
-    COMPLETION_RATE=$(awk "BEGIN {printf \"%.1f\", $COMPLETE_REPORTS * 100 / $TOTAL_REPORTS}")
+    COMPLETION_RATE=$(awk "BEGIN {printf \"%.1f\", $COMPLETE_REPORTS * 100 / $TOTAL_REPORTS}" 2>/dev/null || echo "0.0")
 else
     COMPLETION_RATE="0.0"
 fi
@@ -81,10 +81,10 @@ if [ -f "$REPORT_DIR/policy-tests/summary.md" ]; then
     PASSED_TESTS=$(grep "✅ Passed" "$REPORT_DIR/policy-tests/summary.md" | grep -o '[0-9]*' | head -1)
     FAILED_TESTS=$(grep "❌ Failed" "$REPORT_DIR/policy-tests/summary.md" | grep -o '[0-9]*' | head -1)
     SKIPPED_TESTS=$(grep "⏭️ Skipped" "$REPORT_DIR/policy-tests/summary.md" | grep -o '[0-9]*' | head -1)
-    SUCCESS_RATE=$(grep "Success Rate" "$REPORT_DIR/policy-tests/summary.md" | grep -o '[0-9]*%' | head -1)
+    SUCCESS_RATE=$(grep "Success Rate" "$REPORT_DIR/policy-tests/summary.md" | grep -o '[0-9]*%' | head -1 2>/dev/null || echo "N/A")
     
-    DURATION=$(grep "Duration" "$REPORT_DIR/policy-tests/summary.md" | awk '{print $4}' | head -1)
-    TESTS_PER_SEC=$(grep "Tests/Second" "$REPORT_DIR/policy-tests/summary.md" | awk '{print $4}' | head -1)
+    DURATION=$(grep "Duration" "$REPORT_DIR/policy-tests/summary.md" | awk '{print $4}' | head -1 2>/dev/null || echo "N/A")
+    TESTS_PER_SEC=$(grep "Tests/Second" "$REPORT_DIR/policy-tests/summary.md" | awk '{print $4}' | head -1 2>/dev/null || echo "N/A")
     
     # Default values if extraction fails
     TOTAL_POLICIES=${TOTAL_POLICIES:-"0"}
@@ -198,20 +198,10 @@ EOF
 if [ -f "$REPORT_DIR/opentofu-compliance/compliant-plan-scan.md" ] && [ -f "$REPORT_DIR/opentofu-compliance/noncompliant-plan-scan.md" ]; then
     echo -e "${GREEN}✅ OpenTofu compliance tests found${NC}"
     
-    # Extract exact metrics from opentofu reports using the correct format
-    COMPLIANT_SUCCESS=$(grep "\*\*Success Rate\*\*:" "$REPORT_DIR/opentofu-compliance/compliant-plan-scan.md" | awk '{print $NF}' 2>/dev/null || echo "0%")
-    NONCOMPLIANT_DETECTION=$(grep "\*\*Detection Rate\*\*:" "$REPORT_DIR/opentofu-compliance/noncompliant-plan-scan.md" | awk '{print $NF}' 2>/dev/null || echo "0%")
-    
-    # If the markdown format doesn't work, try the simple format
-    if [ "$COMPLIANT_SUCCESS" = "0%" ]; then
-        COMPLIANT_SUCCESS=$(grep "Success Rate" "$REPORT_DIR/opentofu-compliance/compliant-plan-scan.md" | sed 's/.*Success Rate[^:]*: *//' | awk '{print $1}' 2>/dev/null || echo "0%")
-    fi
-    
-    if [ "$NONCOMPLIANT_DETECTION" = "0%" ]; then
-        NONCOMPLIANT_DETECTION=$(grep "Detection Rate" "$REPORT_DIR/opentofu-compliance/noncompliant-plan-scan.md" | sed 's/.*Detection Rate[^:]*: *//' | awk '{print $1}' 2>/dev/null || echo "0%")
-    fi
-    
-    VIOLATIONS_DETECTED=$(grep "Violations Detected" "$REPORT_DIR/opentofu-compliance/noncompliant-plan-scan.md" | sed 's/.*Violations Detected[^:]*: *//' | awk '{print $1}' 2>/dev/null || echo "0")
+    # Extract exact metrics from opentofu reports using the actual format
+    COMPLIANT_SUCCESS=$(grep "Success Rate" "$REPORT_DIR/opentofu-compliance/compliant-plan-scan.md" | grep -o '[0-9]*%' | head -1 2>/dev/null || echo "0%")
+    NONCOMPLIANT_DETECTION=$(grep "Detection Rate" "$REPORT_DIR/opentofu-compliance/noncompliant-plan-scan.md" | grep -o '[0-9]*%' | head -1 2>/dev/null || echo "0%")
+    VIOLATIONS_DETECTED=$(grep "Correctly Failed" "$REPORT_DIR/opentofu-compliance/noncompliant-plan-scan.md" | grep -o '[0-9]*' | head -1 2>/dev/null || echo "0")
     
     cat >> "$SUMMARY_FILE" << OPENTOFU_EOF
 
@@ -339,3 +329,6 @@ echo -e "${GREEN}✅ Executive summary with custom CIS scanner integration gener
 echo -e "${BLUE}📈 Completion rate: ${COMPLETION_RATE}% (${COMPLETE_REPORTS}/${TOTAL_REPORTS} suites)${NC}"
 echo -e "${BLUE}🔒 Custom CIS Scanner: $( [ "$CIS_SCANNER_FOUND" = true ] && echo "✅ Active" || echo "❌ Not Found" )${NC}"
 echo -e "${BLUE}📁 Report location: $SUMMARY_FILE${NC}"
+
+# Ensure script exits successfully
+exit 0

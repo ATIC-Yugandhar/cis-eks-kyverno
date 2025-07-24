@@ -610,6 +610,8 @@ jobs:
       run: |
         kind create cluster --name trivy-cis-test
         kubectl cluster-info
+        # Set the current context for Trivy scanning
+        kubectl config current-context
         
     - name: Run Trivy vulnerability scanner
       uses: aquasecurity/trivy-action@master
@@ -635,8 +637,14 @@ jobs:
         
         echo "🔍 Running Trivy CIS compliance scan..."
         
+        # Get the correct cluster context
+        CLUSTER_CONTEXT=$(kubectl config current-context)
+        echo "Using cluster context: $CLUSTER_CONTEXT"
+        
         # Run CIS compliance scan with JSON output
         trivy k8s cluster \
+          --kubeconfig ~/.kube/config \
+          --context "$CLUSTER_CONTEXT" \
           --compliance=k8s-cis-1.23 \
           --report all \
           --format json \
@@ -644,12 +652,16 @@ jobs:
         
         # Generate summary report
         trivy k8s cluster \
+          --kubeconfig ~/.kube/config \
+          --context "$CLUSTER_CONTEXT" \
           --compliance=k8s-cis-1.23 \
           --report summary \
           --format table > reports/trivy-compliance/cis-summary.txt || echo "CIS summary completed"
         
         # Run NSA compliance scan
         trivy k8s cluster \
+          --kubeconfig ~/.kube/config \
+          --context "$CLUSTER_CONTEXT" \
           --compliance=k8s-nsa-1.0 \
           --report all \
           --format json \
