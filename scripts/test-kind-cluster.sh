@@ -438,7 +438,7 @@ else
 # Kind Cluster Validation Summary
 
 **Generated**: $(date)
-**Mode**: Offline validation (no kube-bench)
+**Mode**: Offline validation (with custom CIS scanner)
 
 ## Validation Statistics
 

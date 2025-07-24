@@ -11,7 +11,7 @@ REPORT_DIR="reports"
 SUMMARY_FILE="$REPORT_DIR/executive-summary.md"
 TIMESTAMP=$(date +"%Y-%m-%d %H:%M:%S")
 
-echo -e "${PURPLE}📈 Generating Executive Summary Report with Custom CIS Scanner Integration (SINGLE-TOOL APPROACH)...${NC}"
+echo -e "${PURPLE}📈 Generating Executive Summary Report with Custom CIS Scanner Integration...${NC}"
 
 # Debug: Show current environment and available reports
 if [ "${CI:-false}" = "true" ] || [ "${GITHUB_ACTIONS:-false}" = "true" ]; then
@@ -51,13 +51,13 @@ else
 fi
 
 # Initialize the summary file with actual values
-echo "# 📋 Kyverno + Custom CIS Scanner EKS Compliance Executive Summary (SINGLE-TOOL APPROACH)" > "$SUMMARY_FILE"
+echo "# 📋 Kyverno + Custom CIS Scanner EKS Compliance Executive Summary" > "$SUMMARY_FILE"
 echo "" >> "$SUMMARY_FILE"
 echo "**Generated**: $TIMESTAMP" >> "$SUMMARY_FILE"
 echo "" >> "$SUMMARY_FILE"
 echo "## 🎯 Executive Overview" >> "$SUMMARY_FILE"
 echo "" >> "$SUMMARY_FILE"
-echo "This comprehensive compliance report combines **Kyverno policy validation** with **custom CIS scanning** using our SINGLE-TOOL APPROACH to provide complete Kubernetes security coverage." >> "$SUMMARY_FILE"
+echo "This comprehensive compliance report combines **Kyverno policy validation** with **custom CIS scanning** to provide complete Kubernetes security coverage." >> "$SUMMARY_FILE"
 echo "" >> "$SUMMARY_FILE"
 echo "| Metric | Value |" >> "$SUMMARY_FILE"
 echo "|--------|-------|" >> "$SUMMARY_FILE"
@@ -122,7 +122,7 @@ fi
 
 cat >> "$SUMMARY_FILE" << EOF
 
-### 🔒 Custom CIS Scanner Compliance Scan (SINGLE-TOOL APPROACH)
+### 🔒 Custom CIS Scanner Compliance Scan
 EOF
 
 # Check for custom CIS scanner results in multiple locations
@@ -138,7 +138,7 @@ elif [ -f "$REPORT_DIR/kind-cluster/cis-scanner/summary.md" ]; then
 fi
 
 if [ "$CIS_SCANNER_FOUND" = true ]; then
-    echo -e "${GREEN}✅ Custom CIS compliance scan found (SINGLE-TOOL APPROACH)${NC}"
+    echo -e "${GREEN}✅ Custom CIS compliance scan found${NC}"
     
     # Extract custom CIS scanner metrics
     if [ -f "$CIS_SCANNER_DIR/node-scan.json" ]; then
@@ -174,7 +174,7 @@ if [ "$CIS_SCANNER_FOUND" = true ]; then
 | **Worker Nodes** | ✅ Scanned | $NODE_PASS | $NODE_FAIL | $NODE_WARN | $NODE_INFO |
 | **All Nodes** | $MASTER_AVAILABLE | Unified scanning via DaemonSet | | | |
 
-#### 🔍 CIS Controls Coverage (SINGLE-TOOL APPROACH)
+#### 🔍 CIS Controls Coverage
 
 Our custom CIS scanner validates:
 - **3.1.x**: Worker node configuration files (permissions, ownership)
@@ -221,7 +221,7 @@ if [ -f "$REPORT_DIR/opentofu-compliance/compliant-plan-scan.md" ] && [ -f "$REP
 | 🔴 Noncompliant | Complete | N/A | Minimal configuration |
 
 - 🔴 Policy violations detected in non-compliant config: **$VIOLATIONS_DETECTED**
-- 🔒 Custom CIS scanner deployed via OpenTofu for continuous compliance monitoring (SINGLE-TOOL APPROACH)
+- 🔒 Custom CIS scanner deployed via OpenTofu for continuous compliance monitoring
 
 OPENTOFU_EOF
 else
@@ -264,7 +264,7 @@ cat >> "$SUMMARY_FILE" << EOF
 
 ---
 
-## 🏗️ Architecture Overview (SINGLE-TOOL APPROACH)
+## 🏗️ Architecture Overview
 
 This compliance framework provides **multi-layer security validation** using our unified custom CIS scanner:
 
@@ -276,7 +276,7 @@ This compliance framework provides **multi-layer security validation** using our
    - Network policies and service configurations
    - Resource quotas and limits
 
-2. **🔒 Custom CIS Scanner** - Node-level compliance validation (SINGLE-TOOL)
+2. **🔒 Custom CIS Scanner** - Node-level compliance validation
    - File permissions and ownership checks
    - Kubelet configuration validation
    - Unified DaemonSet deployment across all nodes
@@ -325,17 +325,17 @@ This compliance framework provides **multi-layer security validation** using our
 | Test Suite | Status | Completion | Notes |
 |------------|--------|------------|-------|
 | Policy Unit Tests | $( [ -f "$REPORT_DIR/policy-tests/summary.md" ] && echo "✅ Complete" || echo "❌ Missing" ) | $( [ -f "$REPORT_DIR/policy-tests/summary.md" ] && echo "100%" || echo "0%" ) | Kubernetes policy validation |
-| Custom CIS Scanner | $( [ "$CIS_SCANNER_FOUND" = true ] && echo "✅ Complete" || echo "❌ Missing" ) | $( [ "$CIS_SCANNER_FOUND" = true ] && echo "100%" || echo "0%" ) | Node-level CIS compliance (SINGLE-TOOL) |
+| Custom CIS Scanner | $( [ "$CIS_SCANNER_FOUND" = true ] && echo "✅ Complete" || echo "❌ Missing" ) | $( [ "$CIS_SCANNER_FOUND" = true ] && echo "100%" || echo "0%" ) | Node-level CIS compliance |
 | OpenTofu Compliance | $( [ -f "$REPORT_DIR/opentofu-compliance/compliant-plan-scan.md" ] && echo "✅ Complete" || echo "❌ Missing" ) | $( [ -f "$REPORT_DIR/opentofu-compliance/compliant-plan-scan.md" ] && echo "100%" || echo "0%" ) | Infrastructure compliance |
 | Kind Integration | $( [ -f "$REPORT_DIR/kind-cluster/validation-results.txt" ] && echo "✅ Complete" || echo "❌ Missing" ) | $( [ -f "$REPORT_DIR/kind-cluster/validation-results.txt" ] && echo "100%" || echo "0%" ) | Local cluster testing |
 | **Overall** | **${COMPLETION_RATE}%** | **${COMPLETE_REPORTS}/${TOTAL_REPORTS}** | **Test suite completion** |
 
 ---
 
-*🤖 Generated by Enhanced Kyverno + Custom CIS Scanner EKS Compliance Test Suite v4.0 (SINGLE-TOOL APPROACH)*
+*🤖 Generated by Enhanced Kyverno + Custom CIS Scanner EKS Compliance Test Suite v4.0*
 EOF
 
 echo -e "${GREEN}✅ Executive summary with custom CIS scanner integration generated successfully!${NC}"
 echo -e "${BLUE}📈 Completion rate: ${COMPLETION_RATE}% (${COMPLETE_REPORTS}/${TOTAL_REPORTS} suites)${NC}"
-echo -e "${BLUE}🔒 Custom CIS Scanner (SINGLE-TOOL): $( [ "$CIS_SCANNER_FOUND" = true ] && echo "✅ Active" || echo "❌ Not Found" )${NC}"
+echo -e "${BLUE}🔒 Custom CIS Scanner: $( [ "$CIS_SCANNER_FOUND" = true ] && echo "✅ Active" || echo "❌ Not Found" )${NC}"
 echo -e "${BLUE}📁 Report location: $SUMMARY_FILE${NC}"
