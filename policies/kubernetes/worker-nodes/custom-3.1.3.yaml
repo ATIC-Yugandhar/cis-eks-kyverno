@@ -5,17 +5,19 @@ metadata:
   annotations:
     policies.kyverno.io/category: CIS 3.1.3
     policies.kyverno.io/description: "CIS 3.1.3: Ensure that the kubelet configuration\
-      \ file has permissions of 644 or more restrictive.\n\nIMPORTANT: This control\
-      \ requires direct access to worker node file systems to validate kubelet \n\
-      configuration file permissions. Kyverno cannot directly access node file systems\
-      \ or validate file permissions.\n\nKUBE-BENCH INTEGRATION REQUIRED: This control\
-      \ must be validated using kube-bench, which runs \nprivileged pods on worker\
-      \ nodes to access and validate file permissions on kubelet configuration files.\n\
-      \nThis policy validates Pod security contexts and configuration management practices,\
-      \ but the primary \nvalidation of actual file permissions occurs through kube-bench\
-      \ node-level scanning.\n"
-    policies.kyverno.io/kube-bench-required: 'true'
-    policies.kyverno.io/validation-scope: limited-pod-security-context
+      \ file has permissions of 644 or more restrictive.\n\nSINGLE-TOOL APPROACH:\
+      \ This control uses custom CIS scanner results combined with Kyverno validation.\n\
+      \nCUSTOM CIS SCANNER: File permission validation is performed by our custom\
+      \ CIS scanner DaemonSet that runs on each node to check:\n- /etc/kubernetes/kubelet/config.yaml\
+      \ permissions (should be 644 or more restrictive)\n- /var/lib/kubelet/config.yaml\
+      \ permissions\n- Other kubelet configuration files\n- Results are output as\
+      \ JSON to ConfigMaps\n\nKYVERNO VALIDATION: This policy validates both:\n\
+      - Custom CIS scanner results from ConfigMaps for actual file permissions\n\
+      - Pod security contexts and configuration management for complementary API-level\
+      \ controls\n"
+    policies.kyverno.io/scanner-required: 'true'
+    policies.kyverno.io/scanner-checks: '3.1.3'
+    policies.kyverno.io/validation-scope: kubelet-config-permissions-with-custom-scanner
     policies.kyverno.io/cel: 'true'
 spec:
   validationFailureAction: Audit
@@ -31,7 +33,8 @@ spec:
       message: 'Pods accessing configuration files should use secure volume mounts
         and contexts.
 
-        Note: Actual kubelet config file permission validation requires kube-bench.
+        Note: Actual kubelet config file permission validation is handled by our
+        custom CIS scanner pod.
 
         '
       cel:
@@ -42,6 +45,38 @@ spec:
           message: 'Pods accessing configuration files should use secure volume mounts
             and contexts.
 
-            Note: Actual kubelet config file permission validation requires kube-bench.
+            Note: Actual kubelet config file permission validation is handled by our
+        custom CIS scanner pod.
+
+            '
+  - name: validate-cis-scanner-results
+    match:
+      any:
+      - resources:
+          kinds:
+          - ConfigMap
+          names:
+          - cis-scanner-results*
+          namespaces:
+          - kube-system
+    validate:
+      message: 'CIS 3.1.3 kubelet configuration file permission scan results indicate
+        non-compliant permissions.
+
+        Custom CIS scanner has detected kubelet config files with permissions more
+        permissive than 644.
+
+        '
+      cel:
+        expressions:
+        - expression: |
+            !has(object.data) || !has(object.data['node-results.json']) ||
+            size(object.data['node-results.json'].parseJSON().checks.filter(c, 
+              c.id == '3.1.3' && c.status == 'FAIL'
+            )) == 0
+          message: 'CIS 3.1.3 compliance check failed: kubelet configuration file
+            permissions are not set to 644 or more restrictive.
+
+            Please ensure all kubelet config files have appropriate permissions.
 
             '

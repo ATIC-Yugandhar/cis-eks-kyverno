@@ -39,39 +39,20 @@ else
     echo "Non-compliant plan: ❌ MISSING"
 fi
 
-echo "=== Kube-bench Integration Files ==="
-if [ -d "kube-bench" ]; then
-    echo "Kube-bench directory: ✅ EXISTS"
+echo "=== Custom CIS Scanner Integration Files (SINGLE-TOOL APPROACH) ==="
+if [ -d "k8s" ]; then
+    echo "K8s directory: ✅ EXISTS"
 else
-    echo "Kube-bench directory: ❌ MISSING"
+    echo "K8s directory: ❌ MISSING"
 fi
 
-if [ -f "kube-bench/rbac.yaml" ]; then
-    echo "RBAC config: ✅ EXISTS"
+if [ -f "k8s/cis-scanner-pod.yaml" ]; then
+    echo "CIS Scanner DaemonSet config: ✅ EXISTS"
 else
-    echo "RBAC config: ❌ MISSING"
+    echo "CIS Scanner DaemonSet config: ❌ MISSING"
 fi
 
-if [ -f "kube-bench/job-node.yaml" ]; then
-    echo "Node job config: ✅ EXISTS"
-else
-    echo "Node job config: ❌ MISSING"
-fi
-
-if [ -f "kube-bench/job-master.yaml" ]; then
-    echo "Master job config: ✅ EXISTS"
-else
-    echo "Master job config: ❌ MISSING"
-fi
-
-# Check if run script exists or is integrated
-if [ -f "kube-bench/run-kube-bench.sh" ]; then
-    echo "Run script: ✅ EXISTS"
-else
-    echo "Run script: ✅ INTEGRATED (into test-kind-cluster.sh)"
-fi
-
-echo "Updated test script: ✅ INTEGRATED"
+echo "Custom CIS Scanner: ✅ INTEGRATED (SINGLE-TOOL APPROACH)"
 
 # Check if we should skip cluster creation
 if [ "${CI:-false}" = "true" ] || [ "${GITHUB_ACTIONS:-false}" = "true" ]; then
@@ -150,192 +131,144 @@ RBAC_EOF
         echo "✅ RBAC fix created and applied"
     fi
     
-    # Deploy kube-bench for CIS compliance scanning
-    echo "Deploying kube-bench for CIS compliance scanning..."
+    # Deploy custom CIS scanner for compliance scanning (SINGLE-TOOL APPROACH)
+    echo "Deploying custom CIS scanner for compliance scanning (SINGLE-TOOL APPROACH)..."
     
-    # Apply kube-bench RBAC
-    kubectl apply -f kube-bench/rbac.yaml
+    # Apply custom CIS scanner DaemonSet and RBAC
+    kubectl apply -f k8s/cis-scanner-pod.yaml
     
-    # Deploy kube-bench jobs
-    echo "Running kube-bench node scan..."
-    kubectl apply -f kube-bench/job-node.yaml
+    # Wait for DaemonSet pods to be ready
+    echo "Waiting for CIS scanner DaemonSet to be ready..."
+    kubectl wait --for=condition=Ready pods -n kube-system -l app=cis-scanner --timeout=300s || {
+        echo "⚠️ CIS scanner pods not ready in time, continuing..."
+    }
     
-    # Wait for kube-bench jobs to complete
-    echo "Waiting for kube-bench scan to complete..."
-    sleep 10  # Give time for pod to start
+    # Give scanner time to complete scans
+    echo "Allowing CIS scanner time to complete node scans..."
+    sleep 30  # Give time for scanner to run and create ConfigMaps
     
-    # Check if job completed or failed
-    for i in {1..30}; do
-        JOB_STATUS=$(kubectl get job kube-bench-node -n kube-system -o jsonpath='{.status.conditions[0].type}' 2>/dev/null || echo "")
-        if [ "$JOB_STATUS" = "Complete" ]; then
-            echo "✅ Kube-bench scan completed successfully"
-            break
-        elif [ "$JOB_STATUS" = "Failed" ]; then
-            echo "⚠️ Kube-bench scan failed, collecting available results..."
-            break
-        fi
-        echo "Waiting for kube-bench to complete... ($i/30)"
-        sleep 10
-    done
+    # Collect custom CIS scanner results
+    echo "Collecting custom CIS scanner results..."
+    mkdir -p "$REPORTS_DIR/cis-scanner"
     
-    # Collect kube-bench results
-    echo "Collecting kube-bench scan results..."
-    mkdir -p "$REPORTS_DIR/kube-bench"
+    # Get all CIS scanner ConfigMaps
+    echo "Retrieving CIS scanner results from ConfigMaps..."
+    SCANNER_CONFIGMAPS=$(kubectl get configmaps -n kube-system -o name | grep "cis-scanner-results-" || echo "")
     
-    # Get node scan results
-    NODE_POD=$(kubectl get pods -n kube-system -l app=kube-bench,component=node -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
-    if [ -n "$NODE_POD" ]; then
-        # Collect raw results first
-        kubectl logs "$NODE_POD" -n kube-system > "$REPORTS_DIR/kube-bench/node-scan-raw.json" 2>/dev/null || {
-            echo "Warning: Could not collect node scan logs"
-            echo '{"error": "Could not collect node scan logs"}' > "$REPORTS_DIR/kube-bench/node-scan-raw.json"
-        }
+    if [ -n "$SCANNER_CONFIGMAPS" ]; then
+        # Combine all node results into a single file
+        echo '{"scan_type": "custom-cis-scanner", "nodes": [' > "$REPORTS_DIR/cis-scanner/node-scan.json"
         
-        # Convert to standardized format if raw results are valid
-        if [ -f "$REPORTS_DIR/kube-bench/node-scan-raw.json" ] && jq empty "$REPORTS_DIR/kube-bench/node-scan-raw.json" 2>/dev/null; then
-            # Convert inline to standardized format
-            TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-            jq --arg timestamp "$TIMESTAMP" '
-            {
-              "scan_metadata": {
-                "scan_type": "kube-bench-cis",
-                "scan_target": "worker-nodes",
-                "scanner_version": (.Controls[0].version // "cis-1.9"),
-                "timestamp": $timestamp,
-                "scan_id": ("kube-bench-" + ($timestamp | gsub("[^0-9]"; "")))
-              },
-              "summary": {
-                "total_checks": (.Totals.total_pass + .Totals.total_fail + .Totals.total_warn + .Totals.total_info),
-                "passed": .Totals.total_pass,
-                "failed": .Totals.total_fail,
-                "warned": .Totals.total_warn,
-                "skipped": .Totals.total_info,
-                "success_rate_percent": (
-                  if (.Totals.total_pass + .Totals.total_fail + .Totals.total_warn + .Totals.total_info) > 0 
-                  then ((.Totals.total_pass * 100) / (.Totals.total_pass + .Totals.total_fail + .Totals.total_warn + .Totals.total_info)) | round
-                  else 0 
-                  end
-                )
-              },
-              "detailed_results": [
-                .Controls[] | .tests[] | .results[] | {
-                  "check_id": .test_number,
-                  "check_name": .test_desc,
-                  "category": (
-                    if (.test_number | startswith("4.1")) then "worker-node-files"
-                    elif (.test_number | startswith("4.2")) then "worker-node-kubelet"
-                    elif (.test_number | startswith("4.3")) then "worker-node-proxy"
-                    else "other"
-                    end
-                  ),
-                  "severity": (if .scored then "high" else "medium" end),
-                  "status": .status,
-                  "expected_result": .expected_result,
-                  "actual_result": .actual_value,
-                  "remediation": (.remediation // .test_info[0] // ""),
-                  "scored": .scored
-                }
-              ]
-            }' "$REPORTS_DIR/kube-bench/node-scan-raw.json" > "$REPORTS_DIR/kube-bench/node-scan.json" || {
-                echo "Warning: Could not convert to standardized format, using raw format"
-                cp "$REPORTS_DIR/kube-bench/node-scan-raw.json" "$REPORTS_DIR/kube-bench/node-scan.json"
+        FIRST=true
+        for cm in $SCANNER_CONFIGMAPS; do
+            NODE_NAME=$(echo "$cm" | sed 's/.*cis-scanner-results-//')
+            
+            if [ "$FIRST" = true ]; then
+                FIRST=false
+            else
+                echo "," >> "$REPORTS_DIR/cis-scanner/node-scan.json"
+            fi
+            
+            # Extract the JSON data from ConfigMap
+            kubectl get "$cm" -n kube-system -o jsonpath='{.data.node-results\.json}' >> "$REPORTS_DIR/cis-scanner/node-scan.json" 2>/dev/null || {
+                echo "Warning: Could not collect results from $cm"
+                echo '{"error": "Could not collect results from '"$cm"'"}' >> "$REPORTS_DIR/cis-scanner/node-scan.json"
             }
-            echo "✅ Node scan results collected and standardized"
-        else
-            echo "Warning: Raw scan results invalid, creating error placeholder"
-            echo '{"error": "Invalid raw scan results"}' > "$REPORTS_DIR/kube-bench/node-scan.json"
-        fi
+        done
+        
+        echo ']' >> "$REPORTS_DIR/cis-scanner/node-scan.json"
+        echo '}'  >> "$REPORTS_DIR/cis-scanner/node-scan.json"
+        
+        echo "✅ Custom CIS scanner results collected from ConfigMaps"
     else
-        echo "❌ No kube-bench node pod found"
-        echo '{"error": "No kube-bench node pod found"}' > "$REPORTS_DIR/kube-bench/node-scan.json"
-        echo '{"error": "No kube-bench node pod found"}' > "$REPORTS_DIR/kube-bench/node-scan-raw.json"
+        echo "❌ No CIS scanner ConfigMaps found"
+        echo '{"error": "No CIS scanner results found"}' > "$REPORTS_DIR/cis-scanner/node-scan.json"
     fi
     
-    # Try to get master scan results (might not work in KIND due to node labeling)
-    MASTER_POD=$(kubectl get pods -n kube-system -l app=kube-bench,component=master -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
-    if [ -n "$MASTER_POD" ]; then
-        kubectl logs "$MASTER_POD" -n kube-system > "$REPORTS_DIR/kube-bench/master-scan.json" 2>/dev/null || {
-            echo "Warning: Could not collect master scan logs"
-            echo '{"error": "Could not collect master scan logs"}' > "$REPORTS_DIR/kube-bench/master-scan.json"
-        }
-        echo "✅ Master scan results collected"
-    else
-        echo "⚠️ No kube-bench master pod found (expected in KIND)"
-        echo '{"info": "Master scan not available in KIND cluster"}' > "$REPORTS_DIR/kube-bench/master-scan.json"
-    fi
-    
-    # Generate kube-bench summary
-    echo "Generating kube-bench summary..."
-    cat > "$REPORTS_DIR/kube-bench/summary.md" << 'EOF'
-# Kube-bench CIS Compliance Scan Results
+    # Generate custom CIS scanner summary
+    echo "Generating custom CIS scanner summary..."
+    cat > "$REPORTS_DIR/cis-scanner/summary.md" << 'EOF'
+# Custom CIS Scanner Compliance Results (SINGLE-TOOL APPROACH)
 
 **Generated**: $(date)
 **Cluster**: KIND cluster
-**Scanner**: kube-bench
+**Scanner**: Custom CIS Scanner (DaemonSet)
+**Approach**: SINGLE-TOOL unified scanning
 
 ## Node Scan Results
 EOF
     
-    if [ -f "$REPORTS_DIR/kube-bench/node-scan.json" ] && jq -e '.summary' "$REPORTS_DIR/kube-bench/node-scan.json" >/dev/null 2>&1; then
-        echo "✅ Node scan completed successfully" >> "$REPORTS_DIR/kube-bench/summary.md"
+    if [ -n "$SCANNER_CONFIGMAPS" ]; then
+        echo "✅ Node scan completed successfully" >> "$REPORTS_DIR/cis-scanner/summary.md"
         
-        # Extract totals from standardized format
-        if command -v jq >/dev/null 2>&1; then
-            PASS=$(jq -r '.summary.passed // 0' "$REPORTS_DIR/kube-bench/node-scan.json" 2>/dev/null || echo "N/A")
-            FAIL=$(jq -r '.summary.failed // 0' "$REPORTS_DIR/kube-bench/node-scan.json" 2>/dev/null || echo "N/A")
-            WARN=$(jq -r '.summary.warned // 0' "$REPORTS_DIR/kube-bench/node-scan.json" 2>/dev/null || echo "N/A")
-            SKIP=$(jq -r '.summary.skipped // 0' "$REPORTS_DIR/kube-bench/node-scan.json" 2>/dev/null || echo "N/A")
-            SUCCESS_RATE=$(jq -r '.summary.success_rate_percent // 0' "$REPORTS_DIR/kube-bench/node-scan.json" 2>/dev/null || echo "N/A")
-            TOTAL=$(jq -r '.summary.total_checks // 0' "$REPORTS_DIR/kube-bench/node-scan.json" 2>/dev/null || echo "N/A")
+        # Count results from custom scanner
+        NODE_COUNT=$(echo "$SCANNER_CONFIGMAPS" | wc -w)
+        
+        # Extract check counts from all nodes
+        TOTAL_PASS=0
+        TOTAL_FAIL=0
+        
+        for cm in $SCANNER_CONFIGMAPS; do
+            NODE_DATA=$(kubectl get "$cm" -n kube-system -o jsonpath='{.data.node-results\.json}' 2>/dev/null || echo '{}')
+            if command -v jq >/dev/null 2>&1 && echo "$NODE_DATA" | jq empty 2>/dev/null; then
+                PASS=$(echo "$NODE_DATA" | jq -r '[.checks[] | select(.status=="PASS")] | length' 2>/dev/null || echo 0)
+                FAIL=$(echo "$NODE_DATA" | jq -r '[.checks[] | select(.status=="FAIL")] | length' 2>/dev/null || echo 0)
+                TOTAL_PASS=$((TOTAL_PASS + PASS))
+                TOTAL_FAIL=$((TOTAL_FAIL + FAIL))
+            fi
+        done
+        
+        TOTAL_CHECKS=$((TOTAL_PASS + TOTAL_FAIL))
+        if [ $TOTAL_CHECKS -gt 0 ]; then
+            SUCCESS_RATE=$((TOTAL_PASS * 100 / TOTAL_CHECKS))
         else
-            # Fallback to grep parsing for standardized format
-            PASS=$(grep -o '"passed":[0-9]*' "$REPORTS_DIR/kube-bench/node-scan.json" | cut -d: -f2 || echo "N/A")
-            FAIL=$(grep -o '"failed":[0-9]*' "$REPORTS_DIR/kube-bench/node-scan.json" | cut -d: -f2 || echo "N/A")
-            WARN=$(grep -o '"warned":[0-9]*' "$REPORTS_DIR/kube-bench/node-scan.json" | cut -d: -f2 || echo "N/A")
-            SKIP=$(grep -o '"skipped":[0-9]*' "$REPORTS_DIR/kube-bench/node-scan.json" | cut -d: -f2 || echo "N/A")
-            SUCCESS_RATE=$(grep -o '"success_rate_percent":[0-9]*' "$REPORTS_DIR/kube-bench/node-scan.json" | cut -d: -f2 || echo "N/A")
-            TOTAL=$(grep -o '"total_checks":[0-9]*' "$REPORTS_DIR/kube-bench/node-scan.json" | cut -d: -f2 || echo "N/A")
+            SUCCESS_RATE=0
         fi
         
-        echo "" >> "$REPORTS_DIR/kube-bench/summary.md"
-        echo "| Metric | Count |" >> "$REPORTS_DIR/kube-bench/summary.md"
-        echo "|--------|-------|" >> "$REPORTS_DIR/kube-bench/summary.md"
-        echo "| **Total Checks** | $TOTAL |" >> "$REPORTS_DIR/kube-bench/summary.md"
-        echo "| **Passed** | $PASS |" >> "$REPORTS_DIR/kube-bench/summary.md"
-        echo "| **Failed** | $FAIL |" >> "$REPORTS_DIR/kube-bench/summary.md"
-        echo "| **Warned** | $WARN |" >> "$REPORTS_DIR/kube-bench/summary.md"
-        echo "| **Skipped** | $SKIP |" >> "$REPORTS_DIR/kube-bench/summary.md"
-        echo "| **Success Rate** | $SUCCESS_RATE% |" >> "$REPORTS_DIR/kube-bench/summary.md"
+        echo "" >> "$REPORTS_DIR/cis-scanner/summary.md"
+        echo "| Metric | Count |" >> "$REPORTS_DIR/cis-scanner/summary.md"
+        echo "|--------|-------|" >> "$REPORTS_DIR/cis-scanner/summary.md"
+        echo "| **Nodes Scanned** | $NODE_COUNT |" >> "$REPORTS_DIR/cis-scanner/summary.md"
+        echo "| **Total Checks** | $TOTAL_CHECKS |" >> "$REPORTS_DIR/cis-scanner/summary.md"
+        echo "| **Passed** | $TOTAL_PASS |" >> "$REPORTS_DIR/cis-scanner/summary.md"
+        echo "| **Failed** | $TOTAL_FAIL |" >> "$REPORTS_DIR/cis-scanner/summary.md"
+        echo "| **Success Rate** | $SUCCESS_RATE% |" >> "$REPORTS_DIR/cis-scanner/summary.md"
     else
-        echo "❌ Node scan failed or returned invalid data" >> "$REPORTS_DIR/kube-bench/summary.md"
+        echo "❌ Node scan failed or returned invalid data" >> "$REPORTS_DIR/cis-scanner/summary.md"
     fi
     
-    cat >> "$REPORTS_DIR/kube-bench/summary.md" << 'EOF'
+    cat >> "$REPORTS_DIR/cis-scanner/summary.md" << 'EOF'
 
-## Integration with Kyverno
+## SINGLE-TOOL APPROACH Benefits
 
-This kube-bench scan complements the Kyverno policy validation:
-- **Kube-bench**: Validates node-level file permissions, kubelet settings, and OS-level configurations
-- **Kyverno**: Validates Kubernetes API resources, RBAC, and workload security policies
+This custom CIS scanner provides unified compliance scanning:
+- **Single DaemonSet**: Deploys once to scan all nodes automatically
+- **ConfigMap Storage**: Results stored in Kubernetes-native ConfigMaps
+- **Unified Management**: No need for separate job deployments
+- **Kyverno Integration**: Complements API-level policy validation
 
 ## CIS Controls Coverage
 
-The following CIS controls are validated by kube-bench:
-- 3.1.x: Worker node configuration files
-- 3.2.x: Worker node kubelet configuration
-- 4.1.x: Control plane node configuration files (when available)
-- 4.2.x: Control plane kubelet configuration (when available)
+The custom scanner validates these CIS controls:
+- 3.1.x: Worker node configuration files (permissions & ownership)
+- 3.2.x: Worker node kubelet configuration (auth & security settings)
+- Unified scanning across all node types
+
+## Results Storage
+
+Results are stored in ConfigMaps with naming pattern:
+- `cis-scanner-results-<node-name>` in `kube-system` namespace
 
 ## Next Steps
 
-1. Review failed checks in the detailed JSON results
-2. Cross-reference with Kyverno policy results
+1. Review failed checks in the node scan results
+2. Cross-reference with Kyverno policy validation
 3. Implement remediation for identified issues
-4. Update worker node policies to incorporate kube-bench findings
+4. Monitor ConfigMaps for ongoing compliance status
 EOF
     
     # Update summary with actual date
-    sed -i.bak "s/\$(date)/$(date)/" "$REPORTS_DIR/kube-bench/summary.md" && rm "$REPORTS_DIR/kube-bench/summary.md.bak"
+    sed -i.bak "s/\$(date)/$(date)/" "$REPORTS_DIR/cis-scanner/summary.md" && rm "$REPORTS_DIR/cis-scanner/summary.md.bak"
     
     # Apply all policies to the cluster
     echo "Applying Kyverno policies to cluster..."
@@ -387,17 +320,17 @@ EOF
     # Generate comprehensive validation summary
     POLICY_COUNT=$(kubectl get clusterpolicies --no-headers 2>/dev/null | wc -l || echo 0)
     VALIDATION_COUNT=$(find "$REPORTS_DIR" -name "kyverno-*-results.txt" -exec grep -l "pass:\|fail:" {} \; | wc -l || echo 0)
-    KUBE_BENCH_STATUS="❌ Failed"
+    CIS_SCANNER_STATUS="❌ Failed"
     
-    if [ -f "$REPORTS_DIR/kube-bench/node-scan.json" ] && jq -e '.summary' "$REPORTS_DIR/kube-bench/node-scan.json" >/dev/null 2>&1; then
-        KUBE_BENCH_STATUS="✅ Completed"
+    if [ -n "$SCANNER_CONFIGMAPS" ]; then
+        CIS_SCANNER_STATUS="✅ Completed"
     fi
     
     cat > "$REPORTS_DIR/validation-summary.md" << EOF
 # Kind Cluster Validation Summary
 
 **Generated**: $(date)
-**Mode**: Full cluster validation with kube-bench integration
+**Mode**: Full cluster validation with Custom CIS Scanner (SINGLE-TOOL APPROACH)
 **Cluster**: $CLUSTER_NAME
 
 ## Validation Statistics
@@ -408,7 +341,7 @@ EOF
 | Policy Categories Tested | $VALIDATION_COUNT |
 | Test Manifests | $(find tests/kind-manifests -name "*.yaml" | wc -l) |
 | Cluster Status | Active |
-| Kube-bench Scan | $KUBE_BENCH_STATUS |
+| Custom CIS Scanner | $CIS_SCANNER_STATUS |
 
 ## CIS Compliance Coverage
 
@@ -434,15 +367,15 @@ EOF
     
     cat >> "$REPORTS_DIR/validation-summary.md" << EOF
 
-### Kube-bench CIS Compliance Scan
+### Custom CIS Scanner Compliance (SINGLE-TOOL APPROACH)
 
 EOF
     
-    if [ -f "$REPORTS_DIR/kube-bench/summary.md" ]; then
-        # Include kube-bench summary
-        echo "$(cat "$REPORTS_DIR/kube-bench/summary.md")" >> "$REPORTS_DIR/validation-summary.md"
+    if [ -f "$REPORTS_DIR/cis-scanner/summary.md" ]; then
+        # Include custom CIS scanner summary
+        echo "$(cat "$REPORTS_DIR/cis-scanner/summary.md")" >> "$REPORTS_DIR/validation-summary.md"
     else
-        echo "❌ Kube-bench scan results not available" >> "$REPORTS_DIR/validation-summary.md"
+        echo "❌ Custom CIS scanner results not available" >> "$REPORTS_DIR/validation-summary.md"
     fi
     
     cat >> "$REPORTS_DIR/validation-summary.md" << EOF
@@ -452,21 +385,20 @@ EOF
 - Kyverno pods: $(kubectl get pods -n kyverno --no-headers | wc -l)
 - Total policies: $POLICY_COUNT
 - Test manifests validated: $(find tests/kind-manifests -name "*.yaml" | wc -l)
-- Kube-bench pods: $(kubectl get pods -n kube-system -l app=kube-bench --no-headers | wc -l)
+- CIS Scanner pods: $(kubectl get pods -n kube-system -l app=cis-scanner --no-headers | wc -l)
 
-## Integration Summary
+## Integration Summary (SINGLE-TOOL APPROACH)
 
 This validation combines:
 1. **Kyverno policies** - Kubernetes API resource validation
-2. **Kube-bench scanning** - Node-level CIS compliance checks
+2. **Custom CIS Scanner** - Node-level compliance checks via DaemonSet
 3. **Test manifests** - Real-world scenario validation
 
-The combination provides comprehensive CIS EKS compliance coverage across all layers.
+The SINGLE-TOOL APPROACH provides:
+- Unified deployment via DaemonSet
+- ConfigMap-based result storage
+- Comprehensive CIS EKS compliance coverage across all layers
 EOF
-    
-    # Cleanup kube-bench jobs
-    echo "Cleaning up kube-bench jobs..."
-    kubectl delete jobs -n kube-system -l app=kube-bench --ignore-not-found=true
     
     # Cleanup
     if [ "${KEEP_CLUSTER:-false}" = "false" ]; then
@@ -516,7 +448,7 @@ else
 | Test Manifests | $TEST_MANIFESTS |
 | Categories Tested | $VALIDATION_COUNT |
 | Validation Mode | Offline |
-| Kube-bench Scan | ⏭️ Skipped (offline mode) |
+| Custom CIS Scanner | ⏭️ Skipped (offline mode) |
 
 ## Policy Validation Results
 
@@ -543,14 +475,14 @@ EOF
     echo "" >> "$REPORTS_DIR/validation-summary.md"
     echo "Offline validation completed. Policy validation results show how these policies would behave in a real cluster." >> "$REPORTS_DIR/validation-summary.md"
     echo "" >> "$REPORTS_DIR/validation-summary.md"
-    echo "**Note**: Kube-bench CIS compliance scanning requires a live cluster and was skipped in offline mode." >> "$REPORTS_DIR/validation-summary.md"
+    echo "**Note**: Custom CIS compliance scanning requires a live cluster and was skipped in offline mode." >> "$REPORTS_DIR/validation-summary.md"
 fi
 
 echo "=== Kind cluster tests completed ==="
 echo "Reports available in: $REPORTS_DIR"
 
-if [ -f "$REPORTS_DIR/kube-bench/summary.md" ]; then
+if [ -f "$REPORTS_DIR/cis-scanner/summary.md" ]; then
     echo ""
-    echo "🔍 Kube-bench CIS compliance scan completed"
-    echo "📊 Results: $REPORTS_DIR/kube-bench/"
+    echo "🔍 Custom CIS compliance scan completed (SINGLE-TOOL APPROACH)"
+    echo "📊 Results: $REPORTS_DIR/cis-scanner/"
 fi

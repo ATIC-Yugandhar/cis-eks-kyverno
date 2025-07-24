@@ -5,16 +5,15 @@ metadata:
   annotations:
     policies.kyverno.io/category: CIS 3.2.5
     policies.kyverno.io/description: "CIS 3.2.5: Ensure that the --streaming-connection-idle-timeout\
-      \ argument is not set to 0.\n\nIMPORTANT: This control requires direct access\
-      \ to worker node kubelet configuration files \nto validate the streaming connection\
-      \ idle timeout setting. Kyverno cannot directly access node configuration files.\n\
-      \nKUBE-BENCH INTEGRATION REQUIRED: This control must be validated using kube-bench,\
-      \ which runs \nprivileged pods on worker nodes to access and validate kubelet\
-      \ configuration files.\n\nThis policy validates Pod-level resource limits and\
-      \ timeout configurations that relate to connection management, \nbut the primary\
-      \ validation of kubelet streaming connection settings occurs through kube-bench.\n"
-    policies.kyverno.io/kube-bench-required: 'true'
-    policies.kyverno.io/validation-scope: limited-pod-resource-security
+      \ argument is not set to 0.\n\nSINGLE-TOOL APPROACH: This control uses custom CIS scanner results combined with Kyverno validation.\n\
+      \nCUSTOM CIS SCANNER: Kubelet streaming connection idle timeout validation is performed by our custom\
+      \ CIS scanner DaemonSet that runs on each node to check:\n- kubelet --streaming-connection-idle-timeout flag in kubelet configuration\n- /var/lib/kubelet/config.yaml streaming connection settings\n- kubelet service configuration files\n\
+      - Results are output as JSON to ConfigMaps\n\
+      \nKYVERNO VALIDATION: This policy validates both:\n- Custom CIS scanner results from ConfigMaps\
+      \ for actual kubelet streaming connection idle timeout configuration\n- Pod-level resource limits and timeout configurations that relate to connection management\n"
+    policies.kyverno.io/scanner-required: 'true'
+    policies.kyverno.io/scanner-checks: '3.2.5'
+    policies.kyverno.io/validation-scope: streaming-connection-timeout-with-custom-scanner
     policies.kyverno.io/cel: 'true'
 spec:
   validationFailureAction: Audit
@@ -29,7 +28,8 @@ spec:
     validate:
       message: 'Pods should have appropriate resource limits and timeout configurations.
 
-        Note: Actual kubelet streaming connection timeout validation requires kube-bench.
+        Note: Actual kubelet streaming connection timeout validation (CIS 3.2.5) is handled by
+        our custom CIS scanner pod.
 
         '
       cel:
@@ -37,7 +37,36 @@ spec:
         - expression: (!has(object.spec.containers) || true)
           message: 'Pods should have appropriate resource limits and timeout configurations.
 
-            Note: Actual kubelet streaming connection timeout validation requires
-            kube-bench.
+            Note: Actual kubelet streaming connection timeout validation (CIS 3.2.5) is handled by
+            our custom CIS scanner pod.
+
+            '
+  - name: validate-cis-scanner-results
+    match:
+      any:
+      - resources:
+          kinds:
+          - ConfigMap
+          names:
+          - cis-scanner-results*
+          namespaces:
+          - kube-system
+    validate:
+      message: 'CIS 3.2.5 kubelet streaming connection idle timeout scan results indicate non-compliant
+        configuration.
+
+        Custom CIS scanner has detected kubelet --streaming-connection-idle-timeout is set to 0.
+
+        '
+      cel:
+        expressions:
+        - expression: |
+            !has(object.data) || !has(object.data['node-results.json']) ||
+            size(object.data['node-results.json'].parseJSON().checks.filter(c, 
+              c.id == '3.2.5' && c.status == 'FAIL'
+            )) == 0
+          message: 'CIS 3.2.5 compliance check failed: kubelet --streaming-connection-idle-timeout is set to 0.
+
+            Please ensure kubelet has proper streaming connection idle timeout configuration.
 
             '

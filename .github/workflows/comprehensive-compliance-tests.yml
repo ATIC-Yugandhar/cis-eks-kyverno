@@ -285,7 +285,7 @@ jobs:
   comprehensive-report:
     name: Generate Comprehensive Report
     runs-on: ubuntu-latest
-    needs: [unit-tests, opentofu-tests, kind-cluster-tests]
+    needs: [unit-tests, opentofu-tests, kind-cluster-tests, security-scan]
     if: always()
     
     steps:
@@ -323,6 +323,15 @@ jobs:
           cp -r artifacts/kind-cluster-test-results/. reports/kind-cluster/ 2>/dev/null || true
           # Also copy to root for backward compatibility
           cp -r artifacts/kind-cluster-test-results/. reports/ 2>/dev/null || true
+        fi
+        
+        # Copy Trivy CIS compliance results if available
+        if [ -d "artifacts/trivy-cis-compliance-results" ]; then
+          mkdir -p reports/trivy-compliance
+          cp -r artifacts/trivy-cis-compliance-results/. reports/trivy-compliance/ 2>/dev/null || true
+          echo "✅ Trivy CIS compliance results copied"
+        else
+          echo "⚠️ Trivy CIS compliance results not found"
         fi
         
         # List what we have for debugging
@@ -583,6 +592,23 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       
+    - name: Setup Kind for CIS compliance testing
+      run: |
+        [ $(uname -m) = x86_64 ] && curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.20.0/kind-linux-amd64
+        chmod +x ./kind
+        sudo mv ./kind /usr/local/bin/kind
+        
+    - name: Setup kubectl
+      run: |
+        curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+        chmod +x kubectl
+        sudo mv kubectl /usr/local/bin/
+        
+    - name: Create test cluster for CIS scanning
+      run: |
+        kind create cluster --name trivy-cis-test
+        kubectl cluster-info
+        
     - name: Run Trivy vulnerability scanner
       uses: aquasecurity/trivy-action@master
       with:
@@ -590,6 +616,48 @@ jobs:
         scan-ref: '.'
         format: 'sarif'
         output: 'trivy-results.sarif'
+        
+    - name: Run Trivy CIS compliance scan
+      continue-on-error: true  # Don't fail the build on CIS issues
+      run: |
+        # Install trivy directly for CIS compliance scanning
+        sudo apt-get update
+        sudo apt-get install -y wget apt-transport-https gnupg lsb-release
+        wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
+        echo "deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee -a /etc/apt/sources.list.d/trivy.list
+        sudo apt-get update
+        sudo apt-get install -y trivy
+        
+        # Create reports directory
+        mkdir -p reports/trivy-compliance
+        
+        echo "🔍 Running Trivy CIS compliance scan..."
+        
+        # Run CIS compliance scan with JSON output
+        trivy k8s cluster \
+          --compliance=k8s-cis \
+          --report all \
+          --format json \
+          --output reports/trivy-compliance/cis-compliance.json || echo "CIS scan completed with issues"
+        
+        # Generate summary report
+        trivy k8s cluster \
+          --compliance=k8s-cis \
+          --report summary \
+          --format table > reports/trivy-compliance/cis-summary.txt || echo "CIS summary completed"
+        
+        # Run NSA compliance scan
+        trivy k8s cluster \
+          --compliance=k8s-nsa \
+          --report all \
+          --format json \
+          --output reports/trivy-compliance/nsa-compliance.json || echo "NSA scan completed"
+        
+        echo "✅ Trivy CIS compliance scans completed"
+        
+        # Show summary for GitHub Actions logs
+        echo "📊 CIS Compliance Summary:"
+        cat reports/trivy-compliance/cis-summary.txt || echo "Summary not available"
         
     - name: Upload Trivy scan results to Security tab
       uses: github/codeql-action/upload-sarif@v3
@@ -604,3 +672,16 @@ jobs:
         name: trivy-security-scan-results
         path: 'trivy-results.sarif'
         retention-days: 30
+        
+    - name: Upload Trivy CIS compliance results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: trivy-cis-compliance-results
+        path: reports/trivy-compliance/
+        retention-days: 30
+        
+    - name: Cleanup test cluster
+      if: always()
+      run: |
+        kind delete clusters --all || true

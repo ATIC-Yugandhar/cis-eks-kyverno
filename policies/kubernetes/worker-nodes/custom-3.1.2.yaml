@@ -5,16 +5,18 @@ metadata:
   annotations:
     policies.kyverno.io/category: CIS 3.1.2
     policies.kyverno.io/description: "CIS 3.1.2: Ensure that the kubelet kubeconfig\
-      \ file ownership is set to root:root.\n\nIMPORTANT: This control requires direct\
-      \ access to worker node file systems to validate kubelet \nkubeconfig file ownership.\
-      \ Kyverno cannot directly access node file systems or validate file ownership.\n\
-      \nKUBE-BENCH INTEGRATION REQUIRED: This control must be validated using kube-bench,\
-      \ which runs \nprivileged pods on worker nodes to access and validate file ownership\
-      \ on kubelet kubeconfig files.\n\nThis policy validates Pod security contexts\
-      \ and root user restrictions, but the primary \nvalidation of actual file ownership\
-      \ occurs through kube-bench node-level scanning.\n"
-    policies.kyverno.io/kube-bench-required: 'true'
-    policies.kyverno.io/validation-scope: limited-pod-security-context
+      \ file ownership is set to root:root.\n\nSINGLE-TOOL APPROACH: This control\
+      \ uses custom CIS scanner results combined with Kyverno validation.\n\nCUSTOM\
+      \ CIS SCANNER: File ownership validation is performed by our custom CIS scanner\
+      \ DaemonSet that runs on each node to check:\n- /etc/kubernetes/kubelet.conf\
+      \ ownership (should be root:root)\n- /etc/kubernetes/worker-kubeconfig ownership\n\
+      - Other kubeconfig files used by kubelet\n- Results are output as JSON to ConfigMaps\n\
+      \nKYVERNO VALIDATION: This policy validates both:\n- Custom CIS scanner results\
+      \ from ConfigMaps for actual file ownership\n- Pod security contexts and ServiceAccount\
+      \ configurations for complementary API-level controls\n"
+    policies.kyverno.io/scanner-required: 'true'
+    policies.kyverno.io/scanner-checks: '3.1.2'
+    policies.kyverno.io/validation-scope: kubeconfig-ownership-with-custom-scanner
     policies.kyverno.io/cel: 'true'
 spec:
   validationFailureAction: Audit
@@ -29,7 +31,8 @@ spec:
     validate:
       message: 'Pods should not run as root unless specifically required and justified.
 
-        Note: Actual kubelet kubeconfig file ownership validation requires kube-bench.
+        Note: Actual kubelet kubeconfig file ownership validation is handled by our
+        custom CIS scanner pod.
 
         '
       cel:
@@ -38,6 +41,37 @@ spec:
             || true)) && (!has(object.spec.containers) || true)
           message: 'Pods should not run as root unless specifically required and justified.
 
-            Note: Actual kubelet kubeconfig file ownership validation requires kube-bench.
+            Note: Actual kubelet kubeconfig file ownership validation is handled by
+            our custom CIS scanner pod.
+
+            '
+  - name: validate-cis-scanner-results
+    match:
+      any:
+      - resources:
+          kinds:
+          - ConfigMap
+          names:
+          - cis-scanner-results*
+          namespaces:
+          - kube-system
+    validate:
+      message: 'CIS 3.1.2 kubelet kubeconfig file ownership scan results indicate
+        non-compliant file ownership.
+
+        Custom CIS scanner has detected kubeconfig files not owned by root:root.
+
+        '
+      cel:
+        expressions:
+        - expression: |
+            !has(object.data) || !has(object.data['node-results.json']) ||
+            size(object.data['node-results.json'].parseJSON().checks.filter(c, 
+              c.id == '3.1.2' && c.status == 'FAIL'
+            )) == 0
+          message: 'CIS 3.1.2 compliance check failed: kubelet kubeconfig file ownership
+            is not set to root:root.
+
+            Please ensure all kubeconfig files are owned by root:root.
 
             '

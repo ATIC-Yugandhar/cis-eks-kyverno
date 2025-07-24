@@ -8,13 +8,16 @@ metadata:
       \ is set to 0 or a level which ensures appropriate event capture.\n\nIMPORTANT:\
       \ This control requires direct access to worker node kubelet configuration files\
       \ \nto validate the event QPS setting. Kyverno cannot directly access node configuration\
-      \ files.\n\nKUBE-BENCH INTEGRATION REQUIRED: This control must be validated\
-      \ using kube-bench, which runs \nprivileged pods on worker nodes to access and\
-      \ validate kubelet configuration files.\n\nThis policy validates Pod-level resource\
-      \ and event configurations that relate to event handling, \nbut the primary\
-      \ validation of kubelet event QPS settings occurs through kube-bench.\n"
-    policies.kyverno.io/kube-bench-required: 'true'
-    policies.kyverno.io/validation-scope: limited-pod-event-security
+      \ files.\n\
+      \nSINGLE-TOOL APPROACH: This control uses custom CIS scanner results combined with Kyverno validation.\n\
+      \nCUSTOM CIS SCANNER: Kubelet event QPS validation is performed by our custom\
+      \ CIS scanner DaemonSet that runs on each node to check:\n- kubelet --event-qps flag in kubelet configuration\n- /var/lib/kubelet/config.yaml event QPS settings\n- kubelet service configuration files\n\
+      - Results are output as JSON to ConfigMaps\n\
+      \nKYVERNO VALIDATION: This policy validates both:\n- Custom CIS scanner results from ConfigMaps\
+      \ for actual kubelet event QPS configuration\n- Pod-level resource and event configurations that relate to event handling\n"
+    policies.kyverno.io/scanner-required: 'true'
+    policies.kyverno.io/scanner-checks: '3.2.9'
+    policies.kyverno.io/validation-scope: event-qps-with-custom-scanner
     policies.kyverno.io/cel: 'true'
 spec:
   validationFailureAction: Audit
@@ -29,7 +32,7 @@ spec:
     validate:
       message: 'Pods should have appropriate resource limits to prevent event flooding.
 
-        Note: Actual kubelet event QPS validation requires kube-bench.
+        Note: Actual kubelet event QPS validation requires our custom CIS scanner pod.
 
         '
       cel:
@@ -39,6 +42,36 @@ spec:
           message: 'Pods should have appropriate resource limits to prevent event
             flooding.
 
-            Note: Actual kubelet event QPS validation requires kube-bench.
+            Note: Actual kubelet event QPS validation (CIS 3.2.9) is handled by
+            our custom CIS scanner pod.
+
+            '
+  - name: validate-cis-scanner-results
+    match:
+      any:
+      - resources:
+          kinds:
+          - ConfigMap
+          names:
+          - cis-scanner-results*
+          namespaces:
+          - kube-system
+    validate:
+      message: 'CIS 3.2.9 kubelet event QPS scan results indicate non-compliant
+        configuration.
+
+        Custom CIS scanner has detected kubelet --event-qps is not properly configured.
+
+        '
+      cel:
+        expressions:
+        - expression: |
+            !has(object.data) || !has(object.data['node-results.json']) ||
+            size(object.data['node-results.json'].parseJSON().checks.filter(c, 
+              c.id == '3.2.9' && c.status == 'FAIL'
+            )) == 0
+          message: 'CIS 3.2.9 compliance check failed: kubelet --event-qps is not properly configured.
+
+            Please ensure kubelet has appropriate event QPS configuration.
 
             '
