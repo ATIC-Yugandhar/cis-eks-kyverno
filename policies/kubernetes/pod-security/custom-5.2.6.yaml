@@ -1,0 +1,48 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: custom-5.2.6
+  annotations:
+    policies.kyverno.io/title: Minimize containers with allowPrivilegeEscalation
+    policies.kyverno.io/category: Pod Security
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/description: Containers should not allow privilege escalation as it could allow users to bypass security restrictions.
+    policies.kyverno.io/cel: 'true'
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+  - name: deny-privilege-escalation
+    match:
+      any:
+      - resources:
+          kinds:
+          - Pod
+    validate:
+      message: Containers must set allowPrivilegeEscalation to false.
+      cel:
+        expressions:
+        - expression: |
+            object.spec.containers.all(container, 
+              has(container.securityContext) && 
+              has(container.securityContext.allowPrivilegeEscalation) && 
+              container.securityContext.allowPrivilegeEscalation == false
+            )
+          message: "Container must have allowPrivilegeEscalation set to false"
+        - expression: |
+            !has(object.spec.initContainers) || 
+            object.spec.initContainers.all(container, 
+              has(container.securityContext) && 
+              has(container.securityContext.allowPrivilegeEscalation) && 
+              container.securityContext.allowPrivilegeEscalation == false
+            )
+          message: "Init containers must have allowPrivilegeEscalation set to false"
+        - expression: |
+            !has(object.spec.ephemeralContainers) || 
+            object.spec.ephemeralContainers.all(container, 
+              has(container.securityContext) && 
+              has(container.securityContext.allowPrivilegeEscalation) && 
+              container.securityContext.allowPrivilegeEscalation == false
+            )
+          message: "Ephemeral containers must have allowPrivilegeEscalation set to false"

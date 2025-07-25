@@ -1,0 +1,51 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: custom-5.2.9
+  annotations:
+    policies.kyverno.io/title: Minimize the admission of containers with added capabilities
+    policies.kyverno.io/category: Pod Security
+    policies.kyverno.io/severity: low
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/description: Containers should not add additional capabilities beyond the default set.
+    policies.kyverno.io/cel: 'true'
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+  - name: restrict-added-capabilities
+    match:
+      any:
+      - resources:
+          kinds:
+          - Pod
+    validate:
+      message: Containers must not add capabilities.
+      cel:
+        expressions:
+        - expression: |
+            object.spec.containers.all(container,
+              !has(container.securityContext) ||
+              !has(container.securityContext.capabilities) ||
+              !has(container.securityContext.capabilities.add) ||
+              size(container.securityContext.capabilities.add) == 0
+            )
+          message: "Containers must not add any capabilities"
+        - expression: |
+            !has(object.spec.initContainers) ||
+            object.spec.initContainers.all(container,
+              !has(container.securityContext) ||
+              !has(container.securityContext.capabilities) ||
+              !has(container.securityContext.capabilities.add) ||
+              size(container.securityContext.capabilities.add) == 0
+            )
+          message: "Init containers must not add any capabilities"
+        - expression: |
+            !has(object.spec.ephemeralContainers) ||
+            object.spec.ephemeralContainers.all(container,
+              !has(container.securityContext) ||
+              !has(container.securityContext.capabilities) ||
+              !has(container.securityContext.capabilities.add) ||
+              size(container.securityContext.capabilities.add) == 0
+            )
+          message: "Ephemeral containers must not add any capabilities"

@@ -70,7 +70,8 @@ if [ "$SKIP_CREATE" = "false" ]; then
         kind delete cluster --name="$CLUSTER_NAME"
     fi
     
-    # Create cluster configuration
+    # Create cluster configuration with CIS compliance settings
+    # Start with minimal changes that are known to work
     cat > "$REPORTS_DIR/kind-cluster-config.yaml" << 'EOF'
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
@@ -80,6 +81,31 @@ nodes:
   - containerPort: 30000
     hostPort: 30000
     protocol: TCP
+  kubeadmConfigPatches:
+  - |
+    kind: InitConfiguration
+    nodeRegistration:
+      kubeletExtraArgs:
+        # CIS 1.3.6: Enable kubelet server certificate rotation
+        feature-gates: "RotateKubeletServerCertificate=true"
+  - |
+    kind: ClusterConfiguration
+    apiServer:
+      extraArgs:
+        # CIS 1.2.18: Disable profiling
+        profiling: "false"
+        # CIS 1.2.12: Enable AlwaysPullImages admission plugin
+        # Using minimal plugin list that is known to work in Kind
+        enable-admission-plugins: "NodeRestriction,AlwaysPullImages"
+        # CIS 1.2.19-22: Enable basic audit logging
+        audit-log-path: "/var/log/kubernetes/audit.log"
+        audit-log-maxage: "30"
+        audit-log-maxbackup: "10"
+        audit-log-maxsize: "100"
+    controllerManager:
+      extraArgs:
+        # CIS 1.3.1: Set terminated pod GC threshold
+        terminated-pod-gc-threshold: "10"
 EOF
     
     # Create cluster

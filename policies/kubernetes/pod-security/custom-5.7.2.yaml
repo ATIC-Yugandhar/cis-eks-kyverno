@@ -1,0 +1,46 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: custom-5.7.2
+  annotations:
+    policies.kyverno.io/title: Ensure seccomp profile is set to runtime/default
+    policies.kyverno.io/category: Pod Security
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/description: Seccomp profiles restrict system calls available to containers and should be set to runtime/default or a custom profile.
+    policies.kyverno.io/cel: 'true'
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+  - name: require-seccomp-profile
+    match:
+      any:
+      - resources:
+          kinds:
+          - Pod
+    validate:
+      message: Pods and containers must set seccomp profile to runtime/default or localhost profile.
+      cel:
+        expressions:
+        - expression: |
+            (has(object.spec.securityContext) &&
+             has(object.spec.securityContext.seccompProfile) &&
+             has(object.spec.securityContext.seccompProfile.type) &&
+             object.spec.securityContext.seccompProfile.type in ['RuntimeDefault', 'Localhost']) ||
+            object.spec.containers.all(container,
+              has(container.securityContext) &&
+              has(container.securityContext.seccompProfile) &&
+              has(container.securityContext.seccompProfile.type) &&
+              container.securityContext.seccompProfile.type in ['RuntimeDefault', 'Localhost']
+            )
+          message: "Pod or containers must have seccomp profile set to RuntimeDefault or Localhost"
+        - expression: |
+            !has(object.spec.initContainers) ||
+            object.spec.initContainers.all(container,
+              has(container.securityContext) &&
+              has(container.securityContext.seccompProfile) &&
+              has(container.securityContext.seccompProfile.type) &&
+              container.securityContext.seccompProfile.type in ['RuntimeDefault', 'Localhost']
+            )
+          message: "Init containers must have seccomp profile set to RuntimeDefault or Localhost"
