@@ -420,6 +420,7 @@ jobs:
         | OpenTofu Tests | ${{ needs.opentofu-tests.result == 'success' && '✅ Passed' || (needs.opentofu-tests.result == 'skipped' && '⏭️ Skipped' || '❌ Failed') }} | opentofu-test-results |
         | Kind Cluster Tests | ${{ needs.kind-cluster-tests.result == 'success' && '✅ Passed' || (needs.kind-cluster-tests.result == 'skipped' && '⏭️ Skipped' || '❌ Failed') }} | kind-cluster-test-results |
         | Custom CIS Scanner | ${{ github.event.inputs.run_cis_scanner != 'false' && '🔒 Enabled' || '⏭️ Skipped' }} | included in kind-cluster-test-results |
+        | Trivy CIS Compliance | ${{ needs.security-scan.result == 'success' && '✅ Passed' || (needs.security-scan.result == 'skipped' && '⏭️ Skipped' || '❌ Failed') }} | trivy-cis-compliance-results |
         
         ## 🔗 Links
         
@@ -502,6 +503,7 @@ jobs:
         echo "| OpenTofu Tests | ${{ needs.opentofu-tests.result == 'success' && '✅ Passed' || (needs.opentofu-tests.result == 'skipped' && '⏭️ Skipped' || '❌ Failed') }} |" >> $GITHUB_STEP_SUMMARY
         echo "| Kind Cluster Tests | ${{ needs.kind-cluster-tests.result == 'success' && '✅ Passed' || (needs.kind-cluster-tests.result == 'skipped' && '⏭️ Skipped' || '❌ Failed') }} |" >> $GITHUB_STEP_SUMMARY
         echo "| Custom CIS Scanner | ${{ github.event.inputs.run_cis_scanner != 'false' && '🔒 Enabled' || '⏭️ Disabled' }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Trivy CIS Compliance | ${{ needs.security-scan.result == 'success' && '✅ Passed' || (needs.security-scan.result == 'skipped' && '⏭️ Skipped' || '❌ Failed') }} |" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### 📁 Artifacts Generated" >> $GITHUB_STEP_SUMMARY
         echo "- **comprehensive-compliance-report**: Complete test results and reports including custom CIS scanner results" >> $GITHUB_STEP_SUMMARY
@@ -723,10 +725,11 @@ jobs:
           --output reports/trivy-compliance/cis-compliance-with-policies.json || echo "CIS scan completed with issues"
         
         # Capture summary for reporting
+        echo "📊 Generating CIS compliance summary..."
         trivy k8s "$CLUSTER_CONTEXT" \
           --compliance=k8s-cis-1.23 \
           --report summary \
-          --format table > reports/trivy-compliance/cis-summary-with-policies.txt || echo "CIS summary completed"
+          --format table 2>&1 | tee reports/trivy-compliance/cis-summary-with-policies.txt || echo "CIS summary completed with issues"
         
         # Also run NSA compliance check
         trivy k8s "$CLUSTER_CONTEXT" \
@@ -757,11 +760,19 @@ jobs:
         echo "📊 CIS Compliance Summary (WITH Kyverno Policies):"
         cat reports/trivy-compliance/cis-summary-with-policies.txt || echo "Summary not available"
         
-        echo ""
-        echo "🔍 Policy Enforcement Analysis:"
-        echo "✅ Expected: ~85.2% compliance (92/108 PASS)"
-        echo "📋 Note: Our Pod Security policies are so strict they block the scanner itself!"
-        echo "🎯 This demonstrates our policies are working effectively"
+        # Add CIS compliance results to GitHub Step Summary
+        echo "## 📊 Trivy CIS Compliance Results" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Compliance Score" >> $GITHUB_STEP_SUMMARY
+        if [ -f "reports/trivy-compliance/cis-summary-with-policies.txt" ]; then
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat reports/trivy-compliance/cis-summary-with-policies.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+        else
+          echo "⚠️ CIS compliance summary not available" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        
         
     - name: Upload Trivy scan results to Security tab
       uses: github/codeql-action/upload-sarif@v3
