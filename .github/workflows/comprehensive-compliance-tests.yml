@@ -610,28 +610,28 @@ jobs:
         # Delete and recreate with hardened configuration
         kind delete cluster --name kyverno-test || true
         
-        cat <<EOF > ${{ runner.temp }}/kind-config.yaml
-kind: Cluster
-apiVersion: kind.x-k8s.io/v1alpha4
-nodes:
-- role: control-plane
-  kubeadmConfigPatches:
-  - |
-    kind: ClusterConfiguration
-    apiServer:
-      extraArgs:
-        profiling: "false"
-        enable-admission-plugins: "NodeRestriction,AlwaysPullImages"
-        audit-log-path: "/var/log/kubernetes/audit.log"
-        audit-log-maxage: "30"
-        audit-log-maxbackup: "10"
-        audit-log-maxsize: "100"
-    controllerManager:
-      extraArgs:
-        terminated-pod-gc-threshold: "10"
-EOF
+        cat <<'EOF' > kind-config.yaml
+        kind: Cluster
+        apiVersion: kind.x-k8s.io/v1alpha4
+        nodes:
+        - role: control-plane
+          kubeadmConfigPatches:
+          - |
+            kind: ClusterConfiguration
+            apiServer:
+              extraArgs:
+                profiling: "false"
+                enable-admission-plugins: "NodeRestriction,AlwaysPullImages"
+                audit-log-path: "/var/log/kubernetes/audit.log"
+                audit-log-maxage: "30"
+                audit-log-maxbackup: "10"
+                audit-log-maxsize: "100"
+            controllerManager:
+              extraArgs:
+                terminated-pod-gc-threshold: "10"
+        EOF
         
-        kind create cluster --name kyverno-test --config ${{ runner.temp }}/kind-config.yaml
+        kind create cluster --name kyverno-test --config kind-config.yaml
         
     - name: Deploy Kyverno and policies
       env:
