@@ -23,7 +23,9 @@ spec:
       message: Privileged containers are not allowed.
       cel:
         expressions:
-        - expression: "!has(object.spec.securityContext) || !has(object.spec.securityContext.privileged) || object.spec.securityContext.privileged == false"
-          message: "Privileged containers are not allowed."
         - expression: "object.spec.containers.all(container, !has(container.securityContext) || !has(container.securityContext.privileged) || container.securityContext.privileged == false)"
           message: "Privileged containers are not allowed."
+        - expression: "!has(object.spec.initContainers) || object.spec.initContainers.all(container, !has(container.securityContext) || !has(container.securityContext.privileged) || container.securityContext.privileged == false)"
+          message: "Privileged init containers are not allowed."
+        - expression: "!has(object.spec.ephemeralContainers) || object.spec.ephemeralContainers.all(container, !has(container.securityContext) || !has(container.securityContext.privileged) || container.securityContext.privileged == false)"
+          message: "Privileged ephemeral containers are not allowed."

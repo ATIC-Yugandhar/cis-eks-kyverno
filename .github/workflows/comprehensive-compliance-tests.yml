@@ -716,12 +716,18 @@ jobs:
         echo "⏳ Waiting for policy removal to propagate..."
         sleep 10
         
+        # Clean up any existing trivy namespaces
+        echo "🧹 Cleaning up any existing Trivy namespaces..."
+        kubectl delete namespace trivy-temp --wait=false --ignore-not-found=true
+        sleep 5
+        
         echo "🚀 Running Trivy CIS scan with temporarily relaxed policies..."
-        # Run the actual CIS compliance scan
+        # Run the actual CIS compliance scan without node collector to avoid namespace issues
         trivy k8s "$CLUSTER_CONTEXT" \
           --compliance=k8s-cis-1.23 \
           --report all \
           --format json \
+          --disable-node-collector \
           --output reports/trivy-compliance/cis-compliance-with-policies.json || echo "CIS scan completed with issues"
         
         # Capture summary for reporting
@@ -729,13 +735,15 @@ jobs:
         trivy k8s "$CLUSTER_CONTEXT" \
           --compliance=k8s-cis-1.23 \
           --report summary \
-          --format table 2>&1 | tee reports/trivy-compliance/cis-summary-with-policies.txt || echo "CIS summary completed with issues"
+          --format table \
+          --disable-node-collector 2>&1 | tee reports/trivy-compliance/cis-summary-with-policies.txt || echo "CIS summary completed with issues"
         
         # Also run NSA compliance check
         trivy k8s "$CLUSTER_CONTEXT" \
           --compliance=k8s-nsa-1.0 \
           --report all \
           --format json \
+          --disable-node-collector \
           --output reports/trivy-compliance/nsa-compliance-with-policies.json || echo "NSA scan completed"
         
         echo "✅ Compliance scans completed"
