@@ -25,6 +25,11 @@ on:
         required: false
         default: true
         type: boolean
+      run_trivy_scan:
+        description: 'Run Trivy CIS compliance verification'
+        required: false
+        default: true
+        type: boolean
 
 permissions:
   contents: read
@@ -577,8 +582,7 @@ jobs:
   security-scan:
     name: Policy Enforcement Verification (Trivy)
     runs-on: ubuntu-latest
-    needs: [kind-cluster-tests]
-    if: always() && needs.kind-cluster-tests.result != 'cancelled'
+    if: ${{ github.event.inputs.run_trivy_scan != 'false' }}
     permissions:
       security-events: write
       contents: read
@@ -594,14 +598,45 @@ jobs:
         chmod +x kubectl
         sudo mv kubectl /usr/local/bin/
         
-    - name: Create Kind cluster and deploy policies for Trivy scanning
+    - name: Setup Kind
+      uses: helm/kind-action@v1.10.0
+      with:
+        cluster_name: kyverno-test
+        version: v0.20.0
+        config: |
+          kind: Cluster
+          apiVersion: kind.x-k8s.io/v1alpha4
+          nodes:
+          - role: control-plane
+            kubeadmConfigPatches:
+            - |
+              kind: ClusterConfiguration
+              apiServer:
+                extraArgs:
+                  profiling: "false"
+                  enable-admission-plugins: "NodeRestriction,AlwaysPullImages"
+                  audit-log-path: "/var/log/kubernetes/audit.log"
+                  audit-log-maxage: "30"
+                  audit-log-maxbackup: "10"
+                  audit-log-maxsize: "100"
+              controllerManager:
+                extraArgs:
+                  terminated-pod-gc-threshold: "10"
+                  
+    - name: Deploy Kyverno and policies
       env:
         KYVERNO_VERSION: ${{ env.KYVERNO_VERSION }}
       run: |
-        echo "🚀 Creating Kind cluster for Trivy compliance scanning..."
-        # Use the test script to create cluster with same configuration
-        chmod +x scripts/test-kind-cluster.sh
-        ./scripts/test-kind-cluster.sh
+        echo "📦 Installing Kyverno..."
+        helm repo add kyverno https://kyverno.github.io/kyverno/
+        helm repo update
+        helm install kyverno kyverno/kyverno -n kyverno --create-namespace --version v${KYVERNO_VERSION} --wait
+        
+        echo "⏳ Waiting for Kyverno to be ready..."
+        kubectl wait --for=condition=ready pod -l app.kubernetes.io/component=admission-controller -n kyverno --timeout=300s
+        
+        echo "📋 Applying all Kyverno policies..."
+        kubectl apply -f policies/kubernetes/
         
         echo "✅ Cluster ready. Verifying setup..."
         kubectl cluster-info --context kind-kyverno-test
