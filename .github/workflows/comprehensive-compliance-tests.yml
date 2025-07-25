@@ -647,7 +647,7 @@ jobs:
         echo "✅ Kyverno is fully operational"
         
         echo "📋 Applying all Kyverno policies..."
-        kubectl apply -f policies/kubernetes/
+        find policies/kubernetes -name "*.yaml" -type f | xargs kubectl apply -f -
         
         echo "⏳ Waiting for policies to be active..."
         sleep 15
@@ -734,7 +734,7 @@ jobs:
         
         echo "🔒 Re-applying ALL Kyverno policies..."
         # Re-apply all policies to restore full policy set
-        kubectl apply -f policies/kubernetes/ || echo "Warning: Some policies failed to re-apply"
+        find policies/kubernetes -name "*.yaml" -type f | xargs kubectl apply -f - || echo "Warning: Some policies failed to re-apply"
         
         echo "⏳ Waiting for policies to be fully active again..."
         sleep 20
