@@ -592,24 +592,21 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       
-    - name: Setup kubectl
+    - name: Setup kubectl and Kind
       run: |
+        echo "📦 Installing kubectl..."
         curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
         chmod +x kubectl
         sudo mv kubectl /usr/local/bin/
         
-    - name: Setup Kind
-      uses: helm/kind-action@v1.10.0
-      with:
-        cluster_name: kyverno-test
-        version: v0.20.0
-                  
-    - name: Apply CIS hardening to Kind cluster
-      run: |
-        echo "🔧 Applying CIS hardening configuration..."
-        # Delete and recreate with hardened configuration
-        kind delete cluster --name kyverno-test || true
+        echo "📦 Installing Kind..."
+        curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.20.0/kind-linux-amd64
+        chmod +x ./kind
+        sudo mv ./kind /usr/local/bin/kind
         
+    - name: Create Kind cluster with CIS hardening
+      run: |
+        echo "🚀 Creating Kind cluster with CIS hardening configuration..."
         cat <<'EOF' > kind-config.yaml
         kind: Cluster
         apiVersion: kind.x-k8s.io/v1alpha4
@@ -633,18 +630,27 @@ jobs:
         
         kind create cluster --name kyverno-test --config kind-config.yaml
         
+        echo "⏳ Waiting for cluster to be ready..."
+        kubectl wait --for=condition=Ready nodes --all --timeout=120s
+        
     - name: Deploy Kyverno and policies
-      env:
-        KYVERNO_VERSION: ${{ env.KYVERNO_VERSION }}
       run: |
-        echo "📦 Installing Kyverno..."
-        kubectl create -f https://github.com/kyverno/kyverno/releases/download/v${KYVERNO_VERSION}/install.yaml
+        echo "📦 Installing Kyverno v${{ env.KYVERNO_VERSION }}..."
+        kubectl create -f https://github.com/kyverno/kyverno/releases/download/v${{ env.KYVERNO_VERSION }}/install.yaml
         
         echo "⏳ Waiting for Kyverno to be ready..."
         kubectl wait --for=condition=ready pod -l app.kubernetes.io/component=admission-controller -n kyverno --timeout=300s
+        kubectl wait --for=condition=ready pod -l app.kubernetes.io/component=background-controller -n kyverno --timeout=300s
+        kubectl wait --for=condition=ready pod -l app.kubernetes.io/component=cleanup-controller -n kyverno --timeout=300s
+        kubectl wait --for=condition=ready pod -l app.kubernetes.io/component=reports-controller -n kyverno --timeout=300s
+        
+        echo "✅ Kyverno is fully operational"
         
         echo "📋 Applying all Kyverno policies..."
         kubectl apply -f policies/kubernetes/
+        
+        echo "⏳ Waiting for policies to be active..."
+        sleep 15
         
         echo "✅ Cluster ready. Verifying setup..."
         kubectl cluster-info --context kind-kyverno-test
@@ -726,11 +732,9 @@ jobs:
         
         echo "✅ Compliance scans completed"
         
-        echo "🔒 Re-applying Pod Security policies..."
-        # Re-apply all pod security policies
-        kubectl apply -f policies/kubernetes/pod-security/ || echo "Warning: Some policies failed to re-apply"
-        kubectl apply -f policies/kubernetes/rbac/supported-4.1.5.yaml || true
-        kubectl apply -f policies/kubernetes/rbac/supported-4.1.6.yaml || true
+        echo "🔒 Re-applying ALL Kyverno policies..."
+        # Re-apply all policies to restore full policy set
+        kubectl apply -f policies/kubernetes/ || echo "Warning: Some policies failed to re-apply"
         
         echo "⏳ Waiting for policies to be fully active again..."
         sleep 20
