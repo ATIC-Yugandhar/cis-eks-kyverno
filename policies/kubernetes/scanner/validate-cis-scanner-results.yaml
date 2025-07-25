@@ -1,0 +1,71 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: validate-cis-scanner-results
+  annotations:
+    policies.kyverno.io/category: CIS Scanner Results
+    policies.kyverno.io/description: "Validates CIS compliance scanner results to ensure
+      all checks pass. This policy processes JSON output from the custom CIS scanner
+      pod and enforces compliance standards."
+    policies.kyverno.io/cel: 'true'
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+  - name: validate-file-permissions-compliance
+    match:
+      resources:
+        kinds:
+        - ConfigMap
+        names:
+        - "cis-scan-results-*"
+        namespaces:
+        - kube-system
+    validate:
+      message: "CIS 3.1.1: File permission compliance check failed. One or more kubeconfig
+        files do not have proper permissions (should be 644 or more restrictive)."
+      cel:
+        expressions:
+        - expression: |
+            !has(object.data) || !has(object.data['cis-results.json']) ||
+            size(object.data['cis-results.json'].parseJSON().cis_checks['3.1.1'].files.filter(f, !f.compliant)) == 0
+          message: "CIS 3.1.1: File permission compliance check failed. Files with
+            incorrect permissions found in scanner results."
+  - name: validate-anonymous-auth-disabled
+    match:
+      resources:
+        kinds:
+        - ConfigMap
+        names:
+        - "cis-scan-results-*"
+        namespaces:
+        - kube-system
+    validate:
+      message: "CIS 3.2.1: Anonymous authentication compliance check failed. Kubelet
+        anonymous authentication should be disabled."
+      cel:
+        expressions:
+        - expression: |
+            !has(object.data) || !has(object.data['cis-results.json']) ||
+            object.data['cis-results.json'].parseJSON().cis_checks['3.2.1'].kubelet_config.compliant == true
+          message: "CIS 3.2.1: Anonymous authentication is not properly disabled in kubelet configuration."
+  - name: validate-scanner-execution
+    match:
+      resources:
+        kinds:
+        - ConfigMap
+        names:
+        - "cis-scan-results-*"
+        namespaces:
+        - kube-system
+    validate:
+      message: "CIS Scanner: Scanner execution validation failed. Results must be
+        recent and properly formatted."
+      cel:
+        expressions:
+        - expression: |
+            has(object.data) && has(object.data['cis-results.json']) &&
+            has(object.data['cis-results.json'].parseJSON().timestamp) &&
+            has(object.data['cis-results.json'].parseJSON().scanner) &&
+            object.data['cis-results.json'].parseJSON().scanner == 'custom-cis-scanner'
+          message: "Scanner results are missing required fields or improperly formatted."

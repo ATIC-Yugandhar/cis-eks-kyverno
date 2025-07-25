@@ -1,0 +1,50 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: custom-5.2.8
+  annotations:
+    policies.kyverno.io/title: Minimize the admission of containers with NET_RAW capability
+    policies.kyverno.io/category: Pod Security
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/description: The NET_RAW capability allows containers to craft packets and should be dropped unless required.
+    policies.kyverno.io/cel: 'true'
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+  - name: drop-net-raw-capability
+    match:
+      any:
+      - resources:
+          kinds:
+          - Pod
+    validate:
+      message: Containers must drop NET_RAW capability.
+      cel:
+        expressions:
+        - expression: |
+            object.spec.containers.all(container,
+              !has(container.securityContext) ||
+              !has(container.securityContext.capabilities) ||
+              !has(container.securityContext.capabilities.add) ||
+              !('NET_RAW' in container.securityContext.capabilities.add)
+            )
+          message: "Containers must not add NET_RAW capability"
+        - expression: |
+            object.spec.containers.all(container,
+              has(container.securityContext) &&
+              has(container.securityContext.capabilities) &&
+              has(container.securityContext.capabilities.drop) &&
+              ('ALL' in container.securityContext.capabilities.drop || 'NET_RAW' in container.securityContext.capabilities.drop)
+            )
+          message: "Containers must drop NET_RAW capability"
+        - expression: |
+            !has(object.spec.initContainers) ||
+            object.spec.initContainers.all(container,
+              !has(container.securityContext) ||
+              !has(container.securityContext.capabilities) ||
+              !has(container.securityContext.capabilities.add) ||
+              !('NET_RAW' in container.securityContext.capabilities.add)
+            )
+          message: "Init containers must not add NET_RAW capability"
