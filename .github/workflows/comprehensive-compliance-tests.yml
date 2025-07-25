@@ -594,10 +594,17 @@ jobs:
         chmod +x kubectl
         sudo mv kubectl /usr/local/bin/
         
-    - name: Connect to existing Kind cluster with deployed policies
+    - name: Create Kind cluster and deploy policies for Trivy scanning
+      env:
+        KYVERNO_VERSION: ${{ env.KYVERNO_VERSION }}
       run: |
+        echo "🚀 Creating Kind cluster for Trivy compliance scanning..."
+        # Use the test script to create cluster with same configuration
+        chmod +x scripts/test-kind-cluster.sh
+        ./scripts/test-kind-cluster.sh
+        
+        echo "✅ Cluster ready. Verifying setup..."
         kubectl cluster-info --context kind-kyverno-test
-        echo "🔍 Verifying Kyverno policies are deployed..."
         kubectl get clusterpolicies --no-headers | wc -l | xargs echo "Kyverno policies deployed:"
         kubectl get pods -n kyverno --no-headers | wc -l | xargs echo "Kyverno pods running:"
         
