@@ -5,16 +5,15 @@ metadata:
   annotations:
     policies.kyverno.io/category: CIS 3.2.3
     policies.kyverno.io/description: "CIS 3.2.3: Ensure that the --client-ca-file\
-      \ argument is set as appropriate.\n\nIMPORTANT: This control requires direct\
-      \ access to worker node kubelet configuration files \nto validate the client\
-      \ CA file setting. Kyverno cannot directly access node configuration files.\n\
-      \nKUBE-BENCH INTEGRATION REQUIRED: This control must be validated using kube-bench,\
-      \ which runs \nprivileged pods on worker nodes to access and validate kubelet\
-      \ configuration files.\n\nThis policy validates Pod-level TLS and certificate\
-      \ configurations that relate to client CA usage, \nbut the primary validation\
-      \ of kubelet client CA file settings occurs through kube-bench.\n"
-    policies.kyverno.io/kube-bench-required: 'true'
-    policies.kyverno.io/validation-scope: limited-tls-pod-security
+      \ argument is set as appropriate.\n\nSINGLE-TOOL APPROACH: This control uses custom CIS scanner results combined with Kyverno validation.\n\
+      \nCUSTOM CIS SCANNER: Kubelet client CA file validation is performed by our custom\
+      \ CIS scanner DaemonSet that runs on each node to check:\n- kubelet --client-ca-file flag in kubelet configuration\n- /var/lib/kubelet/config.yaml client CA settings\n- kubelet service configuration files\n\
+      - Results are output as JSON to ConfigMaps\n\
+      \nKYVERNO VALIDATION: This policy validates both:\n- Custom CIS scanner results from ConfigMaps\
+      \ for actual kubelet client CA file configuration\n- Pod-level TLS and certificate configurations that relate to client CA usage\n"
+    policies.kyverno.io/scanner-required: 'true'
+    policies.kyverno.io/scanner-checks: '3.2.3'
+    policies.kyverno.io/validation-scope: client-ca-file-with-custom-scanner
     policies.kyverno.io/cel: 'true'
 spec:
   validationFailureAction: Audit
@@ -29,7 +28,8 @@ spec:
     validate:
       message: 'Pods using TLS should have proper certificate configurations.
 
-        Note: Actual kubelet client CA file validation requires kube-bench.
+        Note: Actual kubelet client CA file validation (CIS 3.2.3) is handled by
+        our custom CIS scanner pod.
 
         '
       cel:
@@ -38,6 +38,36 @@ spec:
             || true)
           message: 'Pods using TLS should have proper certificate configurations.
 
-            Note: Actual kubelet client CA file validation requires kube-bench.
+            Note: Actual kubelet client CA file validation (CIS 3.2.3) is handled by
+            our custom CIS scanner pod.
+
+            '
+  - name: validate-cis-scanner-results
+    match:
+      any:
+      - resources:
+          kinds:
+          - ConfigMap
+          names:
+          - cis-scanner-results*
+          namespaces:
+          - kube-system
+    validate:
+      message: 'CIS 3.2.3 kubelet client CA file scan results indicate non-compliant
+        configuration.
+
+        Custom CIS scanner has detected kubelet --client-ca-file is not properly configured.
+
+        '
+      cel:
+        expressions:
+        - expression: |
+            !has(object.data) || !has(object.data['node-results.json']) ||
+            size(object.data['node-results.json'].parseJSON().checks.filter(c, 
+              c.id == '3.2.3' && c.status == 'FAIL'
+            )) == 0
+          message: 'CIS 3.2.3 compliance check failed: kubelet --client-ca-file is not set appropriately.
+
+            Please ensure kubelet has proper client CA file configuration.
 
             '

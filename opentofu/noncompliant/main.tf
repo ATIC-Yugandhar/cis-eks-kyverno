@@ -116,12 +116,40 @@ resource "aws_eks_cluster" "main" {
   # Missing tags (violates require-tags policy)
 }
 
+# Non-compliant launch template (violates CIS 3.1.1 and 3.2.1)
+resource "aws_launch_template" "noncompliant_nodes" {
+  name_prefix   = "${var.cluster_name}-noncompliant-"
+  instance_type = var.node_instance_type
+  
+  vpc_security_group_ids = [aws_security_group.nodes.id]
+  
+  # No user data script - relies on default EKS configuration
+  # This results in:
+  # - Default file permissions (may not be CIS compliant)
+  # - Anonymous authentication enabled by default
+  # - No explicit kubelet security configuration
+  
+  tag_specifications {
+    resource_type = "instance"
+    tags = {
+      Name = "${var.cluster_name}-noncompliant-node"
+      # Missing standard tags (violates require-tags policy)
+    }
+  }
+}
+
 resource "aws_eks_node_group" "main" {
   cluster_name    = aws_eks_cluster.main.name
   node_group_name = "noncompliant-ng"
   node_role_arn   = aws_iam_role.eks_node_group.arn
   subnet_ids      = aws_subnet.public[*].id  # Public subnets (violates CIS 5.4.3)
-  instance_types  = [var.node_instance_type]
+  
+  # Use non-compliant launch template
+  launch_template {
+    id      = aws_launch_template.noncompliant_nodes.id
+    version = aws_launch_template.noncompliant_nodes.latest_version
+  }
+  
   scaling_config {
     desired_size = 1
     min_size     = 1

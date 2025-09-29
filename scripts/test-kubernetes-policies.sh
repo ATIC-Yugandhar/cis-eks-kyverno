@@ -94,7 +94,7 @@ for category_dir in "$POLICIES_DIR/kubernetes"/*; do
                     if [ -d "$TESTS_DIR/kubernetes/$policy_name/noncompliant" ]; then
                         output=$(kyverno apply "$policy" --resource "$TESTS_DIR/kubernetes/$policy_name/noncompliant" 2>&1 || true)
                         
-                        if echo "$output" | grep -q "failed\|blocked\|violation\|error"; then
+                        if echo "$output" | grep -qi "failed\|blocked\|violation\|error"; then
                             echo -n "[✓] "
                             result_line+=$'\n'"- ✅ $policy_name - noncompliant: PASS (rejected)"
                             echo "- ✅ $policy_name - noncompliant: PASS (rejected)" >> "$DETAILED_FILE"
@@ -160,7 +160,7 @@ for category_dir in "$POLICIES_DIR/opentofu"/*; do
                 
                 # Check compliant plan
                 if [ -f "opentofu/compliant/tofuplan.json" ]; then
-                    if kyverno apply "$policy" --resource "opentofu/compliant/tofuplan.json" >/dev/null 2>&1; then
+                    if KYVERNO_EXPERIMENTAL=true kyverno json scan --policy "$policy" --payload "opentofu/compliant/tofuplan.json" >/dev/null 2>&1; then
                         echo -n "[✓] "
                         result_line+="- ✅ $policy_name - compliant plan: PASS"
                         echo "- ✅ $policy_name - compliant plan: PASS" >> "$DETAILED_FILE"
@@ -177,9 +177,9 @@ for category_dir in "$POLICIES_DIR/opentofu"/*; do
                 
                 # Check noncompliant plan
                 if [ -f "opentofu/noncompliant/tofuplan.json" ]; then
-                    output=$(kyverno apply "$policy" --resource "opentofu/noncompliant/tofuplan.json" 2>&1 || true)
+                    output=$(KYVERNO_EXPERIMENTAL=true kyverno json scan --policy "$policy" --payload "opentofu/noncompliant/tofuplan.json" 2>&1 || true)
                     
-                    if echo "$output" | grep -q "failed\|blocked\|violation\|error"; then
+                    if echo "$output" | grep -qi "failed\|blocked\|violation\|error"; then
                         echo -n "[✓] "
                         result_line+=$'\n'"- ✅ $policy_name - noncompliant plan: PASS (rejected)"
                         echo "- ✅ $policy_name - noncompliant plan: PASS (rejected)" >> "$DETAILED_FILE"

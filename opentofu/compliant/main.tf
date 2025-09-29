@@ -339,14 +339,81 @@ data "aws_eks_cluster_auth" "main" {
   name = aws_eks_cluster.main.name
 }
 
+# Launch template for CIS-compliant node configuration
+resource "aws_launch_template" "cis_compliant_nodes" {
+  name_prefix   = "${var.cluster_name}-cis-compliant-"
+  instance_type = var.node_instance_type
+  
+  vpc_security_group_ids = [aws_security_group.nodes.id]
+  
+  # User data script for CIS compliance configuration
+  user_data = base64encode(<<-EOF
+    #!/bin/bash
+    
+    # CIS 3.1.1: Set kubeconfig file permissions to 644 or more restrictive
+    echo "Configuring CIS-compliant file permissions..."
+    
+    # Create kubelet configuration directory
+    mkdir -p /etc/kubernetes/kubelet
+    
+    # Configure kubelet with CIS-compliant settings for 3.2.1
+    cat <<KUBELET_CONFIG > /etc/kubernetes/kubelet/kubelet-config.json
+    {
+      "kind": "KubeletConfiguration",
+      "apiVersion": "kubelet.config.k8s.io/v1beta1",
+      "authentication": {
+        "anonymous": {
+          "enabled": false
+        },
+        "webhook": {
+          "enabled": true
+        }
+      },
+      "authorization": {
+        "mode": "Webhook"
+      }
+    }
+KUBELET_CONFIG
+    
+    # Set CIS-compliant file permissions
+    chmod 644 /etc/kubernetes/kubelet/kubelet-config.json
+    chown root:root /etc/kubernetes/kubelet/kubelet-config.json
+    
+    # Bootstrap EKS node with CIS-compliant kubelet settings
+    /etc/eks/bootstrap.sh ${var.cluster_name} \
+      --kubelet-extra-args "--config=/etc/kubernetes/kubelet/kubelet-config.json --anonymous-auth=false"
+    
+    # Ensure kubeconfig files have proper permissions after bootstrap
+    chmod 644 /etc/kubernetes/kubelet.conf 2>/dev/null || true
+    chown root:root /etc/kubernetes/kubelet.conf 2>/dev/null || true
+    
+    echo "CIS compliance configuration completed"
+  EOF
+  )
+  
+  tag_specifications {
+    resource_type = "instance"
+    tags = {
+      Name = "${var.cluster_name}-cis-compliant-node"
+      Environment = "production"
+      Owner = "platform-team"
+    }
+  }
+}
+
 resource "aws_eks_node_group" "main" {
   cluster_name    = aws_eks_cluster.main.name
   node_group_name = "compliant-ng"
   node_role_arn   = aws_iam_role.eks_node_group.arn
   subnet_ids      = aws_subnet.private[*].id
-  instance_types  = [var.node_instance_type]
   capacity_type   = "ON_DEMAND"
   ami_type        = "AL2_x86_64"  # Specify secure AMI type for CIS 3.1.1
+  
+  # Use launch template for CIS-compliant configuration
+  launch_template {
+    id      = aws_launch_template.cis_compliant_nodes.id
+    version = aws_launch_template.cis_compliant_nodes.latest_version
+  }
   
   scaling_config {
     desired_size = var.desired_capacity

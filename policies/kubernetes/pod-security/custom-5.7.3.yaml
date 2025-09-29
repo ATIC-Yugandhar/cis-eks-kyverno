@@ -1,0 +1,61 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: custom-5.7.3
+  annotations:
+    policies.kyverno.io/title: Apply Security Context to Your Pods and Containers
+    policies.kyverno.io/category: Pod Security
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/description: Comprehensive security context enforcement including runAsNonRoot, readOnlyRootFilesystem, and privilege restrictions.
+    policies.kyverno.io/cel: 'true'
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+  - name: require-security-context
+    match:
+      any:
+      - resources:
+          kinds:
+          - Pod
+    validate:
+      message: Pods must have comprehensive security context configured.
+      cel:
+        expressions:
+        - expression: |
+            has(object.spec.securityContext) ||
+            object.spec.containers.all(container, has(container.securityContext))
+          message: "Pod or containers must have security context defined"
+        - expression: |
+            (has(object.spec.securityContext) && 
+             has(object.spec.securityContext.runAsNonRoot) && 
+             object.spec.securityContext.runAsNonRoot == true) ||
+            object.spec.containers.all(container,
+              has(container.securityContext) && 
+              has(container.securityContext.runAsNonRoot) && 
+              container.securityContext.runAsNonRoot == true
+            )
+          message: "Pod or containers must run as non-root"
+        - expression: |
+            object.spec.containers.all(container,
+              has(container.securityContext) && 
+              has(container.securityContext.allowPrivilegeEscalation) && 
+              container.securityContext.allowPrivilegeEscalation == false
+            )
+          message: "Containers must not allow privilege escalation"
+        - expression: |
+            object.spec.containers.all(container,
+              has(container.securityContext) && 
+              has(container.securityContext.readOnlyRootFilesystem) && 
+              container.securityContext.readOnlyRootFilesystem == true
+            )
+          message: "Containers must use read-only root filesystem"
+        - expression: |
+            object.spec.containers.all(container,
+              has(container.securityContext) &&
+              has(container.securityContext.capabilities) &&
+              has(container.securityContext.capabilities.drop) &&
+              'ALL' in container.securityContext.capabilities.drop
+            )
+          message: "Containers must drop ALL capabilities"

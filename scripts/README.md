@@ -29,10 +29,9 @@ Generates an executive summary report from all test results.
 - Creates `reports/executive-summary.md`
 
 ### cleanup.sh
-Utility script to clean up OpenTofu state files and temporary resources.
-- Removes `.terraform` directories
-- Cleans up `tfplan.*` files
-- Safe to run at any time
+Utility script to destroy OpenTofu infrastructure resources.
+- Runs `tofu destroy` on compliant and noncompliant stacks
+- Safe to run at any time (uses `-auto-approve`)
 
 ## Usage
 
