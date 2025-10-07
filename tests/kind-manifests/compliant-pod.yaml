@@ -6,11 +6,15 @@ metadata:
   labels:
     app: nginx
     security.test/compliant: "true"
+  annotations:
+    seccomp.security.alpha.kubernetes.io/pod: runtime/default
 spec:
   securityContext:
     runAsNonRoot: true
     runAsUser: 1000
     fsGroup: 1000
+    seccompProfile:
+      type: RuntimeDefault
   containers:
   - name: nginx
     image: nginx:1.21-alpine
@@ -22,6 +26,8 @@ spec:
       capabilities:
         drop:
         - ALL
+      seccompProfile:
+        type: RuntimeDefault
     ports:
     - containerPort: 8080
     resources:
