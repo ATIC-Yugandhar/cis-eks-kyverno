@@ -4,17 +4,16 @@ metadata:
   name: custom-3.2.4
   annotations:
     policies.kyverno.io/category: CIS 3.2.4
-    policies.kyverno.io/description: "CIS 3.2.4: Ensure that the --read-only-port\
-      \ argument is set to 0.\n\nIMPORTANT: This control requires direct access to\
-      \ worker node kubelet configuration files \nto validate the read-only port setting.\
-      \ Kyverno cannot directly access node configuration files.\n\nKUBE-BENCH INTEGRATION\
-      \ REQUIRED: This control must be validated using kube-bench, which runs \nprivileged\
-      \ pods on worker nodes to access and validate kubelet configuration files.\n\
-      \nThis policy validates Pod-level port security configurations that relate to\
-      \ read-only access patterns, \nbut the primary validation of kubelet read-only\
-      \ port settings occurs through kube-bench.\n"
-    policies.kyverno.io/kube-bench-required: 'true'
-    policies.kyverno.io/validation-scope: limited-pod-port-security
+    policies.kyverno.io/description: "CIS 3.2.4: Validates kubelet read-only port\
+      \ is disabled.\n\nSINGLE-TOOL APPROACH: This control uses custom CIS scanner results combined with Kyverno validation.\n\
+      \nCUSTOM CIS SCANNER: Kubelet read-only port validation is performed by our custom\
+      \ CIS scanner DaemonSet that runs on each node to check:\n- kubelet --read-only-port flag in kubelet configuration\n- /var/lib/kubelet/config.yaml read-only port settings\n- kubelet service configuration files\n\
+      - Results are output as JSON to ConfigMaps\n\
+      \nKYVERNO VALIDATION: This policy validates both:\n- Custom CIS scanner results from ConfigMaps\
+      \ for actual kubelet read-only port configuration\n- Pod-level port security configurations that relate to read-only access patterns\n"
+    policies.kyverno.io/scanner-required: 'true'
+    policies.kyverno.io/scanner-checks: '3.2.4'
+    policies.kyverno.io/validation-scope: read-only-port-with-custom-scanner
     policies.kyverno.io/cel: 'true'
 spec:
   validationFailureAction: Audit
@@ -30,7 +29,8 @@ spec:
       message: 'Pods should not expose unnecessary read-only ports or insecure port
         configurations.
 
-        Note: Actual kubelet read-only port validation requires kube-bench.
+        Note: Actual kubelet read-only port validation (CIS 3.2.4) is handled by
+        our custom CIS scanner pod.
 
         '
       cel:
@@ -40,6 +40,36 @@ spec:
           message: 'Pods should not expose unnecessary read-only ports or insecure
             port configurations.
 
-            Note: Actual kubelet read-only port validation requires kube-bench.
+            Note: Actual kubelet read-only port validation (CIS 3.2.4) is handled by
+            our custom CIS scanner pod.
+
+            '
+  - name: validate-cis-scanner-results
+    match:
+      any:
+      - resources:
+          kinds:
+          - ConfigMap
+          names:
+          - cis-scanner-results*
+          namespaces:
+          - kube-system
+    validate:
+      message: 'CIS 3.2.4 kubelet read-only port scan results indicate non-compliant
+        configuration.
+
+        Custom CIS scanner has detected kubelet --read-only-port is not set to 0.
+
+        '
+      cel:
+        expressions:
+        - expression: |
+            !has(object.data) || !has(object.data['node-results.json']) ||
+            size(object.data['node-results.json'].parseJSON().checks.filter(c, 
+              c.id == '3.2.4' && c.status == 'FAIL'
+            )) == 0
+          message: 'CIS 3.2.4 compliance check failed: kubelet --read-only-port is not set to 0.
+
+            Please ensure kubelet has read-only port disabled.
 
             '

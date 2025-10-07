@@ -7,8 +7,8 @@ metadata:
     policies.kyverno.io/category: RBAC
     policies.kyverno.io/severity: high
     policies.kyverno.io/subject: Role, ClusterRole
-    policies.kyverno.io/description: Ensure that access to secrets is minimized. This
-      policy checks for roles that grant get, list, or watch permissions on secrets.
+    policies.kyverno.io/description: Validates minimal access to secrets for least
+      privilege. Checks roles granting get, list, or watch permissions on secrets (CIS 4.1.2).
     policies.kyverno.io/cel: 'true'
 spec:
   validationFailureAction: Audit

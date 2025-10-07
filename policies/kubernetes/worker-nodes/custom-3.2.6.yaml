@@ -4,17 +4,19 @@ metadata:
   name: custom-3.2.6
   annotations:
     policies.kyverno.io/category: CIS 3.2.6
-    policies.kyverno.io/description: "CIS 3.2.6: Ensure that the --make-iptables-util-chains\
-      \ argument is set to true.\n\nIMPORTANT: This control requires direct access\
+    policies.kyverno.io/description: "CIS 3.2.6: Validates kubelet iptables util chains\
+      \ configuration.\n\nIMPORTANT: This control requires direct access\
       \ to worker node kubelet configuration files \nto validate the iptables util\
       \ chains setting. Kyverno cannot directly access node configuration files.\n\
-      \nKUBE-BENCH INTEGRATION REQUIRED: This control must be validated using kube-bench,\
-      \ which runs \nprivileged pods on worker nodes to access and validate kubelet\
-      \ configuration files.\n\nThis policy validates Pod-level network security configurations\
-      \ that relate to iptables usage, \nbut the primary validation of kubelet iptables\
-      \ settings occurs through kube-bench.\n"
-    policies.kyverno.io/kube-bench-required: 'true'
-    policies.kyverno.io/validation-scope: limited-pod-network-security
+      \nSINGLE-TOOL APPROACH: This control uses custom CIS scanner results combined with Kyverno validation.\n\
+      \nCUSTOM CIS SCANNER: Kubelet iptables util chains validation is performed by our custom\
+      \ CIS scanner DaemonSet that runs on each node to check:\n- kubelet --make-iptables-util-chains flag in kubelet configuration\n- /var/lib/kubelet/config.yaml iptables settings\n- kubelet service configuration files\n\
+      - Results are output as JSON to ConfigMaps\n\
+      \nKYVERNO VALIDATION: This policy validates both:\n- Custom CIS scanner results from ConfigMaps\
+      \ for actual kubelet iptables util chains configuration\n- Pod-level network security configurations that relate to iptables usage\n"
+    policies.kyverno.io/scanner-required: 'true'
+    policies.kyverno.io/scanner-checks: '3.2.6'
+    policies.kyverno.io/validation-scope: iptables-util-chains-with-custom-scanner
     policies.kyverno.io/cel: 'true'
 spec:
   validationFailureAction: Audit
@@ -30,7 +32,7 @@ spec:
       message: 'Pods should use secure networking configurations and avoid privileged
         network access.
 
-        Note: Actual kubelet iptables util chains validation requires kube-bench.
+        Note: Actual kubelet iptables util chains validation requires our custom CIS scanner pod.
 
         '
       cel:
@@ -40,6 +42,36 @@ spec:
           message: 'Pods should use secure networking configurations and avoid privileged
             network access.
 
-            Note: Actual kubelet iptables util chains validation requires kube-bench.
+            Note: Actual kubelet iptables util chains validation (CIS 3.2.6) is handled by
+            our custom CIS scanner pod.
+
+            '
+  - name: validate-cis-scanner-results
+    match:
+      any:
+      - resources:
+          kinds:
+          - ConfigMap
+          names:
+          - cis-scanner-results*
+          namespaces:
+          - kube-system
+    validate:
+      message: 'CIS 3.2.6 kubelet iptables util chains scan results indicate non-compliant
+        configuration.
+
+        Custom CIS scanner has detected kubelet --make-iptables-util-chains is not set to true.
+
+        '
+      cel:
+        expressions:
+        - expression: |
+            !has(object.data) || !has(object.data['node-results.json']) ||
+            size(object.data['node-results.json'].parseJSON().checks.filter(c, 
+              c.id == '3.2.6' && c.status == 'FAIL'
+            )) == 0
+          message: 'CIS 3.2.6 compliance check failed: kubelet --make-iptables-util-chains is not set to true.
+
+            Please ensure kubelet has proper iptables util chains configuration.
 
             '

@@ -1,0 +1,75 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: validate-trivy-cis-results
+  annotations:
+    policies.kyverno.io/category: Trivy CIS Compliance
+    policies.kyverno.io/description: "Validates Trivy CIS compliance scan results to ensure
+      cluster meets security benchmarks. This policy processes JSON output from trivy
+      CIS compliance scans and enforces benchmark standards."
+    policies.kyverno.io/cel: 'true'
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+  - name: validate-trivy-cis-compliance-results
+    match:
+      resources:
+        kinds:
+        - ConfigMap
+        names:
+        - "trivy-cis-results"
+        namespaces:
+        - kube-system
+    validate:
+      message: "Trivy CIS compliance scan shows failing checks. Please review and
+        remediate the identified security issues."
+      cel:
+        expressions:
+        - expression: |
+            !has(object.data) || !has(object.data['cis-compliance.json']) ||
+            size(object.data['cis-compliance.json'].parseJSON().Results.filter(r, 
+              has(r.Misconfigurations) && 
+              size(r.Misconfigurations.filter(m, m.Status == 'FAILED')) > 0
+            )) == 0
+          message: "Trivy CIS compliance scan found failing security checks that must
+            be addressed."
+  - name: validate-trivy-nsa-compliance-results
+    match:
+      resources:
+        kinds:
+        - ConfigMap
+        names:
+        - "trivy-nsa-results"
+        namespaces:
+        - kube-system
+    validate:
+      message: "Trivy NSA compliance scan shows failing checks. Please review and
+        remediate the identified security issues."
+      cel:
+        expressions:
+        - expression: |
+            !has(object.data) || !has(object.data['nsa-compliance.json']) ||
+            size(object.data['nsa-compliance.json'].parseJSON().Results.filter(r, 
+              has(r.Misconfigurations) && 
+              size(r.Misconfigurations.filter(m, m.Status == 'FAILED')) > 0
+            )) == 0
+          message: "Trivy NSA compliance scan found failing security checks that must
+            be addressed."
+  - name: validate-scan-completeness
+    match:
+      resources:
+        kinds:
+        - ConfigMap
+        names:
+        - "trivy-*-results"
+        namespaces:
+        - kube-system
+    validate:
+      message: "Trivy compliance scan results are incomplete or malformed."
+      cel:
+        expressions:
+        - expression: |
+            has(object.data) && 
+            (has(object.data['cis-compliance.json']) || has(object.data['nsa-compliance.json']))
+          message: "Trivy scan results must contain either CIS or NSA compliance data."

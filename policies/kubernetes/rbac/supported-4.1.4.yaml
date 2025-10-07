@@ -7,8 +7,8 @@ metadata:
     policies.kyverno.io/category: RBAC
     policies.kyverno.io/severity: medium
     policies.kyverno.io/subject: Role, ClusterRole
-    policies.kyverno.io/description: Ensure that access to create pods is minimized.
-      This policy checks for roles that grant create permissions on pods.
+    policies.kyverno.io/description: Validates minimal access to create pods for
+      security. Checks roles granting create permissions on pods (CIS 4.1.4).
     policies.kyverno.io/cel: 'true'
 spec:
   validationFailureAction: Audit

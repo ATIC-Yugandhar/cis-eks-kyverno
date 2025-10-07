@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: compliant-pod-no-escalation
+spec:
+  containers:
+    - name: nginx
+      image: nginx:latest
+      securityContext:
+        allowPrivilegeEscalation: false

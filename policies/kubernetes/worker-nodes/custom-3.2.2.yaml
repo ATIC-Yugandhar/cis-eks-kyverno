@@ -4,16 +4,16 @@ metadata:
   name: custom-3.2.2
   annotations:
     policies.kyverno.io/category: CIS 3.2.2
-    policies.kyverno.io/description: "CIS 3.2.2: Ensure that the --authorization-mode\
-      \ argument is not set to AlwaysAllow.\n\nHYBRID VALIDATION APPROACH: This control\
-      \ has both kubelet configuration aspects (validated by kube-bench) \nand Kubernetes\
-      \ RBAC aspects (validated by Kyverno).\n\nKUBE-BENCH INTEGRATION: The primary\
-      \ kubelet --authorization-mode flag validation requires kube-bench \nto access\
-      \ kubelet configuration files on worker nodes.\n\nKYVERNO VALIDATION: This policy\
-      \ validates RBAC configurations that could indicate overly permissive \nauthorization\
-      \ patterns, complementing the kubelet-level authorization mode checks.\n"
-    policies.kyverno.io/kube-bench-required: 'true'
-    policies.kyverno.io/validation-scope: rbac-authorization-bindings
+    policies.kyverno.io/description: "CIS 3.2.2: Validates kubelet authorization mode\
+      \ configuration.\n\nSINGLE-TOOL APPROACH: This control uses custom CIS scanner results combined with Kyverno validation.\n\
+      \nCUSTOM CIS SCANNER: Kubelet authorization mode validation is performed by our custom\
+      \ CIS scanner DaemonSet that runs on each node to check:\n- kubelet --authorization-mode flag in kubelet configuration\n- /var/lib/kubelet/config.yaml authorization settings\n- kubelet service configuration files\n\
+      - Results are output as JSON to ConfigMaps\n\
+      \nKYVERNO VALIDATION: This policy validates both:\n- Custom CIS scanner results from ConfigMaps\
+      \ for actual kubelet authorization-mode configuration\n- RBAC configurations that could indicate overly permissive authorization patterns\n"
+    policies.kyverno.io/scanner-required: 'true'
+    policies.kyverno.io/scanner-checks: '3.2.2'
+    policies.kyverno.io/validation-scope: authorization-mode-with-custom-scanner
     policies.kyverno.io/cel: 'true'
 spec:
   validationFailureAction: Audit
@@ -28,7 +28,8 @@ spec:
       message: 'ClusterRoleBindings should not grant cluster-admin permissions except
         when explicitly required.
 
-        Note: Actual kubelet authorization mode validation requires kube-bench.
+        Note: Actual kubelet authorization mode validation (CIS 3.2.2) is handled by
+        our custom CIS scanner pod.
 
         '
       cel:
@@ -37,7 +38,8 @@ spec:
           message: 'ClusterRoleBindings should not grant cluster-admin permissions
             except when explicitly required.
 
-            Note: Actual kubelet authorization mode validation requires kube-bench.
+            Note: Actual kubelet authorization mode validation (CIS 3.2.2) is handled by
+            our custom CIS scanner pod.
 
             '
   - name: audit-wildcard-permissions
@@ -50,7 +52,8 @@ spec:
       message: 'Roles should avoid wildcard permissions which can indicate overly
         permissive authorization.
 
-        Note: Actual kubelet authorization mode validation requires kube-bench.
+        Note: Actual kubelet authorization mode validation (CIS 3.2.2) is handled by
+        our custom CIS scanner pod.
 
         '
       cel:
@@ -60,6 +63,36 @@ spec:
           message: 'Roles should avoid wildcard permissions which can indicate overly
             permissive authorization.
 
-            Note: Actual kubelet authorization mode validation requires kube-bench.
+            Note: Actual kubelet authorization mode validation (CIS 3.2.2) is handled by
+            our custom CIS scanner pod.
+
+            '
+  - name: validate-cis-scanner-results
+    match:
+      any:
+      - resources:
+          kinds:
+          - ConfigMap
+          names:
+          - cis-scanner-results*
+          namespaces:
+          - kube-system
+    validate:
+      message: 'CIS 3.2.2 kubelet authorization mode scan results indicate non-compliant
+        configuration.
+
+        Custom CIS scanner has detected kubelet --authorization-mode is set to AlwaysAllow.
+
+        '
+      cel:
+        expressions:
+        - expression: |
+            !has(object.data) || !has(object.data['node-results.json']) ||
+            size(object.data['node-results.json'].parseJSON().checks.filter(c, 
+              c.id == '3.2.2' && c.status == 'FAIL'
+            )) == 0
+          message: 'CIS 3.2.2 compliance check failed: kubelet --authorization-mode is set to AlwaysAllow.
+
+            Please ensure kubelet has proper authorization mode configuration.
 
             '

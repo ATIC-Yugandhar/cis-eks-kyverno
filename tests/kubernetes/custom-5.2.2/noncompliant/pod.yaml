@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: noncompliant-pod-privileged
+spec:
+  containers:
+    - name: nginx
+      image: nginx:latest
+      securityContext:
+        privileged: true

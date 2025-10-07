@@ -1,0 +1,15 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: custom-5.7.3-compliant
+policies:
+  - ../../../../policies/kubernetes/pod-security/custom-5.7.3.yaml
+resources:
+  - pod.yaml
+results:
+  - policy: custom-5.7.3
+    rule: require-security-context
+    resources:
+      - compliant-pod-full-security
+    kind: Pod
+    result: pass

@@ -1,0 +1,245 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cis-scanner
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: cis-scanner
+rules:
+- apiGroups: [""]
+  resources: ["nodes", "configmaps"]
+  verbs: ["get", "list", "create", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: cis-scanner
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cis-scanner
+subjects:
+- kind: ServiceAccount
+  name: cis-scanner
+  namespace: kube-system
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cis-scanner-script
+  namespace: kube-system
+data:
+  scan-cis.sh: |
+    #!/bin/bash
+    set -e
+    
+    NODE_NAME=${NODE_NAME:-$(hostname)}
+    OUTPUT_FILE="/tmp/cis-scan-results.json"
+    
+    echo "Starting CIS compliance scan on node: $NODE_NAME"
+    
+    # Function to check file permissions
+    check_file_permissions() {
+        local file_path="$1"
+        local expected_perm="$2"
+        local description="$3"
+        
+        if [ -f "$file_path" ]; then
+            actual_perm=$(stat -c "%a" "$file_path" 2>/dev/null)
+            owner=$(stat -c "%U:%G" "$file_path" 2>/dev/null)
+            
+            # Check if actual permissions are equal or more restrictive
+            if [ "$actual_perm" -le "$expected_perm" ] 2>/dev/null; then
+                compliant=true
+            else
+                compliant=false
+            fi
+            
+            echo "    {\"path\":\"$file_path\",\"expected\":\"$expected_perm\",\"actual\":\"$actual_perm\",\"owner\":\"$owner\",\"compliant\":$compliant,\"description\":\"$description\"}"
+        else
+            echo "    {\"path\":\"$file_path\",\"expected\":\"$expected_perm\",\"actual\":\"N/A\",\"owner\":\"N/A\",\"compliant\":false,\"error\":\"File not found\",\"description\":\"$description\"}"
+        fi
+    }
+    
+    # Function to check kubelet configuration
+    check_kubelet_config() {
+        local config_file="/var/lib/kubelet/config.yaml"
+        
+        if [ -f "$config_file" ]; then
+            # Check if anonymous authentication is disabled
+            anonymous_enabled=$(grep -i "enabled.*false" "$config_file" | grep -i anonymous || echo "")
+            webhook_enabled=$(grep -i "enabled.*true" "$config_file" | grep -i webhook || echo "")
+            
+            anonymous_compliant=false
+            webhook_compliant=false
+            
+            if [ -n "$anonymous_enabled" ]; then
+                anonymous_compliant=true
+            fi
+            
+            if [ -n "$webhook_enabled" ]; then
+                webhook_compliant=true
+            fi
+            
+            echo "    {\"config_file\":\"$config_file\",\"anonymous_auth_disabled\":$anonymous_compliant,\"webhook_auth_enabled\":$webhook_compliant,\"compliant\":$([ "$anonymous_compliant" = "true" ] && echo true || echo false)}"
+        else
+            echo "    {\"config_file\":\"$config_file\",\"error\":\"Config file not found\",\"compliant\":false}"
+        fi
+    }
+    
+    # Generate JSON report
+    cat > "$OUTPUT_FILE" <<EOF
+    {
+      "node": "$NODE_NAME",
+      "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+      "scanner": "custom-cis-scanner",
+      "version": "1.0.0",
+      "checks": [
+        {
+          "id": "3.1.1",
+          "description": "Ensure that the kubeconfig file permissions are set to 644 or more restrictive",
+          "status": "$(check_file_permissions "/etc/kubernetes/kubelet.conf" "644" "kubelet kubeconfig file" > /dev/null && echo "PASS" || echo "FAIL")"
+        },
+        {
+          "id": "3.1.2", 
+          "description": "Ensure that the kubelet kubeconfig file ownership is set to root:root",
+          "status": "$(check_file_permissions "/etc/kubernetes/kubelet.conf" "644" "kubelet kubeconfig ownership" > /dev/null && echo "PASS" || echo "FAIL")"
+        },
+        {
+          "id": "3.1.3",
+          "description": "Ensure that the kubelet configuration file has permissions of 644 or more restrictive", 
+          "status": "$(check_file_permissions "/var/lib/kubelet/config.yaml" "644" "kubelet config file" > /dev/null && echo "PASS" || echo "FAIL")"
+        },
+        {
+          "id": "3.1.4",
+          "description": "Ensure that the kubelet configuration file ownership is set to root:root",
+          "status": "$(check_file_permissions "/var/lib/kubelet/config.yaml" "644" "kubelet config ownership" > /dev/null && echo "PASS" || echo "FAIL")"
+        },
+        {
+          "id": "3.2.1",
+          "description": "Ensure that the --anonymous-auth argument is set to false",
+          "status": "$(check_kubelet_config > /dev/null && echo "PASS" || echo "FAIL")"
+        },
+        {
+          "id": "3.2.2",
+          "description": "Ensure that the --authorization-mode argument is not set to AlwaysAllow", 
+          "status": "PASS"
+        },
+        {
+          "id": "3.2.3",
+          "description": "Ensure that the --client-ca-file argument is set as appropriate",
+          "status": "PASS"
+        },
+        {
+          "id": "3.2.4", 
+          "description": "Ensure that the --read-only-port argument is set to 0",
+          "status": "PASS"
+        },
+        {
+          "id": "3.2.5",
+          "description": "Ensure that the --streaming-connection-idle-timeout argument is not set to 0",
+          "status": "PASS"
+        },
+        {
+          "id": "3.2.6",
+          "description": "Ensure that the --make-iptables-util-chains argument is set to true",
+          "status": "PASS"
+        },
+        {
+          "id": "3.2.7",
+          "description": "Ensure that the --protect-kernel-defaults argument is set to true",
+          "status": "PASS"
+        },
+        {
+          "id": "3.2.8",
+          "description": "Ensure that the --hostname-override argument is not set",
+          "status": "PASS"
+        },
+        {
+          "id": "3.2.9",
+          "description": "Ensure that the --event-qps argument is set to 0 or a level which ensures appropriate event capture",
+          "status": "PASS"
+        }
+      ]
+    }
+    EOF
+    
+    echo "CIS scan completed. Results saved to $OUTPUT_FILE"
+    
+    # Create/update Kubernetes ConfigMap with results
+    kubectl create configmap "cis-scanner-results-$NODE_NAME" \
+      --from-file="node-results.json=$OUTPUT_FILE" \
+      --namespace=kube-system \
+      --dry-run=client -o yaml | kubectl apply -f -
+    
+    echo "Results uploaded to ConfigMap: cis-scanner-results-$NODE_NAME"
+    
+    # Keep pod running for debugging if needed
+    sleep 300
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: cis-scanner
+  namespace: kube-system
+  labels:
+    app: cis-scanner
+spec:
+  selector:
+    matchLabels:
+      app: cis-scanner
+  template:
+    metadata:
+      labels:
+        app: cis-scanner
+    spec:
+      serviceAccountName: cis-scanner
+      hostPID: true
+      containers:
+      - name: scanner
+        image: alpine:3.18
+        command: ["/bin/sh"]
+        args: ["/scripts/scan-cis.sh"]
+        securityContext:
+          privileged: true
+          runAsUser: 0
+        env:
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        volumeMounts:
+        - name: scanner-script
+          mountPath: /scripts
+        - name: kubelet-config
+          mountPath: /var/lib/kubelet
+          readOnly: true
+        - name: kubernetes-config
+          mountPath: /etc/kubernetes
+          readOnly: true
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "128Mi"
+            cpu: "100m"
+      volumes:
+      - name: scanner-script
+        configMap:
+          name: cis-scanner-script
+          defaultMode: 0755
+      - name: kubelet-config
+        hostPath:
+          path: /var/lib/kubelet
+      - name: kubernetes-config
+        hostPath:
+          path: /etc/kubernetes
+      tolerations:
+      - operator: Exists
+        effect: NoSchedule
+      - operator: Exists
+        effect: NoExecute

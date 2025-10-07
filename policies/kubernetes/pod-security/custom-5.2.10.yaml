@@ -1,0 +1,51 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: custom-5.2.10
+  annotations:
+    policies.kyverno.io/title: Minimize the admission of containers with capabilities assigned
+    policies.kyverno.io/category: Pod Security
+    policies.kyverno.io/severity: low
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/description: Containers should drop all capabilities and only add back those that are required.
+    policies.kyverno.io/cel: 'true'
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+  - name: require-drop-all-capabilities
+    match:
+      any:
+      - resources:
+          kinds:
+          - Pod
+    validate:
+      message: Containers must drop ALL capabilities as a baseline.
+      cel:
+        expressions:
+        - expression: |
+            object.spec.containers.all(container,
+              has(container.securityContext) &&
+              has(container.securityContext.capabilities) &&
+              has(container.securityContext.capabilities.drop) &&
+              'ALL' in container.securityContext.capabilities.drop
+            )
+          message: "Containers must drop ALL capabilities"
+        - expression: |
+            !has(object.spec.initContainers) ||
+            object.spec.initContainers.all(container,
+              has(container.securityContext) &&
+              has(container.securityContext.capabilities) &&
+              has(container.securityContext.capabilities.drop) &&
+              'ALL' in container.securityContext.capabilities.drop
+            )
+          message: "Init containers must drop ALL capabilities"
+        - expression: |
+            !has(object.spec.ephemeralContainers) ||
+            object.spec.ephemeralContainers.all(container,
+              has(container.securityContext) &&
+              has(container.securityContext.capabilities) &&
+              has(container.securityContext.capabilities.drop) &&
+              'ALL' in container.securityContext.capabilities.drop
+            )
+          message: "Ephemeral containers must drop ALL capabilities"

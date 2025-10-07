@@ -4,23 +4,16 @@ metadata:
   name: custom-3.2.1
   annotations:
     policies.kyverno.io/category: CIS 3.2.1
-    policies.kyverno.io/description: "CIS 3.2.1: Ensure that the --anonymous-auth\
-      \ argument is set to false.\n\nHYBRID VALIDATION APPROACH: This control combines\
-      \ kube-bench kubelet configuration validation \nwith Kyverno RBAC validation\
-      \ for comprehensive anonymous authentication prevention.\n\nKUBE-BENCH INTEGRATION:\
-      \ The primary kubelet --anonymous-auth flag validation requires kube-bench \n\
-      to access kubelet configuration on worker nodes. Kube-bench validates:\n- kubelet\
-      \ --anonymous-auth=false flag in kubelet configuration\n- /var/lib/kubelet/config.yaml\
-      \ authentication.anonymous.enabled=false\n- kubelet service configuration files\n\
-      - systemd kubelet service settings\n\nKYVERNO VALIDATION: This policy validates\
-      \ Kubernetes API-level controls that prevent anonymous \naccess, which complements\
-      \ kubelet-level controls:\n- RoleBindings and ClusterRoleBindings that bind\
-      \ to system:anonymous\n- RoleBindings and ClusterRoleBindings that bind to system:unauthenticated\n\
-      - ServiceAccounts with overly permissive anonymous access\n- Pods that might\
-      \ enable anonymous authentication features\n"
-    policies.kyverno.io/kube-bench-required: 'true'
-    policies.kyverno.io/kube-bench-checks: 3.2.1
-    policies.kyverno.io/validation-scope: rbac-anonymous-bindings-with-kube-bench
+    policies.kyverno.io/description: "CIS 3.2.1: Validates kubelet anonymous authentication\
+      \ is disabled.\n\nSINGLE-TOOL APPROACH: This control uses custom CIS scanner results combined with Kyverno validation.\n\
+      \nCUSTOM CIS SCANNER: Kubelet anonymous authentication validation is performed by our custom\
+      \ CIS scanner DaemonSet that runs on each node to check:\n- kubelet --anonymous-auth=false flag in kubelet configuration\n- /var/lib/kubelet/config.yaml authentication.anonymous.enabled=false\n- kubelet service configuration files\n\
+      - systemd kubelet service settings\n- Results are output as JSON to ConfigMaps\n\
+      \nKYVERNO VALIDATION: This policy validates both:\n- Custom CIS scanner results from ConfigMaps\
+      \ for actual kubelet anonymous-auth configuration\n- RBAC controls that prevent anonymous access for complementary API-level controls\n"
+    policies.kyverno.io/scanner-required: 'true'
+    policies.kyverno.io/scanner-checks: '3.2.1'
+    policies.kyverno.io/validation-scope: anonymous-auth-with-custom-scanner
     policies.kyverno.io/cel: 'true'
 spec:
   validationFailureAction: Audit
@@ -37,7 +30,7 @@ spec:
         user.
 
         This complements CIS 3.2.1 kubelet --anonymous-auth=false setting validated
-        by kube-bench.
+        by our custom CIS scanner pod.
 
         '
       cel:
@@ -48,7 +41,7 @@ spec:
             user.
 
             This complements CIS 3.2.1 kubelet --anonymous-auth=false setting validated
-            by kube-bench.
+            by our custom CIS scanner pod.
 
             '
   - name: disallow-anonymous-group-binding
@@ -85,7 +78,7 @@ spec:
       message: 'Pods should not contain configuration that could enable anonymous
         authentication.
 
-        This works with kube-bench validation of kubelet --anonymous-auth=false setting.
+        This works with custom CIS scanner validation of kubelet --anonymous-auth=false setting.
 
         '
       cel:
@@ -94,73 +87,37 @@ spec:
           message: 'Pods should not contain configuration that could enable anonymous
             authentication.
 
-            This works with kube-bench validation of kubelet --anonymous-auth=false
+            This works with custom CIS scanner validation of kubelet --anonymous-auth=false
             setting.
 
             '
-  - name: validate-kube-bench-kubelet-scan
+  - name: validate-cis-scanner-results
     match:
       any:
       - resources:
           kinds:
-          - DaemonSet
+          - ConfigMap
           names:
-          - kube-bench*
+          - cis-scanner-results*
           namespaces:
           - kube-system
-          - kube-bench
     validate:
-      message: 'Kube-bench DaemonSets must be configured to scan kubelet configuration
-        for CIS 3.2.1.
+      message: 'CIS 3.2.1 kubelet anonymous authentication scan results indicate non-compliant
+        configuration.
 
-        This ensures validation of kubelet --anonymous-auth=false setting on all nodes.
+        Custom CIS scanner has detected kubelet --anonymous-auth is not set to false.
 
         '
       cel:
         expressions:
-        - expression: object.spec.template.spec.serviceAccountName == 'kube-bench'
-            && object.spec.template.spec.hostPID == true && object.spec.template.spec.containers.all(item,
-            has(item.name) && item.image == 'aquasec/kube-bench:*' && item.securityContext.privileged
-            == true && item.volumeMounts.all(item, item.name == '*kubelet*' && item.mountPath
-            == '/var/lib/kubelet' && item.readOnly == true) && item.volumeMounts.all(item,
-            item.name == '*kubernetes*' && item.mountPath == '/etc/kubernetes' &&
-            item.readOnly == true)) && object.spec.template.spec.volumes.all(item,
-            item.name == '*kubelet*' && item.hostPath.path == '/var/lib/kubelet')
-            && object.spec.template.spec.volumes.all(item, item.name == '*kubernetes*'
-            && item.hostPath.path == '/etc/kubernetes')
-          message: 'Kube-bench DaemonSets must be configured to scan kubelet configuration
-            for CIS 3.2.1.
+        - expression: |
+            !has(object.data) || !has(object.data['node-results.json']) ||
+            size(object.data['node-results.json'].parseJSON().checks.filter(c, 
+              c.id == '3.2.1' && c.status == 'FAIL'
+            )) == 0
+          message: 'CIS 3.2.1 compliance check failed: kubelet --anonymous-auth is not set to false.
 
-            This ensures validation of kubelet --anonymous-auth=false setting on all
-            nodes.
-
-            '
-  - name: validate-kube-bench-kubelet-job
-    match:
-      any:
-      - resources:
-          kinds:
-          - Job
-          names:
-          - kube-bench*
-          namespaces:
-          - kube-system
-          - kube-bench
-    validate:
-      message: 'Kube-bench Jobs must include node/kubelet scanning for CIS 3.2.1 validation.
-
-        This ensures kubelet --anonymous-auth configuration is properly checked.
-
-        '
-      cel:
-        expressions:
-        - expression: object.spec.template.spec.containers.all(item, has(item.name)
-            && item.args == ['node'] && item.volumeMounts.all(item, item.mountPath
-            == '/var/lib/kubelet' && item.readOnly == true))
-          message: 'Kube-bench Jobs must include node/kubelet scanning for CIS 3.2.1
-            validation.
-
-            This ensures kubelet --anonymous-auth configuration is properly checked.
+            Please ensure kubelet has anonymous authentication disabled.
 
             '
   - name: validate-clusterrole-anonymous-permissions
@@ -214,7 +171,7 @@ spec:
       message: 'ConfigMaps should not contain settings that could override kubelet
         anonymous-auth configuration.
 
-        This prevents bypassing CIS 3.2.1 controls validated by kube-bench.
+        This prevents bypassing CIS 3.2.1 controls validated by our custom CIS scanner pod.
 
         '
       cel:
@@ -223,6 +180,6 @@ spec:
           message: 'ConfigMaps should not contain settings that could override kubelet
             anonymous-auth configuration.
 
-            This prevents bypassing CIS 3.2.1 controls validated by kube-bench.
+            This prevents bypassing CIS 3.2.1 controls validated by our custom CIS scanner pod.
 
             '
