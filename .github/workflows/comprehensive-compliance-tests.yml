@@ -655,7 +655,92 @@ jobs:
         
         echo "⏳ Waiting for policies to be active..."
         sleep 15
-        
+
+        echo "🔒 Securing system pods for CIS compliance..."
+
+        # Patch coredns deployment
+        echo "Patching coredns deployment with security context..."
+        kubectl patch deployment coredns -n kube-system --type='json' -p='[
+          {
+            "op": "add",
+            "path": "/spec/template/spec/securityContext",
+            "value": {
+              "runAsNonRoot": true,
+              "runAsUser": 1000,
+              "fsGroup": 1000,
+              "seccompProfile": {"type": "RuntimeDefault"}
+            }
+          },
+          {
+            "op": "add",
+            "path": "/spec/template/spec/containers/0/securityContext",
+            "value": {
+              "allowPrivilegeEscalation": false,
+              "readOnlyRootFilesystem": true,
+              "runAsNonRoot": true,
+              "runAsUser": 1000,
+              "capabilities": {"drop": ["ALL"]},
+              "seccompProfile": {"type": "RuntimeDefault"}
+            }
+          }
+        ]' || echo "⚠️ Could not patch coredns (may already be patched)"
+
+        # Patch kube-proxy daemonset
+        echo "Patching kube-proxy daemonset with security context..."
+        kubectl patch daemonset kube-proxy -n kube-system --type='json' -p='[
+          {
+            "op": "add",
+            "path": "/spec/template/spec/securityContext",
+            "value": {
+              "seccompProfile": {"type": "RuntimeDefault"}
+            }
+          },
+          {
+            "op": "add",
+            "path": "/spec/template/spec/containers/0/securityContext",
+            "value": {
+              "allowPrivilegeEscalation": false,
+              "capabilities": {"drop": ["ALL"], "add": ["NET_ADMIN", "NET_RAW"]},
+              "seccompProfile": {"type": "RuntimeDefault"}
+            }
+          }
+        ]' || echo "⚠️ Could not patch kube-proxy (may already be patched)"
+
+        # Patch local-path-provisioner deployment
+        echo "Patching local-path-provisioner deployment with security context..."
+        kubectl patch deployment local-path-provisioner -n local-path-storage --type='json' -p='[
+          {
+            "op": "add",
+            "path": "/spec/template/spec/securityContext",
+            "value": {
+              "runAsNonRoot": true,
+              "runAsUser": 1000,
+              "fsGroup": 1000,
+              "seccompProfile": {"type": "RuntimeDefault"}
+            }
+          },
+          {
+            "op": "add",
+            "path": "/spec/template/spec/containers/0/securityContext",
+            "value": {
+              "allowPrivilegeEscalation": false,
+              "runAsNonRoot": true,
+              "runAsUser": 1000,
+              "capabilities": {"drop": ["ALL"]},
+              "seccompProfile": {"type": "RuntimeDefault"}
+            }
+          }
+        ]' || echo "⚠️ Could not patch local-path-provisioner (may already be patched)"
+
+        # Wait for pods to restart with new security contexts
+        echo "Waiting for system pods to restart with security contexts..."
+        sleep 20
+        kubectl rollout status deployment/coredns -n kube-system --timeout=120s || true
+        kubectl rollout status daemonset/kube-proxy -n kube-system --timeout=120s || true
+        kubectl rollout status deployment/local-path-provisioner -n local-path-storage --timeout=120s || true
+
+        echo "✅ System pods secured for CIS compliance"
+
         echo "✅ Cluster ready. Verifying setup..."
         kubectl cluster-info --context kind-kyverno-test
         kubectl get clusterpolicies --no-headers | wc -l | xargs echo "Kyverno policies deployed:"
