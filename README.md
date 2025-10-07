@@ -28,25 +28,31 @@
 
 ## 🏗️ Architecture
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                  KYVERNO POLICY ENGINE                  │
-├─────────────────────────────────────────────────────────┤
-│                                                         │
-│  ┌──────────────┐    ┌──────────────┐    ┌──────────┐ │
-│  │  Kubernetes  │    │  OpenTofu/   │    │   Node   │ │
-│  │  Resources   │    │  Terraform   │    │ Security │ │
-│  │  Validation  │    │    Plans     │    │ Scanner  │ │
-│  └──────┬───────┘    └──────┬───────┘    └────┬─────┘ │
-│         │                    │                  │       │
-│         ▼                    ▼                  ▼       │
-│  ┌────────────────────────────────────────────────┐    │
-│  │        Comprehensive Policy Validation         │    │
-│  │  • Admission Control  • JSON Scanning          │    │
-│  │  • ConfigMap Analysis • CEL Expressions        │    │
-│  └────────────────────────────────────────────────┘    │
-└─────────────────────────────────────────────────────────┘
-```
+### Multi-Layer Validation Strategy
+
+The framework implements a **three-layer validation approach** because no single tool can validate all CIS controls:
+
+![Multi-Layer Validation Strategy](docs/diagrams/multi-layer-validation.png)
+
+**Key Insight**: Each validation layer covers what others cannot:
+- **Kyverno**: Validates API resources (RBAC, Pods, NetworkPolicies) but cannot access node filesystems
+- **OpenTofu**: Validates infrastructure configuration before deployment but cannot validate runtime behavior
+- **Custom Scanner**: Validates node-level security (file permissions, kubelet config) but cannot validate Kubernetes API resources
+
+### Complete Architecture Flow
+
+![CIS EKS Kyverno Architecture](docs/diagrams/architecture.png)
+
+**🔒 CRITICAL IMPLEMENTATION DETAIL**: System pods (coredns, kube-proxy, local-path-provisioner) **MUST be secured with CIS-compliant security contexts BEFORE applying Kyverno policies**. This prevents the Kyverno admission webhook from blocking the security patches.
+
+**Architecture Layers**:
+1. **Prevention & Planning (Blue)**: OpenTofu + Kyverno CLI validate infrastructure plans before deployment
+2. **Detection & Enforcement (Orange)**:
+   - **🔒 System pods secured FIRST** ← Critical for Trivy compliance
+   - Kyverno admission controller enforces policies at runtime
+   - Custom CIS Scanner (DaemonSet) performs node-level scanning
+3. **Monitoring & Response (Purple)**: Trivy CIS scanner validates **entire cluster** compliance (all namespaces pass)
+4. **Business Value (Yellow)**: Automated compliance, risk reduction, audit readiness
 
 ## 🚀 Quick Start
 
@@ -66,15 +72,20 @@ cd cis-eks-kyverno
 # 2. Install Kyverno in cluster
 kubectl create -f https://github.com/kyverno/kyverno/releases/download/v1.13.6/install.yaml
 
-# 3. Apply RBAC permissions
+# Wait for Kyverno to be ready
+kubectl wait --for=condition=ready pod -l app.kubernetes.io/component=admission-controller -n kyverno --timeout=300s
+
+# 3. Apply RBAC permissions (extended permissions for node validation)
 kubectl apply -f kyverno-node-rbac.yaml
 
-# 4. Deploy node security scanner
+# 4. Deploy custom CIS scanner (DaemonSet runs on all nodes)
 kubectl apply -f k8s/cis-scanner-pod.yaml
 
-# 5. Apply all policies
+# 5. Apply all Kyverno policies
 kubectl apply -f policies/kubernetes/ -R
 ```
+
+> **⚠️ Note for CI/CD**: The GitHub Actions workflow (`.github/workflows/comprehensive-compliance-tests.yml`) secures system pods (coredns, kube-proxy, local-path-provisioner) with CIS-compliant security contexts **BEFORE** applying Kyverno policies. This ensures Trivy CIS compliance scans pass on all namespaces. For fresh clusters, system pods start compliant by default.
 
 ### Testing
 
