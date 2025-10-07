@@ -4,8 +4,8 @@ metadata:
   name: custom-3.2.8
   annotations:
     policies.kyverno.io/category: CIS 3.2.8
-    policies.kyverno.io/description: "CIS 3.2.8: Ensure that the --hostname-override\
-      \ argument is not set.\n\nIMPORTANT: This control requires direct access to\
+    policies.kyverno.io/description: "CIS 3.2.8: Validates kubelet hostname override\
+      \ configuration.\n\nIMPORTANT: This control requires direct access to\
       \ worker node kubelet configuration files \nto validate the hostname override\
       \ setting. Kyverno cannot directly access node configuration files.\n\
       \nSINGLE-TOOL APPROACH: This control uses custom CIS scanner results combined with Kyverno validation.\n\

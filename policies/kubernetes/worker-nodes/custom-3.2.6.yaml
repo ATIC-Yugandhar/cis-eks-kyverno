@@ -4,8 +4,8 @@ metadata:
   name: custom-3.2.6
   annotations:
     policies.kyverno.io/category: CIS 3.2.6
-    policies.kyverno.io/description: "CIS 3.2.6: Ensure that the --make-iptables-util-chains\
-      \ argument is set to true.\n\nIMPORTANT: This control requires direct access\
+    policies.kyverno.io/description: "CIS 3.2.6: Validates kubelet iptables util chains\
+      \ configuration.\n\nIMPORTANT: This control requires direct access\
       \ to worker node kubelet configuration files \nto validate the iptables util\
       \ chains setting. Kyverno cannot directly access node configuration files.\n\
       \nSINGLE-TOOL APPROACH: This control uses custom CIS scanner results combined with Kyverno validation.\n\

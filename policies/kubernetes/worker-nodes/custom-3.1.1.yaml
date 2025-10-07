@@ -4,8 +4,8 @@ metadata:
   name: custom-3.1.1
   annotations:
     policies.kyverno.io/category: CIS 3.1.1
-    policies.kyverno.io/description: "CIS 3.1.1: Ensure that the kubeconfig file permissions\
-      \ are set to 644 or more restrictive.\n\nSINGLE-TOOL APPROACH: This control\
+    policies.kyverno.io/description: "CIS 3.1.1: Validates kubeconfig file permissions\
+      \ for secure access control.\n\nSINGLE-TOOL APPROACH: This control\
       \ uses custom CIS scanner results combined with Kyverno validation.\n\
       \nCUSTOM CIS SCANNER: File permission validation is performed by our custom\
       \ CIS scanner DaemonSet that runs on each node to check:\n- /etc/kubernetes/kubelet.conf permissions (should be 644\

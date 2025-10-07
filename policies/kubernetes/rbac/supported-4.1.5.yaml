@@ -7,8 +7,8 @@ metadata:
     policies.kyverno.io/category: ServiceAccount
     policies.kyverno.io/severity: high
     policies.kyverno.io/subject: ServiceAccount
-    policies.kyverno.io/description: Ensure that the default service account is not
-      used in any namespace.
+    policies.kyverno.io/description: Validates default service accounts are not used
+      for security best practices (CIS 4.1.5).
     policies.kyverno.io/cel: 'true'
 spec:
   validationFailureAction: Audit

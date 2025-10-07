@@ -4,8 +4,8 @@ metadata:
   name: custom-3.1.2
   annotations:
     policies.kyverno.io/category: CIS 3.1.2
-    policies.kyverno.io/description: "CIS 3.1.2: Ensure that the kubelet kubeconfig\
-      \ file ownership is set to root:root.\n\nSINGLE-TOOL APPROACH: This control\
+    policies.kyverno.io/description: "CIS 3.1.2: Validates kubelet kubeconfig file\
+      \ ownership for proper security boundaries.\n\nSINGLE-TOOL APPROACH: This control\
       \ uses custom CIS scanner results combined with Kyverno validation.\n\nCUSTOM\
       \ CIS SCANNER: File ownership validation is performed by our custom CIS scanner\
       \ DaemonSet that runs on each node to check:\n- /etc/kubernetes/kubelet.conf\

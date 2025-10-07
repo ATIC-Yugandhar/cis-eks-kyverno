@@ -21,7 +21,7 @@
 
 | Component | Status | Coverage | Details |
 |-----------|--------|----------|---------|
-| **Kubernetes Policies** | ✅ 99% Pass | 41 policies | Resource and node-level validation |
+| **Kubernetes Policies** | ✅ 99% Pass | 49 policies | Resource and node-level validation |
 | **OpenTofu/Terraform** | ✅ 100% Pass | 23 policies | Infrastructure as Code validation |
 | **Node Security Scanner** | ✅ Operational | 13 checks | Filesystem and kubelet validation |
 | **Overall Compliance** | ✅ 99% | 64 policies | One known RBAC edge case |
@@ -99,7 +99,7 @@ cis-eks-kyverno/
 ├── k8s/
 │   └── cis-scanner-pod.yaml      # Node security scanner DaemonSet
 ├── policies/
-│   ├── kubernetes/               # 41 Kubernetes policies
+│   ├── kubernetes/               # 49 Kubernetes policies
 │   │   ├── control-plane/        # API server, audit logs
 │   │   ├── pod-security/         # Security standards
 │   │   ├── rbac/                 # Access control
@@ -228,6 +228,12 @@ We welcome contributions! Please:
 ## 📄 License
 
 Apache License 2.0 - see [LICENSE](LICENSE) file for details.
+
+## ⚖️ Legal Disclaimer
+
+This repository implements **community-created policies** aligned with CIS Amazon EKS Benchmark v1.7.0 controls. It does **not** reproduce or distribute official CIS Benchmark content. CIS control IDs are referenced for alignment purposes only. For official CIS materials, visit [CIS SecureSuite](https://www.cisecurity.org/cis-securesuite).
+
+See [DISCLAIMER.md](DISCLAIMER.md) for full legal details.
 
 ## 🙏 Acknowledgments
 

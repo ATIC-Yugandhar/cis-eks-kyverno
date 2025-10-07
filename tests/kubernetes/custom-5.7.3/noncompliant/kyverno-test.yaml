@@ -1,0 +1,15 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: custom-5.7.3-noncompliant
+policies:
+  - ../../../../policies/kubernetes/pod-security/custom-5.7.3.yaml
+resources:
+  - pod.yaml
+results:
+  - policy: custom-5.7.3
+    rule: require-security-context
+    resources:
+      - noncompliant-pod-no-security
+    kind: Pod
+    result: fail

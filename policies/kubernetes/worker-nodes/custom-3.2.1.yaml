@@ -4,8 +4,8 @@ metadata:
   name: custom-3.2.1
   annotations:
     policies.kyverno.io/category: CIS 3.2.1
-    policies.kyverno.io/description: "CIS 3.2.1: Ensure that the --anonymous-auth\
-      \ argument is set to false.\n\nSINGLE-TOOL APPROACH: This control uses custom CIS scanner results combined with Kyverno validation.\n\
+    policies.kyverno.io/description: "CIS 3.2.1: Validates kubelet anonymous authentication\
+      \ is disabled.\n\nSINGLE-TOOL APPROACH: This control uses custom CIS scanner results combined with Kyverno validation.\n\
       \nCUSTOM CIS SCANNER: Kubelet anonymous authentication validation is performed by our custom\
       \ CIS scanner DaemonSet that runs on each node to check:\n- kubelet --anonymous-auth=false flag in kubelet configuration\n- /var/lib/kubelet/config.yaml authentication.anonymous.enabled=false\n- kubelet service configuration files\n\
       - systemd kubelet service settings\n- Results are output as JSON to ConfigMaps\n\

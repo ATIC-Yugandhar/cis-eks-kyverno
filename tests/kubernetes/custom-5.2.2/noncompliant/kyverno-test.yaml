@@ -1,0 +1,15 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: custom-5.2.2-noncompliant
+policies:
+  - ../../../../policies/kubernetes/pod-security/custom-5.2.2.yaml
+resources:
+  - pod.yaml
+results:
+  - policy: custom-5.2.2
+    rule: deny-privileged
+    resources:
+      - noncompliant-pod-privileged
+    kind: Pod
+    result: fail

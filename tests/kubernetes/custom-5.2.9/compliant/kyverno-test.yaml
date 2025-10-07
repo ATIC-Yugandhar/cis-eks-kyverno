@@ -1,0 +1,15 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: custom-5.2.9-compliant
+policies:
+  - ../../../../policies/kubernetes/pod-security/custom-5.2.9.yaml
+resources:
+  - pod.yaml
+results:
+  - policy: custom-5.2.9
+    rule: restrict-added-capabilities
+    resources:
+      - compliant-pod-no-caps
+    kind: Pod
+    result: pass

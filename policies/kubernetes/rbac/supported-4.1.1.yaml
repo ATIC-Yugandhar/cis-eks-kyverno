@@ -7,9 +7,9 @@ metadata:
     policies.kyverno.io/category: RBAC
     policies.kyverno.io/severity: high
     policies.kyverno.io/subject: RoleBinding, ClusterRoleBinding
-    policies.kyverno.io/description: Ensure that the cluster-admin role is only used
-      when absolutely necessary. This policy checks for RoleBindings and ClusterRoleBindings
-      that grant cluster-admin privileges.
+    policies.kyverno.io/description: Validates cluster-admin role usage to enforce
+      least privilege access. Checks RoleBindings and ClusterRoleBindings
+      for cluster-admin privileges (CIS 4.1.1).
     policies.kyverno.io/cel: 'true'
 spec:
   validationFailureAction: Audit

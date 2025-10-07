@@ -4,8 +4,8 @@ metadata:
   name: custom-3.2.9
   annotations:
     policies.kyverno.io/category: CIS 3.2.9
-    policies.kyverno.io/description: "CIS 3.2.9: Ensure that the --event-qps argument\
-      \ is set to 0 or a level which ensures appropriate event capture.\n\nIMPORTANT:\
+    policies.kyverno.io/description: "CIS 3.2.9: Validates kubelet event QPS configuration\
+      \ for appropriate event capture.\n\nIMPORTANT:\
       \ This control requires direct access to worker node kubelet configuration files\
       \ \nto validate the event QPS setting. Kyverno cannot directly access node configuration\
       \ files.\n\

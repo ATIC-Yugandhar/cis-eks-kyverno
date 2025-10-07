@@ -4,8 +4,8 @@ metadata:
   name: custom-3.2.7
   annotations:
     policies.kyverno.io/category: CIS 3.2.7
-    policies.kyverno.io/description: "CIS 3.2.7: Ensure that the --protect-kernel-defaults\
-      \ argument is set to true.\n\nIMPORTANT: This control requires direct access\
+    policies.kyverno.io/description: "CIS 3.2.7: Validates kubelet kernel defaults\
+      \ protection configuration.\n\nIMPORTANT: This control requires direct access\
       \ to worker node kubelet configuration files \nto validate the protect kernel\
       \ defaults setting. Kyverno cannot directly access node configuration files.\n\
       \nSINGLE-TOOL APPROACH: This control uses custom CIS scanner results combined with Kyverno validation.\n\

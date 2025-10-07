@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: noncompliant-pod-netraw
+spec:
+  containers:
+    - name: nginx
+      image: nginx:latest
+      securityContext:
+        capabilities:
+          add:
+            - NET_RAW

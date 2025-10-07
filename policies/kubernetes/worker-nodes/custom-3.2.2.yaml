@@ -4,8 +4,8 @@ metadata:
   name: custom-3.2.2
   annotations:
     policies.kyverno.io/category: CIS 3.2.2
-    policies.kyverno.io/description: "CIS 3.2.2: Ensure that the --authorization-mode\
-      \ argument is not set to AlwaysAllow.\n\nSINGLE-TOOL APPROACH: This control uses custom CIS scanner results combined with Kyverno validation.\n\
+    policies.kyverno.io/description: "CIS 3.2.2: Validates kubelet authorization mode\
+      \ configuration.\n\nSINGLE-TOOL APPROACH: This control uses custom CIS scanner results combined with Kyverno validation.\n\
       \nCUSTOM CIS SCANNER: Kubelet authorization mode validation is performed by our custom\
       \ CIS scanner DaemonSet that runs on each node to check:\n- kubelet --authorization-mode flag in kubelet configuration\n- /var/lib/kubelet/config.yaml authorization settings\n- kubelet service configuration files\n\
       - Results are output as JSON to ConfigMaps\n\
