@@ -644,19 +644,8 @@ jobs:
         kubectl wait --for=condition=ready pod -l app.kubernetes.io/component=reports-controller -n kyverno --timeout=300s
         
         echo "✅ Kyverno is fully operational"
-        
-        echo "📋 Applying all Kyverno policies..."
-        for dir in policies/kubernetes/*/; do
-          if [ -d "$dir" ]; then
-            echo "Applying policies from $dir"
-            kubectl apply -f "$dir" || true
-          fi
-        done
-        
-        echo "⏳ Waiting for policies to be active..."
-        sleep 15
 
-        echo "🔒 Securing system pods for CIS compliance..."
+        echo "🔒 Securing system pods BEFORE applying policies..."
 
         # Patch coredns deployment
         echo "Patching coredns deployment with security context..."
@@ -739,7 +728,18 @@ jobs:
         kubectl rollout status daemonset/kube-proxy -n kube-system --timeout=120s || true
         kubectl rollout status deployment/local-path-provisioner -n local-path-storage --timeout=120s || true
 
-        echo "✅ System pods secured for CIS compliance"
+        echo "✅ System pods secured - now safe to apply policies"
+
+        echo "📋 Applying all Kyverno policies..."
+        for dir in policies/kubernetes/*/; do
+          if [ -d "$dir" ]; then
+            echo "Applying policies from $dir"
+            kubectl apply -f "$dir" || true
+          fi
+        done
+        
+        echo "⏳ Waiting for policies to be active..."
+        sleep 15
 
         echo "✅ Cluster ready. Verifying setup..."
         kubectl cluster-info --context kind-kyverno-test
