@@ -41,7 +41,7 @@ The framework implements a **three-layer validation approach** because no single
 
 ### Complete Architecture Flow
 
-![CIS EKS Kyverno Architecture](docs/diagrams/architecture.png)
+![CIS EKS Kyverno Architecture](docs/diagrams/arch-new.png)
 
 **🔒 CRITICAL IMPLEMENTATION DETAIL**: System pods (coredns, kube-proxy, local-path-provisioner) **MUST be secured with CIS-compliant security contexts BEFORE applying Kyverno policies**. This prevents the Kyverno admission webhook from blocking the security patches.
 
