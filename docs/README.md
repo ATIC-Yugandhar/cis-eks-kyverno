@@ -4,8 +4,7 @@ This directory contains official documentation and compliance benchmarks for the
 
 ## 📚 Available Documentation
 
-### Compliance Standards
-- **CIS_Amazon_Elastic_Kubernetes_Service_(EKS)_Benchmark_v1.7.0_PDF.pdf** - Official CIS EKS Benchmark v1.7.0 specification
+
 
 ### Visual Documentation
 - **images/** - Diagrams and screenshots supporting the documentation
