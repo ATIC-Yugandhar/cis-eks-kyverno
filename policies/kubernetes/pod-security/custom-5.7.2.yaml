@@ -19,6 +19,9 @@ spec:
       - resources:
           kinds:
           - Pod
+          operations:
+          - CREATE
+          - UPDATE
     validate:
       message: Pods and containers must set seccomp profile to runtime/default or localhost profile.
       cel:

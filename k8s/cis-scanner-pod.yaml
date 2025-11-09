@@ -200,7 +200,7 @@ spec:
       hostPID: true
       containers:
       - name: scanner
-        image: alpine:3.18
+        image: bitnami/kubectl:latest
         command: ["/bin/sh"]
         args: ["/scripts/scan-cis.sh"]
         securityContext:

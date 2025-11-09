@@ -19,6 +19,9 @@ spec:
       - resources:
           kinds:
           - Pod
+          operations:
+          - CREATE
+          - UPDATE
     validate:
       message: Containers must run as non-root user.
       cel:

@@ -3,7 +3,7 @@
 [![Tests](https://github.com/ATIC-Yugandhar/cis-eks-kyverno/workflows/Comprehensive%20CIS%20EKS%20Compliance%20Tests/badge.svg)](https://github.com/ATIC-Yugandhar/cis-eks-kyverno/actions)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![OpenTofu](https://img.shields.io/badge/OpenTofu-1.6+-purple.svg)](https://opentofu.org/)
-[![Kyverno](https://img.shields.io/badge/Kyverno-1.13+-green.svg)](https://kyverno.io/)
+[![Kyverno](https://img.shields.io/badge/Kyverno-1.15+-green.svg)](https://kyverno.io/)
 [![Compliance](https://img.shields.io/badge/Compliance-99%25-brightgreen.svg)](reports/executive-summary.md)
 
 > **🚀 Comprehensive CIS Amazon EKS Benchmark v1.7.0 implementation with streamlined compliance validation through Kyverno policies and integrated node-level security scanning.**
@@ -70,7 +70,7 @@ git clone https://github.com/ATIC-Yugandhar/cis-eks-kyverno.git
 cd cis-eks-kyverno
 
 # 2. Install Kyverno in cluster
-kubectl create -f https://github.com/kyverno/kyverno/releases/download/v1.13.6/install.yaml
+kubectl create -f https://github.com/kyverno/kyverno/releases/download/v1.15.2/install.yaml/
 
 # Wait for Kyverno to be ready
 kubectl wait --for=condition=ready pod -l app.kubernetes.io/component=admission-controller -n kyverno --timeout=300s
@@ -226,6 +226,76 @@ KYVERNO_EXPERIMENTAL=true kyverno json scan \
    - Consolidated updates
    - Unified troubleshooting
    - Comprehensive documentation
+
+## 🔄 GitHub Actions Integration
+
+### Automated Testing Workflow
+
+The repository includes a comprehensive GitHub Actions workflow that automatically tests all compliance components:
+
+**Workflow:** `.github/workflows/comprehensive-compliance-tests.yml`
+
+### Workflow Features
+
+- **Multi-Job Testing**: Parallel execution of unit tests, Kind cluster tests, and OpenTofu validation
+- **Complete Environment Setup**: Automatic Kyverno installation, RBAC configuration, and CIS scanner deployment
+- **Comprehensive Reporting**: Generates executive summary with all 4 test suites (100% completion)
+- **Manual Triggers**: Supports workflow_dispatch with configurable test options
+
+### Workflow Components
+
+| Job | Purpose | Duration | Dependencies |
+|-----|---------|----------|--------------|
+| `unit-tests` | Kyverno policy validation | ~3 min | Kyverno CLI |
+| `opentofu-tests` | Infrastructure compliance | ~2 min | OpenTofu, policies |
+| `kind-cluster-tests` | Full integration testing | ~8 min | Kind, kubectl, Kyverno |
+
+### Environment Variables
+
+```yaml
+env:
+  KYVERNO_VERSION: "1.15.2"  # Matches demo configuration
+```
+
+### Manual Workflow Execution
+
+You can manually trigger the workflow with custom options:
+
+1. Go to **Actions** → **Comprehensive CIS EKS Compliance Tests**
+2. Click **Run workflow**
+3. Configure options:
+   - ✅ Run Kind cluster tests
+   - ✅ Run OpenTofu compliance tests  
+   - ✅ Run custom CIS scanner
+   - ✅ Run Trivy CIS verification
+
+### Workflow Results
+
+The workflow generates:
+- **Unit Test Reports**: Policy validation results
+- **Integration Test Results**: Kind cluster validation
+- **OpenTofu Compliance**: Infrastructure scan results
+- **Executive Summary**: Combined 100% completion report
+- **SARIF Upload**: Security findings for GitHub Security tab
+
+### CI/CD Best Practices
+
+The workflow implements several best practices:
+
+1. **System Pod Security**: Patches system pods with CIS-compliant security contexts before applying policies
+2. **Progressive Testing**: Tests policies incrementally to isolate failures
+3. **Artifact Management**: Uploads all reports as workflow artifacts
+4. **Error Handling**: Uses `continue-on-error` for non-blocking test failures
+5. **Parallel Execution**: Runs independent test suites concurrently
+
+### Integration with Pull Requests
+
+The workflow automatically runs on:
+- Push to `main` and `develop` branches
+- Pull requests targeting `main`
+- Manual workflow dispatch
+
+This ensures all changes are validated before merging.
 
 ## 🤝 Contributing
 

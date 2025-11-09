@@ -43,10 +43,22 @@ Generated: $(date)
 
 EOF
 
-# Test Kubernetes policies
-echo "Testing Kubernetes policies..."
+# Test Kubernetes policies in priority order (most critical first)
+echo "Testing Kubernetes policies in priority order..."
+echo "Priority 1: Pod Security → Priority 2: RBAC → Priority 3: Control Plane → Priority 4: Worker Nodes → Priority 5: Scanner"
+echo ""
 
-for category_dir in "$POLICIES_DIR/kubernetes"/*; do
+# Define test order by criticality (most security-critical first)
+ORDERED_CATEGORIES=(
+    "pod-security"      # Priority 1: Container escape prevention & runtime security
+    "rbac"              # Priority 2: Access control & privilege escalation
+    "control-plane"     # Priority 3: Master node security
+    "worker-nodes"      # Priority 4: Node-level hardening  
+    "scanner"           # Priority 5: Compliance validation
+)
+
+for category in "${ORDERED_CATEGORIES[@]}"; do
+    category_dir="$POLICIES_DIR/kubernetes/$category"
     if [ -d "$category_dir" ]; then
         category=$(basename "$category_dir")
         echo "" 
@@ -136,8 +148,23 @@ echo "## OpenTofu Policies" >> "$DETAILED_FILE"
 echo "" >> "$DETAILED_FILE"
 
 echo ""
-echo "Testing OpenTofu policies..."
-for category_dir in "$POLICIES_DIR/opentofu"/*; do
+echo "Testing OpenTofu policies in priority order..."
+echo "Priority 1: Networking → Priority 2: Encryption → Priority 3: RBAC → Priority 4: Control Plane → Priority 5: Worker Nodes → Priority 6: Monitoring → Priority 7: Cluster Config"
+echo ""
+
+# Define OpenTofu test order by infrastructure criticality  
+ORDERED_TF_CATEGORIES=(
+    "networking"        # Priority 1: Network security & access controls
+    "encryption"        # Priority 2: Data protection at rest/transit
+    "rbac"              # Priority 3: IAM & access management
+    "control-plane"     # Priority 4: EKS control plane security
+    "worker-nodes"      # Priority 5: Node-level hardening
+    "monitoring"        # Priority 6: Audit & observability  
+    "cluster-config"    # Priority 7: General configuration
+)
+
+for category in "${ORDERED_TF_CATEGORIES[@]}"; do
+    category_dir="$POLICIES_DIR/opentofu/$category"
     if [ -d "$category_dir" ]; then
         category=$(basename "$category_dir")
         echo ""
@@ -160,7 +187,7 @@ for category_dir in "$POLICIES_DIR/opentofu"/*; do
                 
                 # Check compliant plan
                 if [ -f "opentofu/compliant/tofuplan.json" ]; then
-                    if KYVERNO_EXPERIMENTAL=true kyverno json scan --policy "$policy" --payload "opentofu/compliant/tofuplan.json" >/dev/null 2>&1; then
+                    if kyverno json scan --policy "$policy" --payload "opentofu/compliant/tofuplan.json" >/dev/null 2>&1; then
                         echo -n "[✓] "
                         result_line+="- ✅ $policy_name - compliant plan: PASS"
                         echo "- ✅ $policy_name - compliant plan: PASS" >> "$DETAILED_FILE"
@@ -177,7 +204,7 @@ for category_dir in "$POLICIES_DIR/opentofu"/*; do
                 
                 # Check noncompliant plan
                 if [ -f "opentofu/noncompliant/tofuplan.json" ]; then
-                    output=$(KYVERNO_EXPERIMENTAL=true kyverno json scan --policy "$policy" --payload "opentofu/noncompliant/tofuplan.json" 2>&1 || true)
+                    output=$(kyverno json scan --policy "$policy" --payload "opentofu/noncompliant/tofuplan.json" 2>&1 || true)
                     
                     if echo "$output" | grep -qi "failed\|blocked\|violation\|error"; then
                         echo -n "[✓] "

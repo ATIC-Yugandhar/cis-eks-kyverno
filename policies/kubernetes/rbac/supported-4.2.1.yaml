@@ -11,7 +11,7 @@ metadata:
       security (CIS 4.2.1).
     policies.kyverno.io/cel: 'true'
 spec:
-  validationFailureAction: Audit
+  validationFailureAction: Enforce
   background: true
   rules:
   - name: restrict-privileged
@@ -20,10 +20,12 @@ spec:
       - resources:
           kinds:
           - Pod
+          operations:
+          - CREATE
+          - UPDATE
     validate:
       message: Privileged containers are not allowed.
       cel:
         expressions:
-        - expression: object.spec.containers.all(item, (has(item.securityContext)
-            && item.securityContext.privileged) == false)
+        - expression: object.spec.containers.all(item, !has(item.securityContext) || !has(item.securityContext.privileged) || item.securityContext.privileged == false)
           message: Privileged containers are not allowed.

@@ -19,6 +19,9 @@ spec:
       - resources:
           kinds:
           - Pod
+          operations:
+          - CREATE
+          - UPDATE
     validate:
       message: Containers must drop NET_RAW capability.
       cel:

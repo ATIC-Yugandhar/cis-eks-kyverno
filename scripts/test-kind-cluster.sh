@@ -117,7 +117,7 @@ EOF
     
     # Install Kyverno
     echo "Installing Kyverno..."
-    kubectl create -f https://github.com/kyverno/kyverno/releases/download/v1.13.6/install.yaml
+    kubectl create -f https://github.com/kyverno/kyverno/releases/download/v${KYVERNO_VERSION:-1.15.2}/install.yaml
     
     # Wait for Kyverno to be ready
     echo "Waiting for Kyverno to be ready..."

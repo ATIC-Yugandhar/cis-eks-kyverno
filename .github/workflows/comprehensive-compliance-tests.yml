@@ -34,7 +34,7 @@ permissions:
   actions: read
 
 env:
-  KYVERNO_VERSION: "1.13.6"
+  KYVERNO_VERSION: "1.15.2"
 
 jobs:
   unit-tests:
@@ -638,12 +638,15 @@ jobs:
         kubectl create -f https://github.com/kyverno/kyverno/releases/download/v${{ env.KYVERNO_VERSION }}/install.yaml
         
         echo "⏳ Waiting for Kyverno to be ready..."
-        kubectl wait --for=condition=ready pod -l app.kubernetes.io/component=admission-controller -n kyverno --timeout=300s
-        kubectl wait --for=condition=ready pod -l app.kubernetes.io/component=background-controller -n kyverno --timeout=300s
-        kubectl wait --for=condition=ready pod -l app.kubernetes.io/component=cleanup-controller -n kyverno --timeout=300s
-        kubectl wait --for=condition=ready pod -l app.kubernetes.io/component=reports-controller -n kyverno --timeout=300s
+        kubectl wait --for=condition=ready pod --all -n kyverno --timeout=300s
         
         echo "✅ Kyverno is fully operational"
+
+        echo "🔧 Applying RBAC permissions for node-level validation..."
+        kubectl apply -f kyverno-node-rbac.yaml
+        
+        echo "🔍 Deploying CIS node security scanner DaemonSet..."
+        kubectl apply -f k8s/cis-scanner-pod.yaml
 
         echo "🔒 Securing system pods BEFORE applying policies..."
 
